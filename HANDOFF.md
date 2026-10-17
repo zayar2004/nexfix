@@ -36,3 +36,12 @@ Repo ထဲက ဖိုင်တွေကို ဖတ်ပြီး လက်
 ## Update 2026-10-17: Hybrid Requirements Locked
 - 3 locked requirements added
 - 12 docs updated, no code
+
+## PAUSED (2026-10-17)
+- Owner requested to pause the project.
+- Current state: Phase 1 deployed (Live on Render). Documentation updated for Hybrid System.
+- Do NOT change code. Do NOT start Phase 2.
+- Next task when resumed: 
+  1. Check git status.
+  2. Review Prisma error (EBADPLATFORM on Android).
+  3. Decide: Prisma (proot Ubuntu) vs Drizzle ORM vs Raw SQL.
