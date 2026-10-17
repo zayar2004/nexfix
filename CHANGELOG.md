@@ -15,3 +15,6 @@ Format: Keep a Changelog.
 - Every entry dated YYYY-MM-DD
 - Every entry references a phase
 - No fabricated entries
+## Phase 1.7 — Prisma blocked on Android (2026-10-17)
+- Prisma install fails: libsql does not support Android OS
+- Decision: Defer Prisma to Phase 2; use proot Ubuntu or Drizzle alternative
