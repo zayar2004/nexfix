@@ -69,3 +69,27 @@ Format: Keep a Changelog.
 - Auth.js integration
 - Register/Login UI
 - Runtime queries from Next.js app
+
+## [Phase 1] Documentation Update (2026-10-17)
+### Added
+- DECISIONS.md: D-51 to D-65 (Phase 1 lock)
+- SECURITY_PLAN.md: Role matrix, recovery, presence
+- UI_UX_PLAN.md: Design tokens, home, header
+- DATABASE_PLAN.md: 14 proposed tables
+- ARCHITECTURE.md: Presence, sync, chat, roles, recovery
+- MASTER_SPEC.md: Phase 1 summary
+- PHASE_PLAN.md: Phase 1 complete, Phase 2 next
+- PROJECT_STATE.md: Phase 1 status
+- HANDOFF.md: Phase 1 handoff
+### Changed
+- None (docs only)
+### Not Changed
+- Application code
+- Database schema
+- Dependencies
+- Deployment
+
+### Verification
+- All docs consistent
+- No code changes
+- No git commit

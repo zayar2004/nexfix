@@ -138,3 +138,27 @@ Date: 2026-10-17
 - Local cache for offline reading only.
 - Pagination for history.
 - Moderation: RBAC + Audit Log.
+
+## 11. PHASE 1 LOCKED DECISIONS (2026-10-17)
+See DECISIONS.md D-51 to D-65.
+
+### Summary
+- Roles: User, Staff, Senior Admin, Super Admin
+- Recovery: Admin-assisted only (no email/SMS)
+- Home: Search on Home (no /search route)
+- Machine Code: separate visual section
+- Header: brand + local time + refresh + bell + green dot count
+- Presence: 30s heartbeat, 90s expiry
+- Sync: real last-sync, no fake %
+- Chat: Sent only after server DB confirms
+- Documentation: 12 files updated
+
+### Design
+- Dark theme primary, light theme parity
+- Font: Inter + Noto Sans Myanmar
+- Touch: >=44x44, Input: >=48, Body: >=16
+- WCAG AA, reduce-motion respected
+
+### Routes
+- 44 total (1 existing, 43 new, /admin deferred to Phase 8)
+- /search FORBIDDEN (Home has search)

@@ -83,3 +83,42 @@ P2 -> P6, P7
 ## Phase 3: Search (REFACTORED — Local-first)
 ## Phase 4: Knowledge (REFACTORED — Local-first)
 ## Phase 7: Chat (REFACTORED — Server + Local cache)
+
+## PHASE 1 STATUS (2026-10-17)
+- Status: COMPLETE (documentation updated)
+- Deliverables: 12 files updated
+- Next: Phase 2 (Auth + Register/Login)
+
+## PHASE 2 — Auth Implementation (NEXT)
+- Goal: JWT session, Register, Login (phone or userID + password)
+- Recovery: Admin-assisted reset workflow
+- Roles: New enum (user, staff, senior_admin, super_admin)
+- Acceptance:
+  - Register with phone or userID
+  - Login sets JWT session
+  - Password hashed with bcryptjs
+  - Admin can trigger reset (audited)
+  - No OAuth, no SMS/email provider
+- Depends: Phase 1 docs, Phase 2.4 auth config
+
+## PHASE 2.5 — Design System + Components
+- Implement design tokens in globals.css
+- Build 19 components (from UI_UX_PLAN.md)
+- Fonts: Inter + Noto Sans Myanmar
+- Depends: Phase 2 (auth UI shells)
+
+## PHASE 3 — Home + Search (Local-first)
+- Home with Section A + B
+- IndexedDB local search
+- Recent Diagnostics, sync status
+- Header with presence count
+- Depends: Phase 2.5
+
+## PHASE 4 — Knowledge Library (Local-first)
+## PHASE 5 — Private Excel (Local-only)
+## PHASE 6 — Notes & Reminders
+## PHASE 7 — Chat (Server + Cache)
+## PHASE 8 — Admin (Content)
+## PHASE 9 — Admin (Users/Ops)
+## PHASE 10 — Security Hardening
+## PHASE 11 — APK (Capacitor)

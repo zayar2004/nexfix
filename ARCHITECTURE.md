@@ -104,3 +104,55 @@ Client heartbeat (30s) -> WS -> server last_seen -> broadcast -> UI "Online" / "
 
 ## 8. CHAT ARCHITECTURE
 - Server = Source of Truth, Client = Cache. Idempotency, Socket.IO, R2 media.
+
+## 9. PRESENCE ARCHITECTURE (LOCKED 2026-10-17)
+- Client heartbeat: every 30s (fetch POST /api/presence/heartbeat)
+- Server stores: {userId or sessionId, lastHeartbeat}
+- Expiry: 90s since last heartbeat
+- Dedup: by userId (logged-in) or sessionId (guest)
+- Online count: SELECT COUNT(DISTINCT userId) WHERE lastHeartbeat > NOW() - 90s
+- Stale cleanup: cron every 60s
+- API: GET /api/presence/count (public, count only)
+- Privacy: no user details exposed
+
+## 10. SYNC ARCHITECTURE (LOCKED)
+- Local DB: IndexedDB (nexfix-shared, nexfix-private-<userId>, nexfix-chat-cache)
+- Sync triggers: app open, reconnect, manual, admin push
+- Version check: GET /api/sync/version -> compare local
+- If newer: GET /api/sync/changes -> validate -> atomic apply
+- Failure: preserve previous data
+- Last-sync: stored in IndexedDB, displayed in UI
+- No fake percentages (D-43)
+- Background sync: NOT guaranteed (browser limits)
+
+## 11. CHAT ARCHITECTURE (LOCKED)
+- Server: PostgreSQL (source of truth)
+- Client: IndexedDB cache (offline read only)
+- Send: POST /api/chat/messages (idempotency key)
+- "Sent" state: ONLY after server DB insert confirms (D-41)
+- Offline: send disabled, no auto-queue (D-42)
+- Real-time: Socket.IO broadcast
+- Media: R2 (S3-compatible) + DB reference
+
+## 12. ROLES ARCHITECTURE (LOCKED)
+- Enum: 'user' | 'staff' | 'senior_admin' | 'super_admin'
+- Middleware: /api/admin/* requires role in (staff, senior_admin, super_admin)
+- Ban permission: senior_admin, super_admin only
+- Role assignment: super_admin only (audited)
+- Self-promotion: blocked
+- Client checks: UX only
+
+## 13. AUTH RECOVERY ARCHITECTURE (LOCKED)
+- Admin-assisted only (D-52)
+- No email/SMS provider
+- Workflow: out-of-band verification -> admin triggers token -> user sets password
+- Token: one-time, expires in 15 minutes, stored hashed
+- Audit: every reset action logged
+- If secure reset not feasible with current JWT: document + request approval
+
+## 14. PASSWORD RESET (PENDING 2026-10-17)
+- Mechanism: Option D (admin-assisted, one-time token)
+- Token: 15-min expiry, hashed
+- Delivery: NOT DECIDED -> feature PENDING
+- Implementation: Phase 2+ (after channel approved)
+- Fallback: "Contact admin for recovery"

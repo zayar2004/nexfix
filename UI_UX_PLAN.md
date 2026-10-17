@@ -85,3 +85,102 @@ Feature availability:
 - "Offline — Connect to send" banner
 - Sending / Sent / Failed states
 - Retry button
+
+## 11. BRAND DESIGN TOKENS (LOCKED 2026-10-17)
+### Dark Theme (Default)
+- --color-bg-base: #0B1020 (Midnight Navy)
+- --color-bg-surface: #141A2E
+- --color-bg-elevated: #1C2438
+- --color-primary: #176BFF (Electric Blue)
+- --color-accent: #20E3FF (Cyber Cyan)
+- --color-text-primary: #F4F7FF (Cool White)
+- --color-text-secondary: #A8B2C9
+- --color-border: #232B42
+- --color-success: #22C55E
+- --color-warning: #F59E0B
+- --color-error: #EF4444
+
+### Light Theme
+- --color-bg-base: #F4F7FF
+- --color-bg-surface: #FFFFFF
+- --color-bg-elevated: #F9FAFC
+- --color-text-primary: #0B1020
+- --color-text-secondary: #4A5263
+- --color-border: #D9E0EC
+- --color-accent: #0891B2 (darker cyan for contrast)
+
+### Typography
+- Sans: Inter, Noto Sans Myanmar, Pyidaungsu, system-ui
+- Mono: JetBrains Mono, SF Mono, monospace
+- Scale: 12/14/16/18/20/24/30/36px
+- Myanmar line-height: 1.7 (Burmese needs more space)
+- English line-height: 1.5
+
+### Spacing / Sizing
+- Space: 4/8/12/16/24/32px
+- Radius: 6/10/14px
+- Touch target: >=44x44px
+- Input height: >=48px
+- Icon: 16/20/24/32px
+- Body font: >=16px (prevent iOS zoom)
+- Breakpoints: 360/768/1024/1280px
+- Content max: 640px (mobile), 1200px (admin)
+
+### Motion
+- Duration: 120ms (fast), 200ms (normal)
+- prefers-reduced-motion: fully respected
+
+## 12. HOME HEADER (LOCKED)
+[ NEXFIX logo ] [ 14:32 local ] [ refresh ] [ bell ] [ green-dot + count ]
+- No "Online"/"Offline" text label
+- Green dot icon + real online count
+- Local time: Asia/Yangon, updates every minute
+- Refresh: manual sync trigger
+- Bell: unread badge
+
+## 13. HOME SEARCH SECTIONS (LOCKED)
+### Section A: Machine & Error Search
+- Machine Name input + Error Code input (same row >=360px)
+- Stack vertically <360px (no clipping)
+- "Search Errors" button (full-width mobile)
+- Triggers: machine only / code only / both
+- Exact error code prioritized
+- States: validation/loading/empty/error/offline
+
+### Section B: Machine Code Search (visually distinct)
+- Accent border (Cyber Cyan #20E3FF)
+- Dedicated Machine Code input
+- "Find Machine" button
+- Identifies machine, not error code
+
+### Below Search
+- Recent Diagnostics (compact list, max 5)
+- Sync status (real last-sync time)
+- No fabricated progress %
+- Stale warning if >24h
+
+## 14. NAVIGATION (LOCKED)
+- Bottom Nav (mobile): Home | Library | Chat | Notes | Profile
+- Admin: separate sidebar menu
+- No /search primary route (D-54)
+
+## 15. GLOBAL UI STATES (LOCKED)
+- Initial Loading (skeleton)
+- Empty Result (icon + CTA)
+- Validation Error (red text + border)
+- Network Error (red banner + retry)
+- Offline - Using Saved Data (amber banner)
+- Syncing (cyan spinner)
+- Update Available (blue badge)
+- Sync Failed (red + retry)
+- Last Synced (gray text)
+- Data May Be Outdated (amber text, >24h)
+- Permission Denied (lock icon)
+- Session Expired (dialog)
+- Chat Not Sent (red icon)
+- Chat Sent (checkmark, ONLY after server DB confirms)
+
+## 16. AUTH PAGES (LOCKED)
+- /login: phone OR userID + password
+- /register: phone OR userID + password + confirm
+- /forgot-password: "Contact admin" info (no email/SMS)

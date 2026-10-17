@@ -32,3 +32,47 @@ Permanent instructions for any AI continuing this project.
 - Verification results (commands + outcome)
 - Unresolved issues
 - Exact next task
+
+## PHASE 1 UPDATE (2026-10-17)
+### Roles (NEW)
+- user, staff, senior_admin, super_admin
+- Old moderator/admin: SUPERSEDED
+
+### Recovery (NEW)
+- Admin-assisted only
+- No email/SMS provider
+- Audit every reset
+
+### Home (LOCKED)
+- Search lives on Home (no /search)
+- Section A: Machine+Code (same row)
+- Section B: Machine Code (visual distinct)
+
+### Header (LOCKED)
+- Brand + local time + refresh + bell + green-dot count
+- No "Online/Offline" text label
+
+### Chat (LOCKED)
+- Sent only after server DB confirms
+- No auto-queue offline
+
+### Excel (LOCKED)
+- Local only
+- Never uploads to server
+- Never visible to admin
+
+### Phase Rules
+- Documentation before code
+- Server-side authz always
+- No fabrication
+- Update PROJECT_STATE + CHANGELOG + HANDOFF each task
+- Commit/Push only with owner approval
+
+### Start-of-Task Ritual
+1. Read AGENTS.md
+2. Read DECISIONS.md (latest non-superseded)
+3. Read PROJECT_STATE.md
+4. Read HANDOFF.md
+5. Read phase-specific doc (UI_UX_PLAN, SECURITY_PLAN, etc.)
+6. Confirm next task
+7. Do not rely on chat memory

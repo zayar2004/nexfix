@@ -161,3 +161,35 @@ Database: PostgreSQL (Neon)
 
 ## 7. SYNC TABLES (Server)
 - data_versions, tombstones
+
+## 9. PHASE 1 PROPOSED TABLES (2026-10-17)
+### Existing (from Phase 2.3)
+- users (id, publicId, email, passwordHash, role, displayName, locale, theme, createdAt, updatedAt, lastSeenAt)
+- sessions (id, userId, tokenHash, ipHash, userAgent, createdAt, expiresAt, revokedAt)
+
+### Proposed (Phase 2+)
+- machines (id, name, code, description, status, version, createdAt)
+- error_codes (id, machineId, code, title, status, version, createdAt)
+- error_content (id, errorCodeId, locale, symptoms, causes, troubleshooting, solutions, notes, safety, createdAt)
+- knowledge_articles (id, slug, status, version, publishedAt, createdAt)
+- article_content (id, articleId, locale, title, body, createdAt)
+- media (id, ownerType, ownerId, mime, size, hash, storageKey, status, createdAt)
+- notes (id, userId, title, body, createdAt, updatedAt)
+- reminders (id, noteId, userId, recurrence, nextAt, status, snoozeUntil)
+- chat_messages (id, userId, content, messageType, attachmentRef, createdAt, editedAt, deletedAt, moderationStatus)
+- presence (userId, sessionId, lastHeartbeat, isGuest) - ephemeral, dedup key
+- activity_events (id, userId, action, metadata, createdAt) - retention 180d
+- audit_log (id, actorId, action, targetType, targetId, metadata, createdAt) - append-only
+- notifications (id, userId, type, payload, readAt, createdAt)
+- help_reports (id, userId, subject, body, status, createdAt)
+
+### Privacy Rules (LOCKED)
+- user_excel_datasets / user_excel_rows: LOCAL ONLY (IndexedDB, never server)
+- activity_events: never log passwords/tokens/private content
+- audit_log: append-only
+- presence: only count exposed, no user details
+
+### Roles Enum
+- role: 'user' | 'staff' | 'senior_admin' | 'super_admin'
+- SUPERSEDES previous 'moderator' | 'admin'
+- Migration required if existing users have old roles (Phase 2)

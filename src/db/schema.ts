@@ -1,7 +1,7 @@
-import { pgTable, uuid, text, timestamp, boolean, pgEnum, varchar } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, pgEnum, varchar } from "drizzle-orm/pg-core";
 
 // 1. Roles Enum
-export const roleEnum = pgEnum("role", ["user", "moderator", "admin", "superadmin"]);
+export const roleEnum = pgEnum("role", ["user", "staff", "senior_admin", "super_admin"]);
 
 // 2. Users Table
 export const users = pgTable("users", {

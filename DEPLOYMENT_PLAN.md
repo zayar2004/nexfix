@@ -79,3 +79,31 @@ Version: 1.0
 
 ## 11. CHAT INFRASTRUCTURE
 - PostgreSQL + R2 + Socket.IO + Local cache.
+
+## 12. PRESENCE + SYNC INFRASTRUCTURE (LOCKED 2026-10-17)
+### Presence
+- API: POST /api/presence/heartbeat (30s)
+- API: GET /api/presence/count (public)
+- Storage: PostgreSQL (or Redis for scale)
+- Cron: stale cleanup every 60s
+
+### Sync
+- API: GET /api/sync/version
+- API: GET /api/sync/changes?since=version
+- Client: IndexedDB atomic apply
+- Failure: preserve previous data
+
+### Chat (already in DEPLOYMENT_PLAN)
+- Server: PostgreSQL
+- Real-time: Socket.IO on Render
+- Media: Cloudflare R2
+
+### Roles Migration (Phase 2)
+- If existing users have old roles (moderator/admin):
+  - moderator -> staff
+  - admin -> senior_admin
+- Migration script required (audited)
+
+### Verification
+- No deployment changes in Phase 1
+- All infra unchanged

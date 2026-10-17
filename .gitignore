@@ -49,3 +49,4 @@ temp/
 
 # Uploads (local dev only)
 uploads/
+tsconfig.tsbuildinfo

@@ -81,3 +81,48 @@ Version: 1.0
 
 ## 11. CHAT SECURITY
 - Server source of truth. Base64 in DB prohibited. Retention policy.
+
+## 12. ROLE PERMISSION MATRIX (LOCKED 2026-10-17)
+### Roles
+- User: read public, post chat (auth), own notes, own Excel
+- Staff: User + hide/mute/timeout chat (no ban)
+- Senior Admin: Staff + ban/unban + content CRUD
+- Super Admin: All + role mgmt + backup/restore + audit
+
+### Server-Side Enforcement
+- Middleware checks role on every /admin/* and /api/admin/* request
+- Client-side role checks = UX only, NEVER trusted
+- Elevated roles granted ONLY by Super Admin (audited)
+- Self-promotion blocked
+
+## 13. PASSWORD RECOVERY (LOCKED 2026-10-17)
+- Mechanism: Admin-assisted reset ONLY
+- Authorized: Senior Admin or Super Admin
+- Steps:
+  1. User contacts admin out-of-band (no email/SMS provider)
+  2. Admin verifies identity (video call or in-person)
+  3. Admin triggers reset -> server generates one-time token
+  4. User receives token (via secure channel, not password)
+  5. User sets new password
+  6. Admin action audited (actor, target, timestamp)
+- NEVER: reveal existing password, send via SMS/email provider, use paid services
+- If server-side secure reset not feasible with current JWT architecture: document limitation, request approval
+
+## 14. PRESENCE SECURITY (LOCKED 2026-10-17)
+- Heartbeat: 30s interval
+- Expiry: 90s no heartbeat = offline
+- Dedup: by userId (logged-in) or sessionId (guest)
+- Stale cleanup: server cron every 60s
+- Privacy: online count only, no user details exposed
+- Disconnect != logout (D-40)
+
+## 15. ADMIN RESET FEATURE STATUS (2026-10-17)
+- Base: Option D (admin-assisted, one-time token)
+- Token: 15-min expiry, hashed storage
+- Delivery channel: NOT DECIDED -> feature PENDING
+- Until channel approved:
+  - Reset UI: DISABLED
+  - Reset API: 501 Not Implemented
+  - User-facing message: "Contact admin for recovery"
+- Existing password: NEVER revealed or sent
+- Audit: every reset attempt logged (pending feature)

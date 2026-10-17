@@ -46,3 +46,25 @@ Step 1.2: Create documentation files in Termux
 ## LOCKED (2026-10-17)
 - Local-first, Hybrid, Chat server+local
 - Phase 1.9 added
+
+## PHASE 1 COMPLETE (2026-10-17)
+- Docs: 12 files updated
+- Decisions: D-51 to D-65 locked
+- Roles: user, staff, senior_admin, super_admin
+- Recovery: Admin-assisted
+- Home: Search on Home (Section A + B)
+- Header: presence count (green dot)
+- No code changes
+- No DB changes
+- No commit/push
+
+## NEXT
+- Phase 2: Auth + Register/Login
+- Requires: owner approval
+- Also requires: design system (Phase 2.5) BEFORE auth UI
+- Note: Auth API ready (Stage 2.4), UI pending
+
+## UNVERIFIED
+- Admin reset workflow (not yet implemented)
+- Presence heartbeat (not yet implemented)
+- All Phase 2+ features
