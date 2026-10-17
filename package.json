@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "dotenv": "^18.0.8",
     "drizzle-orm": "^0.45.4",
     "next": "15.5.28",
     "postgres": "^3.4.9",

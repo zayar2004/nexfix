@@ -56,3 +56,16 @@ Format: Keep a Changelog.
 - Database connection (no Neon account yet)
 - Schema migration (`drizzle-kit push` / `generate`)
 - Runtime use inside Next.js app code
+
+## [Stage 2.3] Database Schema Added (2026-10-17)
+### Added
+- `src/db/schema.ts` (users, sessions tables)
+- `drizzle.config.ts` (Drizzle Kit config)
+- `dotenv` dependency
+### Verified
+- `npx drizzle-kit push` -> "[+] Changes applied"
+- Neon Dashboard: users, sessions tables exist
+### Not Yet Verified
+- Auth.js integration
+- Register/Login UI
+- Runtime queries from Next.js app

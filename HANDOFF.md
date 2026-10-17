@@ -53,3 +53,8 @@ Repo ထဲက ဖိုင်တွေကို ဖတ်ပြီး လက်
 - Changed files: package.json, package-lock.json, CHANGELOG.md, HANDOFF.md
 - Next Task (awaits owner approval): Stage 2.2 — Create Neon Free PostgreSQL
 - Reminder: Do not start Auth.js / schema / UI without explicit approval.
+
+## [2026-10-17] Stage 2.3 Completed - Schema Pushed
+- Schema: users, sessions tables created in Neon
+- Config: drizzle.config.ts, src/db/schema.ts
+- Next Task (awaits owner approval): Stage 2.4 - Install Auth.js
