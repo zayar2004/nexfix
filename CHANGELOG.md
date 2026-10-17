@@ -40,3 +40,19 @@ Format: Keep a Changelog.
 - D-11 to D-18 added
 - Local-first search, hybrid sync, chat server storage
 - No code changes (Stage 0)
+
+## [Stage 2.1] Drizzle ORM Dependencies Added (2026-10-17)
+### Added
+- `drizzle-orm@^0.45.4` (runtime)
+- `postgres@^3.4.9` (runtime, PostgreSQL driver)
+- `drizzle-kit@^0.31.11` (dev)
+### Verified
+- `node -e "require('drizzle-orm/postgres-js')"` → "Drizzle loaded OK"
+- `node_modules` contains: drizzle-orm, drizzle-kit, postgres, @drizzle-team
+### Termux Notes
+- `esbuild` was installed via `pkg install esbuild` (0.28.2) to avoid `ETXTBSY` during `drizzle-kit` postinstall.
+- `--fetch-timeout=600000` was used for `npm install` due to intermittent network timeouts.
+### Not Yet Verified
+- Database connection (no Neon account yet)
+- Schema migration (`drizzle-kit push` / `generate`)
+- Runtime use inside Next.js app code

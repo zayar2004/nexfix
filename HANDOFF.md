@@ -45,3 +45,11 @@ Repo ထဲက ဖိုင်တွေကို ဖတ်ပြီး လက်
   1. Check git status.
   2. Review Prisma error (EBADPLATFORM on Android).
   3. Decide: Prisma (proot Ubuntu) vs Drizzle ORM vs Raw SQL.
+
+## [2026-10-17] Stage 2.1 Completed — Drizzle Installed
+- Current Phase: Phase 2 (Auth) — Stage 2.1 DONE
+- Installed: drizzle-orm, postgres, drizzle-kit (via npm); esbuild via pkg
+- Verified: module load only. DB connection NOT tested.
+- Changed files: package.json, package-lock.json, CHANGELOG.md, HANDOFF.md
+- Next Task (awaits owner approval): Stage 2.2 — Create Neon Free PostgreSQL
+- Reminder: Do not start Auth.js / schema / UI without explicit approval.
