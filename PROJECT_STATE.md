@@ -2,7 +2,7 @@
 Updated: 2026-10-17
 
 ## Current Phase
-Phase 1 — IN PROGRESS (Repo + Skeleton)
+Phase 1 — COMPLETE (Live on Render)
 
 ## Completed
 - [x] Stage 0 planning (12 documents)
@@ -28,4 +28,6 @@ Phase 1 — IN PROGRESS (Repo + Skeleton)
 - Skeleton only (no features)
 
 ## Next Task
+Phase 2: Auth + Roles + Profile
+Note: Prisma is deferred. Need to evaluate proot Ubuntu or Drizzle ORM before Phase 2.
 Step 1.2: Create documentation files in Termux

@@ -18,3 +18,6 @@ Format: Keep a Changelog.
 ## Phase 1.7 — Prisma blocked on Android (2026-10-17)
 - Prisma install fails: libsql does not support Android OS
 - Decision: Defer Prisma to Phase 2; use proot Ubuntu or Drizzle alternative
+## Phase 1.8 — Deployed to Render (2026-10-17)
+- Deploy successful: https://nexfix-s7rm.onrender.com
+- Phase 1 (Skeleton) is now COMPLETE.
