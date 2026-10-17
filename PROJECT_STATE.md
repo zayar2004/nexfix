@@ -31,3 +31,18 @@ Phase 1 — COMPLETE (Live on Render)
 Phase 2: Auth + Roles + Profile
 Note: Prisma is deferred. Need to evaluate proot Ubuntu or Drizzle ORM before Phase 2.
 Step 1.2: Create documentation files in Termux
+
+## LOCKED REQUIREMENTS (2026-10-17)
+- Local-first search & knowledge (IndexedDB primary)
+- Hybrid online/offline system
+- Chat = Server PostgreSQL + local cache
+- Version-based sync, atomic apply
+- Tombstone for deleted data
+
+## New Phases
+- Phase 1.9: Local-first refactor (after Phase 1)
+- Phase 3 & 4 & 7 refactored to local-first
+
+## LOCKED (2026-10-17)
+- Local-first, Hybrid, Chat server+local
+- Phase 1.9 added

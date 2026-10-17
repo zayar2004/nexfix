@@ -60,3 +60,26 @@ Version: 1.0
 P1 -> P2 -> P3 -> {P4, P5}
 P2 -> P6, P7
 {P3, P4} -> P8 -> P9 -> P10 -> P11
+
+## Phase 1.9: Local-First Refactor (NEW — after Phase 1)
+- Goal: Implement IndexedDB schema, Sync Service skeleton
+- Depends: Phase 1
+- Acceptance: Local DB initializes, version check endpoint, manual sync button
+
+## Phase 2: Auth (unchanged)
+## Phase 3: Shared Search (REFACTORED — Local-first)
+- Search reads ONLY from IndexedDB
+- Acceptance: Server Search API never called on search
+## Phase 4: Knowledge (REFACTORED — Local-first)
+## Phase 5: Private Excel (UNCHANGED — Local-only)
+## Phase 6: Notes (Local + optional sync later)
+## Phase 7: Public Chat (REFACTORED — Server + Local cache)
+- Chat send: Online only
+- Chat read: Local cache offline
+## Phase 8-11: Admin / Ops / APK (unchanged)
+
+## Phase 1.9: Local-First Refactor (NEW)
+- IndexedDB schema, Sync Service skeleton
+## Phase 3: Search (REFACTORED — Local-first)
+## Phase 4: Knowledge (REFACTORED — Local-first)
+## Phase 7: Chat (REFACTORED — Server + Local cache)

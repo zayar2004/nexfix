@@ -98,3 +98,66 @@ Database: PostgreSQL (Neon)
 - search_events: 90 days
 - audit_log: indefinite (append-only)
 - chat_messages: indefinite (soft-delete on moderation)
+
+## 5. LOCAL DATABASE (IndexedDB) — Browser Side
+### nexfix-shared
+- machines (synced)
+- error_codes (synced)
+- error_content (synced)
+- articles (synced)
+- article_content (synced)
+- sync_metadata (version, last_sync)
+
+### nexfix-private-<userId>
+- excel_dataset (local-only)
+- excel_rows (local-only)
+- notes_cache
+
+### nexfix-chat-cache
+- chat_messages (recent, paginated)
+
+## 6. SERVER DATABASE — Chat Additions (LOCKED)
+### chat_messages (extended)
+- id (uuid PK)
+- sender_id (FK users)
+- idempotency_key (unique, prevents duplicates)
+- content (text)
+- message_type (text|emoji|photo|video|file)
+- attachment_ref (nullable, FK media)
+- created_at
+- edited_at
+- deleted_at (soft delete)
+- moderation_status (pending|approved|hidden)
+
+### chat_attachments
+- id, message_id (FK), media_id (FK), mime, size, hash
+
+### chat_idempotency
+- key (unique), user_id, created_at, expires_at
+
+## 7. SYNC TABLES (Server)
+### data_versions
+- entity (machine|error|article)
+- version (int)
+- published_at
+- revision_hash
+
+### tombstones
+- entity, entity_id, deleted_at, reason
+
+## 8. PRIVACY (UNCHANGED + REINFORCED)
+- Private Excel: Local-only, never syncs, admin zero access.
+- Chat messages: Server (PostgreSQL) but private notes never logged.
+- Search queries: Not sent to server (Local-first).
+
+## 5. LOCAL DATABASE (IndexedDB)
+- nexfix-shared: machines, error_codes, error_content, articles, article_content, sync_metadata
+- nexfix-private-<userId>: excel_dataset, excel_rows, notes_cache
+- nexfix-chat-cache: chat_messages
+
+## 6. SERVER DATABASE — Chat (LOCKED)
+- chat_messages: id, sender_id, idempotency_key, content, message_type, attachment_ref, created_at, edited_at, deleted_at, moderation_status
+- chat_attachments, chat_idempotency
+
+## 7. SYNC TABLES (Server)
+- data_versions, tombstones

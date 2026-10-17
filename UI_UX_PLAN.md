@@ -54,3 +54,34 @@ Every data screen: loading (skeleton), empty (icon+text+CTA), error (message+ret
 - No horizontal scroll
 - Input font >= 16px (prevent zoom)
 - Sticky nav safe-area aware
+
+## 9. OFFLINE/ONLINE UI STATES (LOCKED 2026-10-17)
+Status indicators:
+- "Online" (green dot)
+- "Offline — Using Saved Data" (amber banner)
+- "Syncing..." (blue spinner)
+- "Update Available" (blue badge)
+- "Sync Failed — Retry" (red button)
+- "Last Synced: [Date/Time]" (gray text)
+- "Some Data May Be Outdated" (amber warning)
+
+Feature availability:
+- Search/Knowledge: Always available (local)
+- Chat Send: Online only (disable offline, show reason)
+- Chat Read: Cached history only offline
+- Profile/Settings: Local + synced on reconnect
+
+## 10. CHAT UI
+- "Offline — Connect to send messages" banner
+- Message status: Sending / Sent / Failed
+- Retry button on failed messages
+- Attachment previews (local, before send)
+
+## 9. OFFLINE/ONLINE UI STATES
+- Online / Offline / Syncing / Update Available / Sync Failed / Last Synced / Outdated
+- Search always available. Chat send online only.
+
+## 10. CHAT UI
+- "Offline — Connect to send" banner
+- Sending / Sent / Failed states
+- Retry button

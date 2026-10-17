@@ -56,3 +56,28 @@ Version: 1.0
 - Env vars only (Render Dashboard)
 - Never committed
 - Rotated on leak
+
+## 10. LOCAL-FIRST SECURITY (LOCKED 2026-10-17)
+- Search queries stay local (no network leak).
+- Sync payload: Validated server-side before applying.
+- Local data: Integrity hash check on sync.
+- Chat attachments: File type/size/signature validated.
+- Idempotency: Prevent duplicate messages on retry.
+- Tombstone: Proper removal from cache.
+- Data corruption: Atomic transaction + rollback.
+
+## 11. CHAT SECURITY
+- Server persists ALL messages (source of truth).
+- Base64 in DB prohibited (use R2 storage).
+- Message retention policy: Defined per moderation.
+- Audit log: All moderation actions recorded.
+- Password/token never in chat log.
+
+## 10. LOCAL-FIRST SECURITY
+- Search stays local (no network leak).
+- Sync validated server-side, integrity hash, atomic.
+- Chat: Idempotency, R2 for media (not Base64).
+- Audit log all moderation.
+
+## 11. CHAT SECURITY
+- Server source of truth. Base64 in DB prohibited. Retention policy.

@@ -26,3 +26,13 @@ NEXFIX ကို ဆက်လုပ်ပါ။ AGENTS.md အတိုင်း 
 Repo ထဲက ဖိုင်တွေကို ဖတ်ပြီး လက်ရှိ Phase နဲ့ Next Task ကို ပြောပါ။
 ပြီးရင် လက်ရှိ Task ကို ဆက်လုပ်ပါ။
 ကုဒ်မရေးခင် ကျွန်တော့်ခွင့်ပြုချက် တောင်းပါ။
+
+## Update 2026-10-17: Hybrid Requirements Locked
+- Owner added 3 locked requirements (Local-first, Hybrid, Chat)
+- 12 documentation files updated
+- No code changes (Stage 0)
+- Next: Phase 2 (Auth) needs Prisma solution (proot/Drizzle)
+
+## Update 2026-10-17: Hybrid Requirements Locked
+- 3 locked requirements added
+- 12 docs updated, no code

@@ -67,3 +67,40 @@ Client heartbeat (30s) -> WS -> server last_seen -> broadcast -> UI "Online" / "
 - WS reconnect: exponential backoff (1s->2s->4s->max 30s)
 - API response: { ok, data|error }
 - No PII in logs
+
+## 6. LOCAL-FIRST ARCHITECTURE (LOCKED 2026-10-17)
+- Client is PRIMARY for Search/Knowledge.
+- Server is SOURCE for Sync.
+- Flow:
+  User opens app → Check version (online) → Sync if needed → Search reads from Local DB
+  Offline → Search reads from Local DB (no server call)
+- Data layers:
+  - nexfix-shared (IndexedDB): machines, errors, articles
+  - nexfix-private-<userId> (IndexedDB): Excel dataset, notes cache
+  - nexfix-chat-cache (IndexedDB): recent chat messages
+
+## 7. SYNC ARCHITECTURE
+- Versioned: Every published data has revision number.
+- Full Sync (first time) → Incremental Sync (after).
+- Atomic transaction on local DB.
+- Failure → Keep previous data.
+- Tombstone: Deleted items marked, not immediately removed.
+
+## 8. CHAT ARCHITECTURE
+- Server = Source of Truth (PostgreSQL).
+- Client = Cache (IndexedDB, read-only offline).
+- Real-time: Socket.IO → new message → update cache.
+- Send: Idempotency key → server → persist → broadcast.
+- Media: R2 (S3-compatible) + DB reference.
+
+## 6. LOCAL-FIRST ARCHITECTURE (LOCKED 2026-10-17)
+- Client is PRIMARY for Search/Knowledge.
+- Server is SOURCE for Sync.
+- Flow: App opens → version check → sync → search reads Local DB. Offline → search reads Local DB.
+- Data layers: nexfix-shared, nexfix-private-<userId>, nexfix-chat-cache
+
+## 7. SYNC ARCHITECTURE
+- Versioned, Full + Incremental, Atomic, Tombstone.
+
+## 8. CHAT ARCHITECTURE
+- Server = Source of Truth, Client = Cache. Idempotency, Socket.IO, R2 media.

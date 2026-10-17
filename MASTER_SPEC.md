@@ -88,3 +88,53 @@ Date: 2026-10-17
 - SC-05: Chat read works logged-out
 - SC-06: Disconnected labeled correctly
 - SC-07: Fresh chat can continue from continuity files
+
+## 8. LOCAL-FIRST DATA ACCESS POLICY (LOCKED 2026-10-17)
+- Search and Knowledge Reading MUST use Local Database only.
+- Server is used ONLY for: Sync, Login, Chat, Admin.
+- Search API MUST NOT query Server Database directly.
+- Sync: Version-based, Atomic, Failure preserves previous data.
+- Local Database: IndexedDB (nexfix-shared).
+- UI: Show "Online" / "Offline" / "Syncing" / "Last Synced".
+
+## 9. ONLINE + OFFLINE HYBRID SYSTEM (LOCKED 2026-10-17)
+- App works online AND offline.
+- Admin publishes → Server updates → version bumps → signal to online users → auto-sync.
+- Background sync NOT guaranteed (browser closes = no sync until reopen).
+- Chat is ONLINE-ONLY for sending. Offline = read cached history only.
+- Private Excel NEVER syncs to server.
+- Tombstone mechanism for deleted/archived data.
+
+## 10. CHAT SYSTEM POLICY (LOCKED 2026-10-17)
+- All messages stored in PostgreSQL (server).
+- Media stored in Object Storage (not Base64 in DB).
+- "Sent" only after server confirms DB insert.
+- Idempotency key required for retries.
+- Local cache for offline reading only.
+- Pagination for history.
+- Moderation: RBAC + Audit Log.
+
+## 8. LOCAL-FIRST DATA ACCESS POLICY (LOCKED 2026-10-17)
+- Search and Knowledge Reading MUST use Local Database only.
+- Server is used ONLY for: Sync, Login, Chat, Admin.
+- Search API MUST NOT query Server Database directly.
+- Sync: Version-based, Atomic, Failure preserves previous data.
+- Local Database: IndexedDB (nexfix-shared).
+- UI: Show "Online" / "Offline" / "Syncing" / "Last Synced".
+
+## 9. ONLINE + OFFLINE HYBRID SYSTEM (LOCKED 2026-10-17)
+- App works online AND offline.
+- Admin publishes → Server updates → version bumps → signal to online users → auto-sync.
+- Background sync NOT guaranteed (browser closes = no sync until reopen).
+- Chat is ONLINE-ONLY for sending. Offline = read cached history only.
+- Private Excel NEVER syncs to server.
+- Tombstone mechanism for deleted/archived data.
+
+## 10. CHAT SYSTEM POLICY (LOCKED 2026-10-17)
+- All messages stored in PostgreSQL (server).
+- Media stored in Object Storage (not Base64 in DB).
+- "Sent" only after server confirms DB insert.
+- Idempotency key required for retries.
+- Local cache for offline reading only.
+- Pagination for history.
+- Moderation: RBAC + Audit Log.

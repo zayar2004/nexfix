@@ -50,3 +50,32 @@ Version: 1.0
 8. Smoke test: homepage, register, login
 9. Verify HTTPS
 10. Record in PROJECT_STATE.md
+
+## 9. SYNC INFRASTRUCTURE
+- Version Check Endpoint: GET /api/sync/version
+- Full Sync: GET /api/sync/full
+- Incremental Sync: GET /api/sync/changes?since=version
+- Tombstones: GET /api/sync/tombstones?since=version
+- Atomic apply on client (IndexedDB transaction)
+
+## 10. BACKGROUND SYNC LIMITATIONS
+- Browser close = no sync
+- App reopen = sync triggers
+- Internet reconnect = sync triggers
+- Manual sync button = always available
+- Push notification (future APK only)
+
+## 11. CHAT INFRASTRUCTURE (EXTENDED)
+- PostgreSQL chat_messages table
+- R2 for attachments
+- Socket.IO for real-time
+- Local chat cache (IndexedDB)
+
+## 9. SYNC INFRASTRUCTURE
+- GET /api/sync/version, /api/sync/full, /api/sync/changes, /api/sync/tombstones
+
+## 10. BACKGROUND SYNC LIMITATIONS
+- No sync when browser closed; on reopen, reconnect, manual.
+
+## 11. CHAT INFRASTRUCTURE
+- PostgreSQL + R2 + Socket.IO + Local cache.
