@@ -210,3 +210,76 @@ body[lang="my"] {
 .nx-no-hscroll {
   overflow-x: hidden;
 }
+
+/* ============================================
+   NEXFIX PREMIUM ARCADE THEME (Phase 4.0)
+   Additive tokens — existing tokens remain
+   ============================================ */
+
+:root {
+  /* Deep Backgrounds */
+  --nx-bg-base-deep: #020814;
+  --nx-bg-surface-deep: #071426;
+  --nx-bg-card: #0B1B30;
+  --nx-bg-card-elevated: #10243B;
+
+  /* Accent Secondary */
+  --nx-accent-secondary: #00BFFF;
+
+  /* Text (Updated Spec) */
+  --nx-text-secondary-updated: #A7B7CC;
+  --nx-text-muted-updated: #70839D;
+
+  /* Border (Updated Spec) */
+  --nx-border-updated: #1B3550;
+
+  /* Hero Overlay Gradient */
+  --nx-hero-overlay: linear-gradient(
+    to bottom,
+    rgba(2, 8, 20, 0) 0%,
+    rgba(2, 8, 20, 0.7) 50%,
+    rgba(2, 8, 20, 0.95) 100%
+  );
+
+  /* Layout Heights */
+  --nx-bottom-nav-height: 64px;
+  --nx-bottom-nav-safe-area: env(safe-area-inset-bottom, 0px);
+  --nx-top-nav-height: 56px;
+}
+
+/* Typography Scale */
+.nx-hero-heading {
+  font-size: clamp(1.75rem, 6vw, 2.25rem); /* 28-36px */
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--nx-text-primary);
+}
+
+.nx-section-heading {
+  font-size: clamp(1.0625rem, 4vw, 1.25rem); /* 17-20px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.nx-body-text {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5;
+}
+
+.nx-meta-text {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.4;
+}
+
+.nx-caption-text {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+/* Utility for content not hidden by bottom nav */
+.nx-pb-bottom-nav {
+  padding-bottom: calc(var(--nx-bottom-nav-height) + var(--nx-bottom-nav-safe-area) + 1rem);
+}
