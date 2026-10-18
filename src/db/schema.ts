@@ -55,6 +55,7 @@ export const errorCodes = pgTable("error_codes", {
   machineId: uuid("machine_id").references(() => machines.id, { onDelete: "cascade" }).notNull(),
   code: varchar("code", { length: 50 }).notNull(),
   title: varchar("title", { length: 300 }).notNull(),
+  videoUrl: text("video_url"),
   status: varchar("status", { length: 20 }).default("published").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

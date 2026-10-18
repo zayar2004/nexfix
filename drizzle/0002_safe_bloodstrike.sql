@@ -1,0 +1,1 @@
+ALTER TABLE "error_codes" ADD COLUMN "video_url" text;

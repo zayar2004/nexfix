@@ -125,3 +125,36 @@ export async function searchLocalData(
     };
   });
 }
+
+// ============================================
+// IMAGE CACHING (Offline Support)
+// ============================================
+
+export async function cacheImage(url: string): Promise<void> {
+  if (!url) return;
+  try {
+    const cache = await caches.open("nexfix-images");
+    const existing = await cache.match(url);
+    if (existing) return;
+    const response = await fetch(url);
+    if (!response.ok) return;
+    await cache.put(url, response);
+  } catch {
+    console.warn("Failed to cache image:", url);
+  }
+}
+
+export async function getCachedImageUrl(url: string): Promise<string> {
+  if (!url) return "";
+  try {
+    const cache = await caches.open("nexfix-images");
+    const response = await cache.match(url);
+    if (response) {
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}

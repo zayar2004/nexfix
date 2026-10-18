@@ -15,6 +15,13 @@
       "when": 1792310597863,
       "tag": "0001_chemical_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792315636909,
+      "tag": "0002_safe_bloodstrike",
+      "breakpoints": true
     }
   ]
 }
