@@ -103,3 +103,31 @@ Format: Keep a Changelog.
 ### Changed
 - Home Page fetches from DB with Fallback.
 - Error Detail Page with Tabs and Video Link.
+
+## [2026-10-18] Phase 8: Bulk Import + Video Management + Full Admin CMS
+### Added
+- Bulk Import (Excel/CSV) for Error Codes.
+- Video Manager (YouTube Links) for Errors.
+- Media Library (Image Upload).
+- Notes System (CRUD).
+- Real-time Online Count (Presence System).
+- Toast Notifications.
+- Auto Sync (15 min) + Image Caching.
+### Changed
+- Schema: Added `media_videos`, `presence`, `notes` tables.
+- Schema: Removed `article_content` unique constraint (data loss prevention).
+- Home Page: Converted to Local-First.
+### Verified
+- `npx tsc --noEmit` — PASS
+- `npm run build` — PASS (34 pages)
+- Git Push — `347cc25`
+
+## [2026-10-18] Phase 8: Bulk Import + Video + Full Admin CMS
+### Added
+- Bulk Import (Excel/CSV), Video Manager (YouTube), Media Library (Image).
+- Notes (CRUD), Online Count (Presence), Toast, Auto Sync + Image Caching.
+### Changed
+- Schema: Added `media_videos`, `presence`, `notes`. Removed `article_content` unique constraint.
+- Home Page: Local-First.
+### Verified
+- Build: PASS (34 pages). Commit: 347cc25.

@@ -1,78 +1,27 @@
 # NEXFIX — PROJECT_STATE.md
-Updated: 2026-10-17
+Updated: 2026-10-18
 
 ## Current Phase
-Phase 1 — COMPLETE (Live on Render)
+Phase 8 — Complete (User + Admin + Sync + Live)
 
 ## Completed
-- [x] Stage 0 planning (12 documents)
-- [x] Owner approved D-01..D-10
-- [x] Provider selection approved (Render + Neon + R2 + UptimeRobot)
-- [x] Termux Node.js verified (v24.18.0)
+- Auth, User Web (Home/Search/Error/Library/Notes/Profile/Online), Admin Web (Dashboard/Home/Machines/Errors/Library/Media/Bulk Import/Video), Local-First, Auto Sync, Image Caching, Presence.
 
 ## Pending
-- [ ] Folder + documentation files in Termux (IN PROGRESS)
-- [ ] Git init
-- [ ] GitHub repo creation (owner action)
-- [ ] Next.js skeleton
-- [ ] Prisma init
-- [ ] First push to GitHub
+- Knowledge Article CMS Expand (Summary, Category, Cover Image, Multiple Videos)
+- User Management, Audit Log
+- Public Chat (needs WebSocket)
+- Production Deploy (update Render)
 
 ## Blockers
-- Owner must create GitHub account/repo
+- Public Chat WebSocket infrastructure (Render Free sleep).
 
 ## Unverified
-- Render + Socket.IO compatibility (to verify at deploy)
+- Production Media Storage (Render ephemeral)
+- Production Video Embed
 
 ## Code Status
-- Skeleton only (no features)
+- Commit: 347cc25. Build: PASS (34 pages). DB: Synced.
 
 ## Next Task
-Phase 2: Auth + Roles + Profile
-Note: Prisma is deferred. Need to evaluate proot Ubuntu or Drizzle ORM before Phase 2.
-Step 1.2: Create documentation files in Termux
-
-## LOCKED REQUIREMENTS (2026-10-17)
-- Local-first search & knowledge (IndexedDB primary)
-- Hybrid online/offline system
-- Chat = Server PostgreSQL + local cache
-- Version-based sync, atomic apply
-- Tombstone for deleted data
-
-## New Phases
-- Phase 1.9: Local-first refactor (after Phase 1)
-- Phase 3 & 4 & 7 refactored to local-first
-
-## LOCKED (2026-10-17)
-- Local-first, Hybrid, Chat server+local
-- Phase 1.9 added
-
-## PHASE 1 COMPLETE (2026-10-17)
-- Docs: 12 files updated
-- Decisions: D-51 to D-65 locked
-- Roles: user, staff, senior_admin, super_admin
-- Recovery: Admin-assisted
-- Home: Search on Home (Section A + B)
-- Header: presence count (green dot)
-- No code changes
-- No DB changes
-- No commit/push
-
-## NEXT
-- Phase 2: Auth + Register/Login
-- Requires: owner approval
-- Also requires: design system (Phase 2.5) BEFORE auth UI
-- Note: Auth API ready (Stage 2.4), UI pending
-
-## UNVERIFIED
-- Admin reset workflow (not yet implemented)
-- Presence heartbeat (not yet implemented)
-- All Phase 2+ features
-
-## PHASE 4 & 5 COMPLETE (2026-10-18)
-- Auth: Login/Register, JWT, RBAC (Super Admin exists)
-- User Web: Home (Premium UI), Search (Local-First), Error Detail (Tabs), Library (Offline)
-- Admin CMS: Home Editor, Machine CRUD, Error CRUD, Library CRUD
-- Sync: IndexedDB, Auto-sync, Image Caching
-- Offline: Fallback for Home, Search, Library
-- Git Commit: (To be updated)
+Phase 9: Knowledge Article CMS Expand (await approval)
