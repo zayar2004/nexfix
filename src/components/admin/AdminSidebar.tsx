@@ -18,7 +18,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
     items: [
       { label: "Home Page", href: "/admin/content/home", icon: "home" },
       { label: "Machine & Error", href: "/admin/content/machines", icon: "cpu" },
-      { label: "Media Library", href: "/admin/media", icon: "image", disabled: true },
+      { label: "Media Library", href: "/admin/media", icon: "image" },
     ],
   },
   {
