@@ -7,6 +7,7 @@ export type SyncData = {
   articles: Record<string, unknown>[];
   articleContents: Record<string, unknown>[];
   media?: Record<string, unknown>[];
+  mediaVideos?: Record<string, unknown>[];
   lastSyncedAt: number | null;
   homepage?: Record<string, unknown>;
 };

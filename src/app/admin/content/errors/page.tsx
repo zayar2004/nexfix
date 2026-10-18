@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { VideoManager } from "@/components/admin/VideoManager";
 
 type Machine = { id: string; name: string };
 type ErrorCode = { id: string; code: string; title: string; machineId: string; videoUrl?: string | null };
@@ -36,7 +37,6 @@ export default function AdminErrorsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
-    
     const method = isEditing ? "PATCH" : "POST";
     const body = isEditing ? { id: editId, ...form } : form;
 
@@ -72,7 +72,7 @@ export default function AdminErrorsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this error code?")) return;
+    if (!confirm("Delete this error?")) return;
     try {
       const res = await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -97,12 +97,18 @@ export default function AdminErrorsPage() {
           
           <input type="text" placeholder="Error Code (e.g., E-001)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
           <input type="text" placeholder="Error Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
-          <input type="url" placeholder="YouTube Video Link (Optional)" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" />
           
           <textarea placeholder="Cause (Optional)" value={form.cause} onChange={(e) => setForm({ ...form, cause: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
           <textarea placeholder="Troubleshooting (Optional)" value={form.troubleshooting} onChange={(e) => setForm({ ...form, troubleshooting: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
           <textarea placeholder="Solution (Optional)" value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
           <textarea placeholder="Safety Warning (Optional)" value={form.safety} onChange={(e) => setForm({ ...form, safety: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
+
+          {/* Video Manager (only when editing, since we need errorId) */}
+          {isEditing && editId && (
+            <div className="border-t border-[var(--nx-border-updated)] pt-3">
+              <VideoManager ownerType="error" ownerId={editId} />
+            </div>
+          )}
           
           <div className="flex gap-2">
             <button type="submit" className="flex-1 py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg">{isEditing ? "Update Error" : "Add Error Code"}</button>

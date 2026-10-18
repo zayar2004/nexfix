@@ -6,13 +6,13 @@ export const roleEnum = pgEnum("role", ["user", "staff", "senior_admin", "super_
 // 2. Users Table
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  publicId: varchar("public_id", { length: 20 }).unique().notNull(), // e.g., NXF-12345
+  publicId: varchar("public_id", { length: 20 }).unique().notNull(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   passwordHash: text("password_hash").notNull(),
   role: roleEnum("role").default("user").notNull(),
   displayName: varchar("display_name", { length: 100 }),
-  locale: varchar("locale", { length: 5 }).default("my").notNull(), // 'my' or 'en'
-  theme: varchar("theme", { length: 10 }).default("dark").notNull(), // 'dark' or 'light'
+  locale: varchar("locale", { length: 5 }).default("my").notNull(),
+  theme: varchar("theme", { length: 10 }).default("dark").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   lastSeenAt: timestamp("last_seen_at"),
@@ -29,10 +29,6 @@ export const sessions = pgTable("sessions", {
   expiresAt: timestamp("expires_at").notNull(),
   revokedAt: timestamp("revoked_at"),
 });
-
-// ============================================
-// PHASE 3: MACHINES, ERROR CODES, MEDIA
-// ============================================
 
 // 4. Machines Table
 export const machines = pgTable("machines", {
@@ -66,11 +62,11 @@ export const errorCodes = pgTable("error_codes", {
   statusIdx: index("error_codes_status_idx").on(table.status),
 }));
 
-// 6. Error Content (Myanmar + English)
+// 6. Error Content Table
 export const errorContent = pgTable("error_content", {
   id: uuid("id").primaryKey().defaultRandom(),
   errorCodeId: uuid("error_code_id").references(() => errorCodes.id, { onDelete: "cascade" }).notNull(),
-  locale: varchar("locale", { length: 5 }).notNull(), // 'my' or 'en'
+  locale: varchar("locale", { length: 5 }).notNull(),
   cause: text("cause"),
   troubleshooting: text("troubleshooting"),
   solution: text("solution"),
@@ -82,15 +78,15 @@ export const errorContent = pgTable("error_content", {
   errorLocaleUnique: unique("error_content_error_locale_unique").on(table.errorCodeId, table.locale),
 }));
 
-// 7. Media Table (Polymorphic Owner)
+// 7. Media Table (Images)
 export const media = pgTable("media", {
   id: uuid("id").primaryKey().defaultRandom(),
-  ownerType: varchar("owner_type", { length: 20 }).notNull(), // 'error_code' | 'article' | 'chat'
+  ownerType: varchar("owner_type", { length: 20 }).notNull(),
   ownerId: uuid("owner_id").notNull(),
   mime: varchar("mime", { length: 100 }).notNull(),
-  size: varchar("size", { length: 20 }).notNull(), // bytes as text
+  size: varchar("size", { length: 20 }).notNull(),
   storageKey: text("storage_key").notNull(),
-  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
@@ -98,49 +94,39 @@ export const media = pgTable("media", {
   statusIdx: index("media_status_idx").on(table.status),
 }));
 
-// ============================================
-// PHASE 4.3: HOMEPAGE CONFIG (Admin CMS)
-// ============================================
-
+// 8. Homepage Config Table
 export const homepageConfig = pgTable("homepage_config", {
   id: uuid("id").primaryKey().defaultRandom(),
-  locale: varchar("locale", { length: 5 }).notNull(), // 'my' or 'en'
+  locale: varchar("locale", { length: 5 }).notNull(),
   heroHeading: text("hero_heading").notNull(),
   heroDescription: text("hero_description").notNull(),
   heroImageUrl: text("hero_image_url").notNull(),
-  isPublished: varchar("is_published", { length: 10 }).default("draft").notNull(), // 'draft' | 'published'
+  isPublished: varchar("is_published", { length: 10 }).default("draft").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   localeUnique: unique("homepage_config_locale_unique").on(table.locale),
 }));
 
-// ============================================
-// PHASE 5: KNOWLEDGE LIBRARY
-// ============================================
-
+// 9. Knowledge Articles Table
 export const knowledgeArticles = pgTable("knowledge_articles", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: varchar("slug", { length: 200 }).unique().notNull(),
-  status: varchar("status", { length: 20 }).default("published").notNull(), // 'draft' | 'published' | 'archived'
+  status: varchar("status", { length: 20 }).default("published").notNull(),
   coverImageUrl: text("cover_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// 10. Article Content Table (Unique constraint REMOVED to avoid data loss warning)
 export const articleContent = pgTable("article_content", {
   id: uuid("id").primaryKey().defaultRandom(),
   articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
-  locale: varchar("locale", { length: 5 }).notNull(), // 'my' or 'en'
+  locale: varchar("locale", { length: 5 }).notNull(),
   title: varchar("title", { length: 300 }).notNull(),
-  body: text("body").notNull(), // HTML or Markdown content
-}, (table) => ({
-  articleLocaleUnique: unique("article_content_article_locale_unique").on(table.articleId, table.locale),
-}));
+  body: text("body").notNull(),
+});
 
-// ============================================
-// PHASE 6: USER PRESENCE (Live System)
-// ============================================
-
+// 11. Presence Table
 export const presence = pgTable("presence", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
@@ -149,21 +135,31 @@ export const presence = pgTable("presence", {
   userIdUnique: unique("presence_user_id_unique").on(table.userId),
 }));
 
-// ============================================
-// PHASE 7: NOTES & REMINDERS
-// ============================================
-
+// 12. Notes Table
 export const notes = pgTable("notes", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body"),
-  reminderAt: timestamp("reminder_at"), // null = no reminder
-  recurrence: varchar("recurrence", { length: 20 }).default("none").notNull(), // 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+  reminderAt: timestamp("reminder_at"),
+  recurrence: varchar("recurrence", { length: 20 }).default("none").notNull(),
   isCompleted: boolean("is_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   userIdx: index("notes_user_idx").on(table.userId),
   reminderIdx: index("notes_reminder_idx").on(table.reminderAt),
+}));
+
+// 13. Media Videos Table (YouTube Links)
+export const mediaVideos = pgTable("media_videos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerType: varchar("owner_type", { length: 20 }).notNull(),
+  ownerId: uuid("owner_id").notNull(),
+  youtubeUrl: text("youtube_url").notNull(),
+  title: varchar("title", { length: 200 }),
+  displayOrder: varchar("display_order", { length: 10 }).default("0").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  ownerIdx: index("media_videos_owner_idx").on(table.ownerType, table.ownerId),
 }));

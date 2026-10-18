@@ -4,10 +4,16 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { translate } from "@/lib/i18n";
-import { getLocalData, getCachedImageUrl } from "@/lib/local-db";
+import { getLocalData } from "@/lib/local-db";
 
-type ErrorData = { id: string; code: string; title: string; machineName: string; machineCode: string; videoUrl?: string | null; imageUrl?: string | null; };
+type ErrorData = { id: string; code: string; title: string; machineName: string; machineCode: string; videoUrl?: string | null; };
 type ContentData = { locale: string; cause: string | null; troubleshooting: string | null; solution: string | null; safety: string | null; notes: string | null; };
+type VideoData = { id: string; youtubeUrl: string; title: string | null; };
+
+function getYouTubeEmbedId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]+)/);
+  return match ? match[1] : null;
+}
 
 export default function ErrorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -16,7 +22,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
   const [locale, setLocale] = useState<"my" | "en">("en");
   const [data, setData] = useState<ErrorData | null>(null);
   const [content, setContent] = useState<ContentData | null>(null);
-  const [cachedImage, setCachedImage] = useState<string>("");
+  const [videos, setVideos] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -41,14 +47,8 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           machineName: String(machineRecord?.name || "Unknown"),
           machineCode: String(machineRecord?.code || "Unknown"),
           videoUrl: errorRecord.videoUrl ? String(errorRecord.videoUrl) : null,
-          imageUrl: errorRecord.imageUrl ? String(errorRecord.imageUrl) : null,
         };
         setData(errorData);
-
-        if (errorData.imageUrl) {
-          const imgUrl = await getCachedImageUrl(errorData.imageUrl);
-          setCachedImage(imgUrl);
-        }
 
         const contents = localData.errorContents.filter((c) => String(c.errorCodeId) === id);
         const myContent = contents.find((c) => c.locale === "my");
@@ -64,6 +64,17 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           notes: selected.notes ? String(selected.notes) : null,
         } : null);
 
+        // Fetch videos from Local DB
+        if (localData.mediaVideos) {
+          const errorVideos = (localData.mediaVideos as Record<string, unknown>[]).filter(
+            (v) => v.ownerType === "error" && String(v.ownerId) === id
+          );
+          setVideos(errorVideos.map((v) => ({
+            id: String(v.id),
+            youtubeUrl: String(v.youtubeUrl),
+            title: v.title ? String(v.title) : null,
+          })));
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error loading data");
       } finally {
@@ -90,13 +101,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
 
       <main className="max-w-3xl mx-auto">
         <div className="relative w-full h-[200px] sm:h-[250px] bg-[var(--nx-bg-surface-deep)]">
-          {cachedImage ? (
-             <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${cachedImage})` }} />
-          ) : (
-             <div className="absolute inset-0 flex items-center justify-center text-[var(--nx-text-muted-updated)]">[No Image]</div>
-          )}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] to-transparent z-10"></div>
-          
           <div className="absolute bottom-4 left-4 z-20">
             <p className="text-sm font-semibold text-[var(--nx-text-secondary-updated)]">{data.machineName}</p>
             <h2 className="text-3xl font-bold text-[var(--nx-accent)] font-mono">{data.code}</h2>
@@ -117,16 +122,8 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           {activeTab === "overview" && (
             <div className="flex flex-col gap-4">
               <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
-                <h3 className="font-semibold text-white mb-2 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Description</h3>
-                <p className="text-[var(--nx-text-secondary-updated)] text-sm leading-relaxed">{content?.cause || "No description available."}</p>
-              </div>
-              <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
-                <h3 className="font-semibold text-white mb-3 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Quick Info</h3>
-                <div className="grid grid-cols-2 gap-y-3 text-sm">
-                  <span className="text-[var(--nx-text-muted-updated)]">Category</span><span className="text-white text-right">Display</span>
-                  <span className="text-[var(--nx-text-muted-updated)]">Probability</span><span className="text-white text-right">High</span>
-                  <span className="text-[var(--nx-text-muted-updated)]">Affected Models</span><span className="text-white text-right">All Models</span>
-                </div>
+                <h3 className="font-semibold text-white mb-2">Description</h3>
+                <p className="text-[var(--nx-text-secondary-updated)] text-sm leading-relaxed whitespace-pre-wrap">{content?.cause || "No description available."}</p>
               </div>
             </div>
           )}
@@ -144,25 +141,36 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           )}
           {activeTab === "media" && (
             <div className="flex flex-col gap-4">
-              {data.videoUrl ? (
-                <a href={data.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-accent)] font-medium hover:bg-[var(--nx-bg-surface-deep)]">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  Watch Video Tutorial (Requires Internet)
+              {videos.length === 0 && !data.videoUrl && (
+                <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)]">No media available.</div>
+              )}
+              {videos.map((v) => {
+                const videoId = getYouTubeEmbedId(v.youtubeUrl);
+                if (!videoId) return null;
+                return (
+                  <div key={v.id} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl overflow-hidden">
+                    <div className="aspect-video">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title={v.title || "Video"}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                    {v.title && <p className="p-3 text-sm font-medium text-white">{v.title}</p>}
+                  </div>
+                );
+              })}
+              {data.videoUrl && (
+                <a href={data.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-accent)] font-medium">
+                  ▶ Watch Video Tutorial
                 </a>
-              ) : (
-                <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)]">No media available for this error.</div>
               )}
             </div>
           )}
         </div>
       </main>
-
-      <div className="fixed bottom-[calc(var(--nx-bottom-nav-height)+var(--nx-bottom-nav-safe-area)+16px)] left-4 right-4 z-40 max-w-3xl mx-auto">
-        <button className="w-full py-3 bg-[var(--nx-accent)] text-black font-bold rounded-xl shadow-lg shadow-[var(--nx-accent)]/20 hover:brightness-110 transition-all flex items-center justify-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Mark as Resolved
-        </button>
-      </div>
 
       <BottomNav />
     </div>
