@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 export default function HomeConfigPage() {
-  const router = useRouter();
   const [locale, setLocale] = useState<"my" | "en">("en");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -17,7 +16,6 @@ export default function HomeConfigPage() {
     isPublished: "draft",
   });
 
-  // Fetch existing config
   useEffect(() => {
     setLoading(true);
     fetch(`/api/admin/home?locale=${locale}`)
@@ -59,16 +57,8 @@ export default function HomeConfigPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] p-4">
+    <AdminLayout title="Home Page Editor">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white">Home Page Editor</h1>
-          <button onClick={() => router.push("/admin")} className="text-sm text-[var(--nx-accent)]">
-            ← Back to Admin
-          </button>
-        </div>
-
-        {/* Language Toggle */}
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setLocale("en")}
@@ -139,6 +129,6 @@ export default function HomeConfigPage() {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 }

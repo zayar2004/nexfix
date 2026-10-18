@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { errorCodes, errorContent } from "@/db/schema";
 import { auth } from "@/auth";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 
 const schema = z.object({
   machineId: z.string().uuid(),
@@ -54,4 +55,54 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true, data: newError });
+}
+
+export async function PATCH(req: Request) {
+  const session = await auth();
+  if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
+  }
+  const body = await req.json();
+  const { id, cause, troubleshooting, solution, safety, ...updateData } = body;
+  if (!id) return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
+
+  // Update error code
+  await db.update(errorCodes).set(updateData).where(eq(errorCodes.id, id));
+
+  // Update error content (if exists)
+  if (cause || troubleshooting || solution || safety) {
+    const existing = await db.select().from(errorContent).where(eq(errorContent.errorCodeId, id)).limit(1);
+    if (existing.length > 0) {
+      await db.update(errorContent).set({
+        cause: cause || null,
+        troubleshooting: troubleshooting || null,
+        solution: solution || null,
+        safety: safety || null,
+      }).where(eq(errorContent.errorCodeId, id));
+    } else {
+      await db.insert(errorContent).values({
+        errorCodeId: id,
+        locale: "en",
+        cause: cause || null,
+        troubleshooting: troubleshooting || null,
+        solution: solution || null,
+        safety: safety || null,
+      });
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(req: Request) {
+  const session = await auth();
+  if (!session?.user || !["senior_admin", "super_admin"].includes(session.user.role)) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
+  }
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
+
+  await db.delete(errorCodes).where(eq(errorCodes.id, id));
+  return NextResponse.json({ ok: true });
 }
