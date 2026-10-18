@@ -96,3 +96,19 @@ export const media = pgTable("media", {
   ownerIdx: index("media_owner_idx").on(table.ownerType, table.ownerId),
   statusIdx: index("media_status_idx").on(table.status),
 }));
+
+// ============================================
+// PHASE 4.3: HOMEPAGE CONFIG (Admin CMS)
+// ============================================
+
+export const homepageConfig = pgTable("homepage_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  locale: varchar("locale", { length: 5 }).notNull(), // 'my' or 'en'
+  heroHeading: text("hero_heading").notNull(),
+  heroDescription: text("hero_description").notNull(),
+  heroImageUrl: text("hero_image_url").notNull(),
+  isPublished: varchar("is_published", { length: 10 }).default("draft").notNull(), // 'draft' | 'published'
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  localeUnique: unique("homepage_config_locale_unique").on(table.locale),
+}));

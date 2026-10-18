@@ -8,6 +8,13 @@
       "when": 1792257668455,
       "tag": "0000_kind_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792310597863,
+      "tag": "0001_chemical_maverick",
+      "breakpoints": true
     }
   ]
 }
