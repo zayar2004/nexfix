@@ -43,6 +43,13 @@
       "when": 1792330623565,
       "tag": "0005_loose_network",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792335807051,
+      "tag": "0006_lazy_klaw",
+      "breakpoints": true
     }
   ]
 }

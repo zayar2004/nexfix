@@ -112,6 +112,7 @@ export const knowledgeArticles = pgTable("knowledge_articles", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: varchar("slug", { length: 200 }).unique().notNull(),
   status: varchar("status", { length: 20 }).default("published").notNull(),
+  category: varchar("category", { length: 100 }),
   coverImageUrl: text("cover_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -123,6 +124,7 @@ export const articleContent = pgTable("article_content", {
   articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
   locale: varchar("locale", { length: 5 }).notNull(),
   title: varchar("title", { length: 300 }).notNull(),
+  summary: text("summary"),
   body: text("body").notNull(),
 });
 

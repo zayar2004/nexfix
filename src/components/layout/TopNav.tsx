@@ -1,178 +1,127 @@
 "use client";
 
-import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
-import { useState, useEffect, useRef } from "react";
-import { saveLocalData, cacheImage } from "@/lib/local-db";
-import { useToast } from "@/components/ui/Toast";
-
-type SyncDataItem = {
-  imageUrl?: string;
-  mediaUrl?: string;
-};
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { saveLocalData } from "@/lib/local-db";
+import { useNetwork } from "@/lib/network-context";
 
 export function TopNav() {
-  const { data: session } = useSession();
-  const { showToast } = useToast();
-  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "done" | "error">("idle");
+  const router = useRouter();
+  const { mode, isInternetAvailable, setMode } = useNetwork();
   const [syncProgress, setSyncProgress] = useState(0);
-  const [showMenu, setShowMenu] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const hasSynced = useRef(false);
-  const lastSyncRef = useRef<number>(0);
+  const isSyncingRef = useRef(false);
 
-  const syncData = async (isManual = false) => {
-    if (syncStatus === "syncing") return;
-    setSyncStatus("syncing");
-    if (isManual) setSyncProgress(0);
+  // Sync လုပ်တဲ့ Function
+  const syncData = useCallback(async (isManual = false) => {
+    if (isSyncingRef.current) return;
+    if (!navigator.onLine) {
+      if (isManual) alert("❌ Internet မရှိပါ။");
+      return;
+    }
 
-    const progressInterval = isManual ? setInterval(() => {
-      setSyncProgress((prev) => (prev < 90 ? prev + 10 : prev));
-    }, 200) : null;
+    isSyncingRef.current = true;
+    setMode("syncing"); // Sync လုပ်နေစဉ်
+    setSyncProgress(10);
 
     try {
       const res = await fetch("/api/sync");
-      const json = await res.json();
-      if (!json.ok) throw new Error("Sync failed");
+      setSyncProgress(50);
+      const data = await res.json();
+      if (!data.ok) throw new Error("Sync failed");
 
-      const imageUrls: string[] = [
-        ...(json.data.machines || []).map((m: SyncDataItem) => m.imageUrl).filter((u: string | undefined): u is string => !!u),
-        ...(json.data.errorContents || []).map((c: SyncDataItem) => c.mediaUrl || c.imageUrl).filter((u: string | undefined): u is string => !!u),
-      ];
-
-      await Promise.all(imageUrls.map((url: string) => cacheImage(url)));
-
-      await saveLocalData({
-        machines: json.data.machines || [],
-        errorCodes: json.data.errorCodes || [],
-        errorContents: json.data.errorContents || [],
-        articles: json.data.articles || [],
-        articleContents: json.data.articleContents || [],
-        lastSyncedAt: json.data.lastSyncedAt,
-      });
-
-      if (isManual) {
-        setSyncProgress(100);
-        setSyncStatus("done");
-        showToast("Sync complete!", "success");
-      } else {
-        setSyncStatus("idle");
-        // Only show toast if this is not the first sync
-        if (lastSyncRef.current > 0) {
-          showToast("New updates available", "info");
-          setUpdateAvailable(true);
-          setTimeout(() => setUpdateAvailable(false), 5000);
-        }
-      }
-      lastSyncRef.current = Date.now();
-    } catch {
-      if (isManual) {
-        setSyncStatus("error");
-        showToast("Sync failed. Please try again.", "error");
-      } else {
-        setSyncStatus("idle");
-      }
+      await saveLocalData(data.data);
+      setSyncProgress(100);
+      
+      setTimeout(() => {
+        setMode("offline"); // Sync ပြီးရင် Offline ပြန်ချိန်မယ်
+        setSyncProgress(0);
+      }, 1500);
+    } catch (err) {
+      setMode("offline"); // Error တက်ရင်လည်း Offline ပြန်ချိန်မယ်
+      if (isManual) alert("❌ Sync failed.");
     } finally {
-      if (progressInterval) clearInterval(progressInterval);
-      if (isManual) setTimeout(() => setSyncStatus("idle"), 3000);
+      isSyncingRef.current = false;
     }
-  };
+  }, [setMode]);
 
-  // Initial Sync
+  // App စဝင်တာနဲ့ တစ်ခါပဲ လုပ်မယ်
   useEffect(() => {
-    if (!hasSynced.current) {
-      hasSynced.current = true;
-      syncData(false);
+    if (!isInternetAvailable) return;
+    const lastSync = localStorage.getItem("nexfix_last_sync");
+    const now = Date.now();
+    
+    if (!lastSync || now - Number(lastSync) > 24 * 60 * 60 * 1000) {
+      syncData(false).then(() => {
+        localStorage.setItem("nexfix_last_sync", String(now));
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [syncData, isInternetAvailable]);
 
-  // Background Sync (15 min)
+  // Online Count ကို ၅ မိနစ်တစ်ခါပဲ စစ်မယ် (ဖုန်းကို မလေးစေရန်)
   useEffect(() => {
-    const interval = setInterval(() => {
-      syncData(false);
-    }, 15 * 60 * 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Heartbeat & Count
-  useEffect(() => {
-    const sendHeartbeat = async () => {
-      if (session?.user) {
-        await fetch("/api/presence/heartbeat", { method: "POST" }).catch(() => {});
-      }
-    };
-
+    if (!isInternetAvailable) return;
+    
     const fetchCount = async () => {
       try {
-        const res = await fetch("/api/presence/count");
+        // Timeout ထည့်ထားမယ် (၃ စက္ကန့်အတွင်း မရရင် ရပ်မယ်)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        
+        const res = await fetch("/api/presence/count", { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         const data = await res.json();
         if (data.ok) setOnlineCount(data.count);
-      } catch {}
+      } catch (err) {
+        // Error တက်ရင် ဘာမှ မလုပ်ဘူး (တိတ်တဆိတ် ကျော်သွားမယ်)
+      }
     };
-
-    sendHeartbeat();
+    
     fetchCount();
-
-    const hbInterval = setInterval(sendHeartbeat, 30 * 1000);
-    const countInterval = setInterval(fetchCount, 60 * 1000);
-
-    return () => {
-      clearInterval(hbInterval);
-      clearInterval(countInterval);
-    };
-  }, [session]);
+    const cntInterval = setInterval(fetchCount, 5 * 60 * 1000); // ၅ မိနစ်တစ်ခါ
+    return () => clearInterval(cntInterval);
+  }, [isInternetAvailable]);
 
   return (
-    <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md border-b border-[var(--nx-border-updated)]">
       <div className="flex items-center justify-between px-4 h-[var(--nx-top-nav-height)]">
-        <Link href="/" className="flex flex-col">
-          <div className="flex items-baseline text-2xl font-black tracking-tighter italic">
-            <span className="text-white">NEX</span>
-            <span className="text-[var(--nx-accent-secondary)]">FIX</span>
-          </div>
-          <span className="text-[9px] uppercase tracking-widest text-[var(--nx-text-muted-updated)] font-semibold">
-            Arcade Technician Hub
-          </span>
-        </Link>
+        <button onClick={() => router.push("/")} className="flex items-center gap-2">
+          <span className="text-xl font-black text-[var(--nx-accent)]">NEXFIX</span>
+        </button>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => syncData(true)} disabled={syncStatus === "syncing"} className="relative p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={syncStatus === "syncing" ? "animate-spin" : ""}>
-              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/>
+          {/* Mode ပြသမယ့် နေရာ */}
+          {mode === "syncing" ? (
+             <span className="text-xs font-bold text-[var(--nx-accent)] bg-[var(--nx-accent)]/10 px-2 py-1 rounded-md animate-pulse">SYNCING {syncProgress}%</span>
+          ) : mode === "online" ? (
+             <span className="text-xs font-bold text-[var(--nx-success)] bg-[var(--nx-success)]/10 px-2 py-1 rounded-md">ONLINE</span>
+          ) : (
+            <div className="flex items-center gap-1 text-xs text-[var(--nx-text-muted-updated)]">
+              <span className="w-2 h-2 bg-[var(--nx-warning)] rounded-full"></span>
+              <span className="font-bold text-[var(--nx-warning)]">OFFLINE</span>
+            </div>
+          )}
+
+          <button 
+            onClick={() => syncData(true)} 
+            disabled={mode === "syncing" || !isInternetAvailable} 
+            className={`relative p-2 transition-colors ${!isInternetAvailable ? 'opacity-50 cursor-not-allowed text-gray-500' : 'text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)]'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={mode === "syncing" ? "animate-spin" : ""}>
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+              <path d="M16 21h5v-5" />
             </svg>
-            {syncStatus === "syncing" && <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-accent)]">{syncProgress}%</span>}
-            {syncStatus === "done" && <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-success)]">Done</span>}
-            {updateAvailable && <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--nx-success)] rounded-full border border-[var(--nx-bg-base-deep)]"></span>}
           </button>
 
-          <button className="relative p-2 text-[var(--nx-text-primary)] hover:text-[var(--nx-accent-secondary)] transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--nx-error)] rounded-full border border-[var(--nx-bg-base-deep)]"></span>
+          <button onClick={() => router.push("/profile")} className="p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
           </button>
-
-          <div className="flex items-center gap-1.5 text-[var(--nx-accent-secondary)]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-            <span className="text-sm font-semibold">{onlineCount}</span>
-          </div>
-
-          <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)} className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--nx-primary)] text-white text-sm font-bold border border-[var(--nx-primary)] hover:brightness-110">
-              {session?.user?.name?.charAt(0).toUpperCase() || "N"}
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl shadow-xl overflow-hidden z-50">
-                <div className="p-3 border-b border-[var(--nx-border-updated)]">
-                  <p className="text-sm font-semibold text-white truncate">{session?.user?.name || "User"}</p>
-                  <p className="text-xs text-[var(--nx-text-muted-updated)] truncate">{session?.user?.email}</p>
-                </div>
-                <Link href="/profile" className="block px-4 py-3 text-sm text-white hover:bg-[var(--nx-bg-surface-deep)] transition-colors" onClick={() => setShowMenu(false)}>My Profile</Link>
-                <button onClick={() => { setShowMenu(false); signOut({ callbackUrl: "/login" }); }} className="w-full text-left px-4 py-3 text-sm text-[var(--nx-error)] hover:bg-[var(--nx-bg-surface-deep)] transition-colors border-t border-[var(--nx-border-updated)]">Sign Out</button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </header>

@@ -5,7 +5,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { HeroSection } from "@/components/home/HeroSection";
 import { HomeSearchClient } from "@/components/home/HomeSearchClient";
-import { getLocalData } from "@/lib/local-db";
+import { getLocalData, saveLocalData } from "@/lib/local-db";
 
 export default function HomePage() {
   const [heroData, setHeroData] = useState<{
@@ -15,29 +15,55 @@ export default function HomePage() {
   } | null>(null);
 
   useEffect(() => {
-    // Read from Local DB (not Database)
-    getLocalData().then((data) => {
-      if (data && data.homepage) {
-        const h = data.homepage as Record<string, unknown>;
+    const loadData = async () => {
+      // ၁။ ဖုန်းထဲမှာ သိမ်းထားတဲ့ Data ကို အရင်ဖတ်မယ် (Offline အတွက်)
+      let localData = await getLocalData();
+
+      // ၂။ တကယ်လို့ ဖုန်းထဲမှာ Data မရှိသေးဘူးဆိုရင် (ပထမဆုံးဝင်တာ) Sync လုပ်မယ်
+      if (!localData) {
+        try {
+          const res = await fetch("/api/sync");
+          const data = await res.json();
+          if (data.ok) {
+            await saveLocalData(data.data);
+            localData = data.data; // Sync လုပ်ပြီးတဲ့ Data ကို သုံးမယ်
+          }
+        } catch (err) {
+          console.log("Offline mode: No internet connection.");
+        }
+      }
+
+      // ၃။ Data ရပြီဆိုရင် Hero Section ကို ပြမယ်
+      if (localData && localData.homepage) {
+        const h = localData.homepage as Record<string, unknown>;
         setHeroData({
           heading: String(h.heroHeading || "Find Solutions\nKeep Machines Running"),
           description: String(h.heroDescription || "Error codes, troubleshooting, and more for arcade technicians."),
           imageUrl: String(h.heroImageUrl || "/images/arcade-hero.jpg"),
         });
+      } else {
+        // Data မရှိရင်လည်း Default ပြမယ်
+        setHeroData({
+          heading: "Find Solutions\nKeep Machines Running",
+          description: "Error codes, troubleshooting, and more for arcade technicians.",
+          imageUrl: "/images/arcade-hero.jpg",
+        });
       }
-    });
+    };
+
+    loadData();
   }, []);
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       <TopNav />
-      
+
       <main className="max-w-3xl mx-auto">
         <HeroSection data={heroData} />
 
         <div className="px-4 py-5">
           <HomeSearchClient locale="en" />
-          
+
           <div className="mt-8 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 className="nx-section-heading text-white flex items-center gap-2">

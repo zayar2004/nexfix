@@ -11,24 +11,23 @@ export async function POST() {
       return NextResponse.json({ ok: true, message: "Guest - not tracked" });
     }
 
-    // Upsert: Insert or Update heartbeat
-    const existing = await db
-      .select()
-      .from(presence)
+    // ၁။ Update လုပ်ကြည့်မယ်
+    const updated = await db
+      .update(presence)
+      .set({ lastHeartbeat: new Date() })
       .where(eq(presence.userId, session.user.id))
-      .limit(1);
+      .returning({ id: presence.id });
 
-    if (existing.length > 0) {
-      await db
-        .update(presence)
-        .set({ lastHeartbeat: new Date() })
-        .where(eq(presence.userId, session.user.id));
-    } else {
-      await db.insert(presence).values({ userId: session.user.id });
+    // ၂။ Update မဖြစ်ဘူးဆိုရင် Insert လုပ်မယ်
+    if (updated.length === 0) {
+      await db.insert(presence).values({ userId: session.user.id }).onConflictDoNothing();
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ ok: false }, { status: 500 });
+  } catch (error) {
+    // 🚨 ဒီနေရာမှာ Error ကို ဖမ်းပြီး 200 ပြန်ပေးလိုက်မယ် (Browser ကို မပြစ်တော့ဘူး)
+    // ဒါကြောင့် ဖုန်းက ၄၀ စက္ကန့်ကြာ စောင့်နေတာမျိုး မဖြစ်တော့ဘူး
+    console.error("Heartbeat ignored error:", error);
+    return NextResponse.json({ ok: true, message: "Silently ignored" });
   }
 }

@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { presence } from "@/db/schema";
+import { auth } from "@/auth";
+import { eq } from "drizzle-orm";
+
+export async function POST() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ ok: true, message: "Guest - not tracked" });
+    }
+
+    // Select မလုပ်တော့ဘဲ တိုက်ရိုက် Update ပဲ လုပ်မယ် (ပိုမြန်တယ်)
+    const updated = await db
+      .update(presence)
+      .set({ lastHeartbeat: new Date() })
+      .where(eq(presence.userId, session.user.id))
+      .returning({ id: presence.id });
+
+    // တကယ်လို့ Update လုပ်လို့ မရဘူးဆိုရင်မှ Insert လုပ်မယ်
+    if (updated.length === 0) {
+      await db.insert(presence).values({ userId: session.user.id });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+}

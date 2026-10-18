@@ -12,7 +12,7 @@ export type SyncData = {
   homepage?: Record<string, unknown>;
 };
 
-const DB_NAME = "nexfix-local";
+const DB_NAME = "nexfix-local-v2"; // Version တင်လိုက်တယ်
 const STORE_NAME = "sync-data";
 
 function getDB(): Promise<IDBDatabase> {
@@ -51,20 +51,15 @@ export async function getLocalData(): Promise<SyncData | null> {
   });
 }
 
-export async function clearLocalData(): Promise<void> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.delete("all-data");
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
+// ဒီ Function ကို သုံးပြီး Data တွေကို Memory ထဲမှာ ခဏသိမ်းထားမယ် (Cache လုပ်မယ်)
+let cachedData: SyncData | null = null;
 
-// ============================================
-// SEARCH FUNCTIONS (Local-First)
-// ============================================
+export async function getCachedLocalData(): Promise<SyncData | null> {
+  if (cachedData) return cachedData; // Memory ထဲမှာရှိရင် ချက်ချင်းပြန်ပေးမယ်
+  const data = await getLocalData();
+  cachedData = data;
+  return data;
+}
 
 export type LocalSearchResult = {
   id: string;
@@ -79,7 +74,7 @@ export async function searchLocalData(
   machineName: string,
   errorCode: string
 ): Promise<LocalSearchResult[]> {
-  const data = await getLocalData();
+  const data = await getCachedLocalData(); // Cache ကနေ ယူမယ်
   if (!data) return [];
 
   let matchedMachineIds: string[] = [];
@@ -92,22 +87,22 @@ export async function searchLocalData(
     matchedMachineIds = data.machines.map((m) => String(m.id));
   }
 
-  if (matchedMachineIds.length === 0) return [];
+  if (matchedMachineIds.length === 0 && machineName) return [];
 
-  let matchedErrors = data.errorCodes.filter((e) => 
-    matchedMachineIds.includes(String(e.machineId))
+  let matchedErrors = data.errorCodes.filter((e) =>
+    matchedMachineIds.length > 0 ? matchedMachineIds.includes(String(e.machineId)) : true
   );
 
   if (errorCode) {
     const lowerCode = errorCode.toLowerCase();
-    const exactMatch = matchedErrors.filter((e) => 
-      String(e.code).toLowerCase() === lowerCode
+    const exactMatch = matchedErrors.filter(
+      (e) => String(e.code).toLowerCase() === lowerCode
     );
 
     if (exactMatch.length > 0) {
       matchedErrors = exactMatch;
     } else {
-      matchedErrors = matchedErrors.filter((e) => 
+      matchedErrors = matchedErrors.filter((e) =>
         String(e.code).toLowerCase().includes(lowerCode)
       );
     }
@@ -131,10 +126,7 @@ export async function searchLocalData(
   });
 }
 
-// ============================================
-// IMAGE CACHING (Offline Support)
-// ============================================
-
+// ပုံတွေကို Cache လုပ်မယ်
 export async function cacheImage(url: string): Promise<void> {
   if (!url) return;
   try {
@@ -162,4 +154,16 @@ export async function getCachedImageUrl(url: string): Promise<string> {
   } catch {
     return url;
   }
+}
+
+export async function clearLocalData(): Promise<void> {
+  const db = await getDB();
+  cachedData = null; // Cache ကိုပါ ရှင်းမယ်
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete("all-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
 }

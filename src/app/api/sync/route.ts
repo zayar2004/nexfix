@@ -3,15 +3,29 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { machines, errorCodes, errorContent, knowledgeArticles, articleContent, media, mediaVideos } from "@/db/schema";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
-    const allMachines = await db.select().from(machines).where(eq(machines.status, "published"));
-    const allErrorCodes = await db.select().from(errorCodes).where(eq(errorCodes.status, "published"));
-    const allContents = await db.select().from(errorContent);
-    const allArticles = await db.select().from(knowledgeArticles).where(eq(knowledgeArticles.status, "published"));
-    const allArticleContents = await db.select().from(articleContent);
-    const allMedia = await db.select().from(media).where(eq(media.status, "approved"));
-    const allVideos = await db.select().from(mediaVideos);
+    // Database ကို တစ်ပြိုင်နက်တည်း ခေါ်မယ် (ပိုမြန်တယ်)
+    const [
+      allMachines,
+      allErrorCodes,
+      allContents,
+      allArticles,
+      allArticleContents,
+      allMedia,
+      allVideos
+    ] = await Promise.all([
+      db.select().from(machines).where(eq(machines.status, "published")),
+      db.select().from(errorCodes).where(eq(errorCodes.status, "published")),
+      db.select().from(errorContent),
+      db.select().from(knowledgeArticles).where(eq(knowledgeArticles.status, "published")),
+      db.select().from(articleContent),
+      db.select().from(media).where(eq(media.status, "approved")),
+      db.select().from(mediaVideos)
+    ]);
 
     return NextResponse.json({
       ok: true,
