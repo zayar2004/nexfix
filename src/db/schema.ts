@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, varchar } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, pgEnum, varchar, index, unique } from "drizzle-orm/pg-core";
 
 // 1. Roles Enum
 export const roleEnum = pgEnum("role", ["user", "staff", "senior_admin", "super_admin"]);
@@ -29,3 +29,70 @@ export const sessions = pgTable("sessions", {
   expiresAt: timestamp("expires_at").notNull(),
   revokedAt: timestamp("revoked_at"),
 });
+
+// ============================================
+// PHASE 3: MACHINES, ERROR CODES, MEDIA
+// ============================================
+
+// 4. Machines Table
+export const machines = pgTable("machines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).default("published").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  archivedAt: timestamp("archived_at"),
+}, (table) => ({
+  codeIdx: index("machines_code_idx").on(table.code),
+  statusIdx: index("machines_status_idx").on(table.status),
+}));
+
+// 5. Error Codes Table
+export const errorCodes = pgTable("error_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  machineId: uuid("machine_id").references(() => machines.id, { onDelete: "cascade" }).notNull(),
+  code: varchar("code", { length: 50 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  status: varchar("status", { length: 20 }).default("published").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  archivedAt: timestamp("archived_at"),
+}, (table) => ({
+  machineCodeUnique: unique("error_codes_machine_code_unique").on(table.machineId, table.code),
+  codeIdx: index("error_codes_code_idx").on(table.code),
+  statusIdx: index("error_codes_status_idx").on(table.status),
+}));
+
+// 6. Error Content (Myanmar + English)
+export const errorContent = pgTable("error_content", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  errorCodeId: uuid("error_code_id").references(() => errorCodes.id, { onDelete: "cascade" }).notNull(),
+  locale: varchar("locale", { length: 5 }).notNull(), // 'my' or 'en'
+  cause: text("cause"),
+  troubleshooting: text("troubleshooting"),
+  solution: text("solution"),
+  safety: text("safety"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  errorLocaleUnique: unique("error_content_error_locale_unique").on(table.errorCodeId, table.locale),
+}));
+
+// 7. Media Table (Polymorphic Owner)
+export const media = pgTable("media", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerType: varchar("owner_type", { length: 20 }).notNull(), // 'error_code' | 'article' | 'chat'
+  ownerId: uuid("owner_id").notNull(),
+  mime: varchar("mime", { length: 100 }).notNull(),
+  size: varchar("size", { length: 20 }).notNull(), // bytes as text
+  storageKey: text("storage_key").notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'approved' | 'rejected'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  ownerIdx: index("media_owner_idx").on(table.ownerType, table.ownerId),
+  statusIdx: index("media_status_idx").on(table.status),
+}));
