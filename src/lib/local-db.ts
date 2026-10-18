@@ -1,6 +1,5 @@
 "use client";
 
-// A simple wrapper for IndexedDB using the browser's native API
 export type SyncData = {
   machines: Record<string, unknown>[];
   errorCodes: Record<string, unknown>[];
@@ -55,5 +54,74 @@ export async function clearLocalData(): Promise<void> {
     const request = store.delete("all-data");
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+  });
+}
+
+// ============================================
+// SEARCH FUNCTIONS (Local-First)
+// ============================================
+
+export type LocalSearchResult = {
+  id: string;
+  code: string;
+  title: string;
+  machineName: string;
+  machineCode: string;
+  solution: string | null;
+};
+
+export async function searchLocalData(
+  machineName: string,
+  errorCode: string
+): Promise<LocalSearchResult[]> {
+  const data = await getLocalData();
+  if (!data) return [];
+
+  let matchedMachineIds: string[] = [];
+  if (machineName) {
+    const lowerMachine = machineName.toLowerCase();
+    matchedMachineIds = data.machines
+      .filter((m) => String(m.name).toLowerCase().includes(lowerMachine))
+      .map((m) => String(m.id));
+  } else {
+    matchedMachineIds = data.machines.map((m) => String(m.id));
+  }
+
+  if (matchedMachineIds.length === 0) return [];
+
+  let matchedErrors = data.errorCodes.filter((e) => 
+    matchedMachineIds.includes(String(e.machineId))
+  );
+
+  if (errorCode) {
+    const lowerCode = errorCode.toLowerCase();
+    const exactMatch = matchedErrors.filter((e) => 
+      String(e.code).toLowerCase() === lowerCode
+    );
+
+    if (exactMatch.length > 0) {
+      matchedErrors = exactMatch;
+    } else {
+      matchedErrors = matchedErrors.filter((e) => 
+        String(e.code).toLowerCase().includes(lowerCode)
+      );
+    }
+  }
+
+  return matchedErrors.map((e) => {
+    const machine = data.machines.find((m) => m.id === e.machineId);
+    const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
+    const myContent = contents.find((c) => c.locale === "my");
+    const enContent = contents.find((c) => c.locale === "en");
+    const content = myContent || enContent || null;
+
+    return {
+      id: String(e.id),
+      code: String(e.code),
+      title: String(e.title),
+      machineName: String(machine?.name || "Unknown"),
+      machineCode: String(machine?.code || "Unknown"),
+      solution: content ? String(content.solution) : null,
+    };
   });
 }

@@ -4,15 +4,14 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { translate } from "@/lib/i18n";
+import { getLocalData } from "@/lib/local-db";
 
-// Define the shape of our data
 type ErrorData = {
   id: string;
   code: string;
   title: string;
   machineName: string;
   machineCode: string;
-  status: string;
 };
 
 type ContentData = {
@@ -29,7 +28,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   
   const [activeTab, setActiveTab] = useState<"overview" | "cause" | "solution" | "media">("overview");
-  const [locale, setLocale] = useState<"my" | "en">("en"); // Default EN
+  const [locale, setLocale] = useState<"my" | "en">("en");
   
   const [data, setData] = useState<ErrorData | null>(null);
   const [content, setContent] = useState<ContentData | null>(null);
@@ -42,16 +41,36 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
     async function fetchData() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/errors/${id}`);
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || "Failed to load");
+        const localData = await getLocalData();
+        if (!localData) throw new Error("No local data. Please sync first.");
+
+        const errorRecord = localData.errorCodes.find((e) => String(e.id) === id);
+        if (!errorRecord) throw new Error("Error not found locally.");
+
+        const machineRecord = localData.machines.find((m) => String(m.id) === String(errorRecord.machineId));
         
-        setData(json.error);
-        // Pick the correct locale content, fallback to my, then first available
-        const contents: ContentData[] = json.content || [];
-        const myContent = contents.find(c => c.locale === "my");
-        const enContent = contents.find(c => c.locale === "en");
-        setContent(locale === "my" ? (myContent || enContent || null) : (enContent || myContent || null));
+        setData({
+          id: String(errorRecord.id),
+          code: String(errorRecord.code),
+          title: String(errorRecord.title),
+          machineName: String(machineRecord?.name || "Unknown"),
+          machineCode: String(machineRecord?.code || "Unknown"),
+        });
+
+        const contents = localData.errorContents.filter((c) => String(c.errorCodeId) === id);
+        const myContent = contents.find((c) => c.locale === "my");
+        const enContent = contents.find((c) => c.locale === "en");
+        const selected = locale === "my" ? (myContent || enContent || null) : (enContent || myContent || null);
+
+        setContent(selected ? {
+          locale: String(selected.locale),
+          cause: selected.cause ? String(selected.cause) : null,
+          troubleshooting: selected.troubleshooting ? String(selected.troubleshooting) : null,
+          solution: selected.solution ? String(selected.solution) : null,
+          safety: selected.safety ? String(selected.safety) : null,
+          notes: selected.notes ? String(selected.notes) : null,
+        } : null);
+
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error loading data");
       } finally {
@@ -80,7 +99,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
-      {/* Custom Header for Detail */}
       <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md border-b border-[var(--nx-border-updated)]">
         <div className="flex items-center justify-between px-4 h-[var(--nx-top-nav-height)]">
           <div className="flex items-center gap-3">
@@ -94,15 +112,12 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
             className="flex items-center gap-1 px-2 py-1 bg-[var(--nx-bg-card)] rounded-md text-xs font-semibold text-white border border-[var(--nx-border-updated)]"
           >
             {locale === "my" ? "EN" : "MY"}
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto">
-        {/* Hero Image Area */}
         <div className="relative w-full h-[200px] sm:h-[250px] bg-[var(--nx-bg-surface-deep)]">
-          {/* Using a placeholder image for now, will be replaced by DB image later */}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] to-transparent z-10"></div>
           <div className="absolute inset-0 flex items-center justify-center text-[var(--nx-text-muted-updated)]">
             [Machine Image]
@@ -112,7 +127,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-sm font-semibold text-[var(--nx-text-secondary-updated)]">{data.machineName}</p>
             <h2 className="text-3xl font-bold text-[var(--nx-accent)] font-mono">{data.code}</h2>
             <p className="text-lg font-semibold text-white">{data.title}</p>
-            
             <div className="flex gap-2 mt-2">
               <span className="px-2 py-0.5 bg-[var(--nx-warning)] text-black text-xs font-bold rounded-sm">Common</span>
               <span className="px-2 py-0.5 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] text-white text-xs font-medium rounded-sm">Hardware</span>
@@ -120,7 +134,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Tabs Navigation */}
         <div className="flex border-b border-[var(--nx-border-updated)] px-4 overflow-x-auto scrollbar-hide">
           {(["overview", "cause", "solution", "media"] as const).map((tab) => (
             <button
@@ -131,14 +144,11 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
               }`}
             >
               {t(`error.tab.${tab}`)}
-              {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--nx-accent)]"></div>
-              )}
+              {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--nx-accent)]"></div>}
             </button>
           ))}
         </div>
 
-        {/* Tab Content Area */}
         <div className="p-4 pb-48">
           {activeTab === "overview" && (
             <div className="flex flex-col gap-4">
@@ -151,7 +161,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
                   {content?.cause || "No description available."}
                 </p>
               </div>
-
               <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
                 <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
@@ -170,25 +179,18 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
           )}
-
           {activeTab === "cause" && (
             <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
               <h3 className="font-semibold text-white mb-2">Known Causes</h3>
-              <p className="text-[var(--nx-text-secondary-updated)] text-sm whitespace-pre-wrap">
-                {content?.troubleshooting || "No causes recorded yet."}
-              </p>
+              <p className="text-[var(--nx-text-secondary-updated)] text-sm whitespace-pre-wrap">{content?.troubleshooting || "No causes recorded yet."}</p>
             </div>
           )}
-
           {activeTab === "solution" && (
             <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
               <h3 className="font-semibold text-[var(--nx-success)] mb-2">Step-by-Step Solution</h3>
-              <p className="text-[var(--nx-text-secondary-updated)] text-sm whitespace-pre-wrap">
-                {content?.solution || "No solution recorded yet."}
-              </p>
+              <p className="text-[var(--nx-text-secondary-updated)] text-sm whitespace-pre-wrap">{content?.solution || "No solution recorded yet."}</p>
             </div>
           )}
-
           {activeTab === "media" && (
             <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)]">
               No media available for this error.
@@ -197,7 +199,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </main>
 
-      {/* Sticky Action Button */}
       <div className="fixed bottom-[calc(var(--nx-bottom-nav-height)+var(--nx-bottom-nav-safe-area)+16px)] left-4 right-4 z-40 max-w-3xl mx-auto">
         <button className="w-full py-3 bg-[var(--nx-accent)] text-black font-bold rounded-xl shadow-lg shadow-[var(--nx-accent)]/20 hover:brightness-110 transition-all flex items-center justify-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>

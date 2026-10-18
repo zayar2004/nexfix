@@ -5,15 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import Link from "next/link";
-
-type SearchResult = {
-  id: string;
-  code: string;
-  title: string;
-  machineName: string;
-  machineCode: string;
-  solution: string | null;
-};
+import { searchLocalData, LocalSearchResult } from "@/lib/local-db";
 
 function SearchResultsContent() {
   const router = useRouter();
@@ -21,7 +13,7 @@ function SearchResultsContent() {
   const machine = searchParams.get("machine") || "";
   const code = searchParams.get("code") || "";
   
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<LocalSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,14 +22,9 @@ function SearchResultsContent() {
       setLoading(true);
       setError("");
       try {
-        const query = new URLSearchParams();
-        if (machine) query.set("machine", machine);
-        if (code) query.set("code", code);
-        
-        const res = await fetch(`/api/search?${query.toString()}`);
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error || "Search failed");
-        setResults(data.results || []);
+        // Search from Local Database instead of API
+        const localResults = await searchLocalData(machine, code);
+        setResults(localResults);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");
       } finally {
@@ -78,7 +65,7 @@ function SearchResultsContent() {
 
         {/* Result Count */}
         <div className="text-sm text-[var(--nx-text-muted-updated)] mb-4">
-          {loading ? "Searching..." : `${results.length} results found`}
+          {loading ? "Searching locally..." : `${results.length} results found (from local database)`}
         </div>
 
         {/* Results List */}
@@ -92,16 +79,14 @@ function SearchResultsContent() {
           <div className="text-center py-10 text-[var(--nx-error)]">{error}</div>
         ) : results.length === 0 ? (
           <div className="text-center py-10 text-[var(--nx-text-muted-updated)]">
-            No results found. Try a different search.
+            No results found. Try a different search or sync data.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             {results.map((r) => (
               <Link key={r.id} href={`/errors/${r.id}`}>
                 <div className="flex gap-4 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-accent)] transition-colors">
-                  {/* Machine Thumbnail (Placeholder) */}
                   <div className="w-16 h-16 rounded-lg bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] flex-shrink-0 flex items-center justify-center text-xs text-[var(--nx-text-muted-updated)] overflow-hidden">
-                    {/* If we had machine images we'd put them here */}
                     IMG
                   </div>
                   
