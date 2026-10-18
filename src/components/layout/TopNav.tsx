@@ -2,14 +2,67 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { saveLocalData } from "@/lib/local-db";
 
 export function TopNav() {
   const { data: session } = useSession();
+  
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "done" | "error">("idle");
+  const [syncProgress, setSyncProgress] = useState(0);
+
+  // Sync Logic as a standalone function (outside of useCallback)
+  const syncData = async () => {
+    // If already syncing, don't start again
+    if (syncStatus === "syncing") return;
+
+    setSyncStatus("syncing");
+    setSyncProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setSyncProgress((prev) => (prev < 90 ? prev + 10 : prev));
+    }, 200);
+
+    try {
+      const res = await fetch("/api/sync");
+      const json = await res.json();
+      if (!json.ok) throw new Error("Sync failed");
+
+      await saveLocalData({
+        machines: json.data.machines,
+        errorCodes: json.data.errorCodes,
+        errorContents: json.data.errorContents,
+        lastSyncedAt: json.data.lastSyncedAt,
+      });
+
+      setSyncProgress(100);
+      setSyncStatus("done");
+    } catch {
+      setSyncStatus("error");
+    } finally {
+      clearInterval(progressInterval);
+      setTimeout(() => setSyncStatus("idle"), 3000);
+    }
+  };
+
+  // Auto Sync on Mount & every 5 minutes
+  useEffect(() => {
+    // 1. Run once on load
+    syncData();
+    
+    // 2. Run every 5 minutes
+    const interval = setInterval(() => {
+      syncData();
+    }, 5 * 60 * 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // <--- Empty array means it only runs once on mount
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md">
       <div className="flex items-center justify-between px-4 h-[var(--nx-top-nav-height)]">
-        {/* Brand Wordmark */}
         <Link href="/" className="flex flex-col">
           <div className="flex items-baseline text-2xl font-black tracking-tighter italic">
             <span className="text-white">NEX</span>
@@ -20,8 +73,40 @@ export function TopNav() {
           </span>
         </Link>
 
-        {/* Right Actions */}
         <div className="flex items-center gap-3">
+          
+          {/* Sync Icon & Status */}
+          <button 
+            onClick={syncData}
+            disabled={syncStatus === "syncing"}
+            className="relative p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors"
+            title="Sync Data"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className={syncStatus === "syncing" ? "animate-spin" : ""}
+            >
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/>
+            </svg>
+            
+            {/* Status Text Overlay */}
+            {syncStatus === "syncing" && (
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-accent)] whitespace-nowrap">
+                {syncProgress}%
+              </span>
+            )}
+            {syncStatus === "done" && (
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-success)] whitespace-nowrap">
+                Done
+              </span>
+            )}
+            {syncStatus === "error" && (
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-error)] whitespace-nowrap">
+                Retry
+              </span>
+            )}
+          </button>
+
           {/* Notification Bell */}
           <button className="relative p-2 text-[var(--nx-text-primary)] hover:text-[var(--nx-accent-secondary)] transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,7 +116,7 @@ export function TopNav() {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--nx-error)] rounded-full border border-[var(--nx-bg-base-deep)]"></span>
           </button>
 
-          {/* Online Count (Dummy for UI, Real Presence system will be added later) */}
+          {/* Online Count */}
           <div className="flex items-center gap-1.5 text-[var(--nx-accent-secondary)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

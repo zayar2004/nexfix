@@ -11,6 +11,13 @@ if (!connectionString) {
   );
 }
 
-const client = postgres(connectionString, { prepare: false });
+const client = postgres(connectionString, { 
+  prepare: false,
+  // Add these for better stability on flaky networks (like mobile)
+  max: 5, 
+  idle_timeout: 20, 
+  connect_timeout: 15,
+  max_lifetime: 60 * 5 // 5 minutes
+});
 
 export const db = drizzle(client, { schema });

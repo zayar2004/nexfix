@@ -1,96 +1,211 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { errorCodes, errorContent, machines } from "@/db/schema";
-import { Badge } from "@/components/ui/Badge";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
+"use client";
 
-export default async function ErrorDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { translate } from "@/lib/i18n";
 
-  const [result] = await db
-    .select({
-      id: errorCodes.id,
-      code: errorCodes.code,
-      title: errorCodes.title,
-      machineName: machines.name,
-      machineCode: machines.code,
-      status: errorCodes.status,
-    })
-    .from(errorCodes)
-    .innerJoin(machines, eq(machines.id, errorCodes.machineId))
-    .where(eq(errorCodes.id, id))
-    .limit(1);
+// Define the shape of our data
+type ErrorData = {
+  id: string;
+  code: string;
+  title: string;
+  machineName: string;
+  machineCode: string;
+  status: string;
+};
 
-  if (!result || result.status !== "published") notFound();
+type ContentData = {
+  locale: string;
+  cause: string | null;
+  troubleshooting: string | null;
+  solution: string | null;
+  safety: string | null;
+  notes: string | null;
+};
 
-  const contents = await db.select().from(errorContent).where(eq(errorContent.errorCodeId, id));
+export default function ErrorDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
+  const { id } = use(params);
+  
+  const [activeTab, setActiveTab] = useState<"overview" | "cause" | "solution" | "media">("overview");
+  const [locale, setLocale] = useState<"my" | "en">("en"); // Default EN
+  
+  const [data, setData] = useState<ErrorData | null>(null);
+  const [content, setContent] = useState<ContentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const t = (key: string) => translate(locale, key);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/errors/${id}`);
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || "Failed to load");
+        
+        setData(json.error);
+        // Pick the correct locale content, fallback to my, then first available
+        const contents: ContentData[] = json.content || [];
+        const myContent = contents.find(c => c.locale === "my");
+        const enContent = contents.find(c => c.locale === "en");
+        setContent(locale === "my" ? (myContent || enContent || null) : (enContent || myContent || null));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error loading data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [id, locale]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col items-center justify-center p-4">
+        <p className="text-[var(--nx-error)] mb-4">{error || "Error not found"}</p>
+        <button onClick={() => router.back()} className="px-4 py-2 bg-[var(--nx-bg-card)] text-white rounded-lg">Go Back</button>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-[var(--nx-bg-base)] px-4 py-6">
-      <div className="mx-auto max-w-3xl">
-        <Link href="/" className="text-sm text-[var(--nx-primary)] hover:underline">← Back to Search</Link>
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      {/* Custom Header for Detail */}
+      <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md border-b border-[var(--nx-border-updated)]">
+        <div className="flex items-center justify-between px-4 h-[var(--nx-top-nav-height)]">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} className="p-2 -ml-2 text-white hover:text-[var(--nx-accent)]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h1 className="text-lg font-bold text-white">Error Detail</h1>
+          </div>
+          <button 
+            onClick={() => setLocale(locale === "my" ? "en" : "my")}
+            className="flex items-center gap-1 px-2 py-1 bg-[var(--nx-bg-card)] rounded-md text-xs font-semibold text-white border border-[var(--nx-border-updated)]"
+          >
+            {locale === "my" ? "EN" : "MY"}
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </header>
 
-        <Card variant="elevated" padding="lg" className="mt-4">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Badge variant="info" dot>Error Code</Badge>
-              <span className="text-2xl font-mono font-bold text-[var(--nx-primary)]">{result.code}</span>
+      <main className="max-w-3xl mx-auto">
+        {/* Hero Image Area */}
+        <div className="relative w-full h-[200px] sm:h-[250px] bg-[var(--nx-bg-surface-deep)]">
+          {/* Using a placeholder image for now, will be replaced by DB image later */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] to-transparent z-10"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-[var(--nx-text-muted-updated)]">
+            [Machine Image]
+          </div>
+          
+          <div className="absolute bottom-4 left-4 z-20">
+            <p className="text-sm font-semibold text-[var(--nx-text-secondary-updated)]">{data.machineName}</p>
+            <h2 className="text-3xl font-bold text-[var(--nx-accent)] font-mono">{data.code}</h2>
+            <p className="text-lg font-semibold text-white">{data.title}</p>
+            
+            <div className="flex gap-2 mt-2">
+              <span className="px-2 py-0.5 bg-[var(--nx-warning)] text-black text-xs font-bold rounded-sm">Common</span>
+              <span className="px-2 py-0.5 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] text-white text-xs font-medium rounded-sm">Hardware</span>
             </div>
-            <CardTitle>{result.title}</CardTitle>
-            <p className="text-sm text-[var(--nx-text-secondary)]">
-              Machine: <strong>{result.machineName}</strong> ({result.machineCode})
-            </p>
-          </CardHeader>
-        </Card>
+          </div>
+        </div>
 
-        {contents.length === 0 && (
-          <Card padding="lg" className="mt-4">
-            <CardBody>No detailed information available yet.</CardBody>
-          </Card>
-        )}
+        {/* Tabs Navigation */}
+        <div className="flex border-b border-[var(--nx-border-updated)] px-4 overflow-x-auto scrollbar-hide">
+          {(["overview", "cause", "solution", "media"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors relative ${
+                activeTab === tab ? "text-[var(--nx-accent)]" : "text-[var(--nx-text-muted-updated)] hover:text-white"
+              }`}
+            >
+              {t(`error.tab.${tab}`)}
+              {activeTab === tab && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--nx-accent)]"></div>
+              )}
+            </button>
+          ))}
+        </div>
 
-        {contents.map((content) => (
-          <Card key={content.id} padding="lg" className="mt-4">
-            <CardBody>
-              <p className="mb-2 text-xs uppercase tracking-wide text-[var(--nx-text-muted)]">
-                Language: {content.locale}
-              </p>
-              {content.safety && (
-                <div className="mb-4 rounded-[var(--nx-radius-md)] border border-[var(--nx-warning)]/30 bg-[var(--nx-warning)]/10 p-3">
-                  <p className="text-sm font-semibold text-[var(--nx-warning)]">⚠ Safety</p>
-                  <p className="mt-1 text-sm text-[var(--nx-text-primary)]">{content.safety}</p>
+        {/* Tab Content Area */}
+        <div className="p-4 pb-48">
+          {activeTab === "overview" && (
+            <div className="flex flex-col gap-4">
+              <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
+                <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  Description
+                </h3>
+                <p className="text-[var(--nx-text-secondary-updated)] text-sm leading-relaxed">
+                  {content?.cause || "No description available."}
+                </p>
+              </div>
+
+              <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
+                <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                  Quick Info
+                </h3>
+                <div className="grid grid-cols-2 gap-y-3 text-sm">
+                  <span className="text-[var(--nx-text-muted-updated)]">Category</span>
+                  <span className="text-white text-right">Display</span>
+                  <span className="text-[var(--nx-text-muted-updated)]">Probability</span>
+                  <span className="text-white text-right">High</span>
+                  <span className="text-[var(--nx-text-muted-updated)]">Affected Models</span>
+                  <span className="text-white text-right">All Models</span>
+                  <span className="text-[var(--nx-text-muted-updated)]">Last Updated</span>
+                  <span className="text-white text-right">2024-06-12</span>
                 </div>
-              )}
-              {content.cause && (
-                <section className="mb-4">
-                  <h3 className="font-semibold text-[var(--nx-text-primary)]">Cause</h3>
-                  <p className="mt-1 text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap">{content.cause}</p>
-                </section>
-              )}
-              {content.troubleshooting && (
-                <section className="mb-4">
-                  <h3 className="font-semibold text-[var(--nx-text-primary)]">Troubleshooting</h3>
-                  <p className="mt-1 text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap">{content.troubleshooting}</p>
-                </section>
-              )}
-              {content.solution && (
-                <section className="mb-4">
-                  <h3 className="font-semibold text-[var(--nx-success)]">Solution</h3>
-                  <p className="mt-1 text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap">{content.solution}</p>
-                </section>
-              )}
-              {content.notes && (
-                <section>
-                  <h3 className="font-semibold text-[var(--nx-text-primary)]">Notes</h3>
-                  <p className="mt-1 text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap">{content.notes}</p>
-                </section>
-              )}
-            </CardBody>
-          </Card>
-        ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "cause" && (
+            <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
+              <h3 className="font-semibold text-white mb-2">Known Causes</h3>
+              <p className="text-[var(--nx-text-secondary-updated)] text-sm whitespace-pre-wrap">
+                {content?.troubleshooting || "No causes recorded yet."}
+              </p>
+            </div>
+          )}
+
+          {activeTab === "solution" && (
+            <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
+              <h3 className="font-semibold text-[var(--nx-success)] mb-2">Step-by-Step Solution</h3>
+              <p className="text-[var(--nx-text-secondary-updated)] text-sm whitespace-pre-wrap">
+                {content?.solution || "No solution recorded yet."}
+              </p>
+            </div>
+          )}
+
+          {activeTab === "media" && (
+            <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)]">
+              No media available for this error.
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Sticky Action Button */}
+      <div className="fixed bottom-[calc(var(--nx-bottom-nav-height)+var(--nx-bottom-nav-safe-area)+16px)] left-4 right-4 z-40 max-w-3xl mx-auto">
+        <button className="w-full py-3 bg-[var(--nx-accent)] text-black font-bold rounded-xl shadow-lg shadow-[var(--nx-accent)]/20 hover:brightness-110 transition-all flex items-center justify-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Mark as Resolved
+        </button>
       </div>
-    </main>
+
+      <BottomNav />
+    </div>
   );
 }

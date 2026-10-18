@@ -77,8 +77,17 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json({ ok: true, results, total: results.length, exactMatch });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Search API Error:", error);
+    
+    // Catch connection reset errors specifically
+    if (typeof error === 'object' && error !== null && (('code' in error && error.code === 'ECONNRESET') || ('cause' in error && typeof error.cause === 'object' && error.cause !== null && 'code' in error.cause && error.cause.code === 'ECONNRESET'))) {
+      return NextResponse.json(
+        { ok: false, error: "Database connection lost. Please try again." }, 
+        { status: 503 } // Service Unavailable
+      );
+    }
+    
     return NextResponse.json({ ok: false, error: "Search failed" }, { status: 500 });
   }
 }
