@@ -1,24 +1,15 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { machines, errorCodes, errorContent } from "@/db/schema";
+import { machines, errorCodes, errorContent, knowledgeArticles, articleContent } from "@/db/schema";
 
 export async function GET() {
   try {
-    // 1. Get all published machines
-    const allMachines = await db
-      .select()
-      .from(machines)
-      .where(eq(machines.status, "published"));
-
-    // 2. Get all published error codes
-    const allErrorCodes = await db
-      .select()
-      .from(errorCodes)
-      .where(eq(errorCodes.status, "published"));
-
-    // 3. Get all error content
+    const allMachines = await db.select().from(machines).where(eq(machines.status, "published"));
+    const allErrorCodes = await db.select().from(errorCodes).where(eq(errorCodes.status, "published"));
     const allContents = await db.select().from(errorContent);
+    const allArticles = await db.select().from(knowledgeArticles).where(eq(knowledgeArticles.status, "published"));
+    const allArticleContents = await db.select().from(articleContent);
 
     return NextResponse.json({
       ok: true,
@@ -26,6 +17,8 @@ export async function GET() {
         machines: allMachines,
         errorCodes: allErrorCodes,
         errorContents: allContents,
+        articles: allArticles,
+        articleContents: allArticleContents,
         lastSyncedAt: Date.now(),
       },
     });

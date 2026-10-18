@@ -4,6 +4,8 @@ export type SyncData = {
   machines: Record<string, unknown>[];
   errorCodes: Record<string, unknown>[];
   errorContents: Record<string, unknown>[];
+  articles: Record<string, unknown>[];
+  articleContents: Record<string, unknown>[];
   lastSyncedAt: number | null;
 };
 

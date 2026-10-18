@@ -93,3 +93,13 @@ Format: Keep a Changelog.
 - All docs consistent
 - No code changes
 - No git commit
+
+## [2026-10-18] Major UI & Admin Update
+### Added
+- Premium Arcade Home Page with Hero Image.
+- Local-First Search (IndexedDB).
+- Admin CMS (Home, Machines, Errors, Library).
+- Offline Image Caching.
+### Changed
+- Home Page fetches from DB with Fallback.
+- Error Detail Page with Tabs and Video Link.

@@ -16,13 +16,16 @@ function SearchResultsContent() {
   const [results, setResults] = useState<LocalSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
+    // Check online status
+    setIsOffline(!navigator.onLine);
+    
     async function fetchResults() {
       setLoading(true);
       setError("");
       try {
-        // Search from Local Database instead of API
         const localResults = await searchLocalData(machine, code);
         setResults(localResults);
       } catch (e) {
@@ -39,7 +42,6 @@ function SearchResultsContent() {
       <TopNav />
       
       <main className="max-w-3xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => router.back()} className="p-2 -ml-2 text-[var(--nx-text-primary)] hover:text-[var(--nx-accent)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -47,49 +49,35 @@ function SearchResultsContent() {
           <h1 className="text-xl font-bold text-white">Search Results</h1>
         </div>
 
-        {/* Search Bar (Editable) */}
+        {isOffline && (
+          <div className="mb-4 p-3 bg-[var(--nx-warning)]/10 border border-[var(--nx-warning)]/30 rounded-lg text-sm text-[var(--nx-warning)]">
+            You are offline. Showing cached results.
+          </div>
+        )}
+
         <div className="flex items-center gap-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-2 mb-6">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--nx-text-muted-updated)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
-          <input 
-            type="text" 
-            defaultValue={`${machine} ${code}`.trim()} 
-            className="flex-1 bg-transparent text-white focus:outline-none px-2"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                const val = e.currentTarget.value.split(' ');
-                router.push(`/search?machine=${val[0] || ''}&code=${val[1] || ''}`);
-              }
-            }}
-          />
+          <input type="text" defaultValue={`${machine} ${code}`.trim()} className="flex-1 bg-transparent text-white focus:outline-none px-2" onKeyDown={(e) => { if (e.key === 'Enter') { const val = e.currentTarget.value.split(' '); router.push(`/search?machine=${val[0] || ''}&code=${val[1] || ''}`); } }} />
         </div>
 
-        {/* Result Count */}
         <div className="text-sm text-[var(--nx-text-muted-updated)] mb-4">
-          {loading ? "Searching locally..." : `${results.length} results found (from local database)`}
+          {loading ? "Searching locally..." : `${results.length} results found`}
         </div>
 
-        {/* Results List */}
         {loading ? (
           <div className="flex flex-col gap-3">
-             {[1,2,3].map(i => (
-               <div key={i} className="h-24 bg-[var(--nx-bg-card)] animate-pulse rounded-xl border border-[var(--nx-border-updated)]"></div>
-             ))}
+             {[1,2,3].map(i => (<div key={i} className="h-24 bg-[var(--nx-bg-card)] animate-pulse rounded-xl border border-[var(--nx-border-updated)]"></div>))}
           </div>
         ) : error ? (
           <div className="text-center py-10 text-[var(--nx-error)]">{error}</div>
         ) : results.length === 0 ? (
-          <div className="text-center py-10 text-[var(--nx-text-muted-updated)]">
-            No results found. Try a different search or sync data.
-          </div>
+          <div className="text-center py-10 text-[var(--nx-text-muted-updated)]">No results found.</div>
         ) : (
           <div className="flex flex-col gap-3">
             {results.map((r) => (
               <Link key={r.id} href={`/errors/${r.id}`}>
                 <div className="flex gap-4 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-accent)] transition-colors">
-                  <div className="w-16 h-16 rounded-lg bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] flex-shrink-0 flex items-center justify-center text-xs text-[var(--nx-text-muted-updated)] overflow-hidden">
-                    IMG
-                  </div>
-                  
+                  <div className="w-16 h-16 rounded-lg bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] flex-shrink-0 flex items-center justify-center text-xs text-[var(--nx-text-muted-updated)]">IMG</div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="flex justify-between items-start">
                       <span className="font-semibold text-white">{r.machineName}</span>
@@ -104,7 +92,6 @@ function SearchResultsContent() {
           </div>
         )}
       </main>
-
       <BottomNav />
     </div>
   );

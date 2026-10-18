@@ -5,7 +5,6 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { saveLocalData, cacheImage } from "@/lib/local-db";
 
-// Type သတ်မှတ်ချက်
 type SyncDataItem = {
   imageUrl?: string;
   mediaUrl?: string;
@@ -39,11 +38,13 @@ export function TopNav() {
 
       await Promise.all(imageUrls.map((url: string) => cacheImage(url)));
 
-      // 2. Save Data to IndexedDB
+      // 2. Save Data to IndexedDB (with articles)
       await saveLocalData({
-        machines: json.data.machines,
-        errorCodes: json.data.errorCodes,
-        errorContents: json.data.errorContents,
+        machines: json.data.machines || [],
+        errorCodes: json.data.errorCodes || [],
+        errorContents: json.data.errorContents || [],
+        articles: json.data.articles || [],
+        articleContents: json.data.articleContents || [],
         lastSyncedAt: json.data.lastSyncedAt,
       });
 
