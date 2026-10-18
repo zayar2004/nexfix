@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { saveLocalData } from "@/lib/local-db";
 
@@ -10,12 +10,10 @@ export function TopNav() {
   
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "done" | "error">("idle");
   const [syncProgress, setSyncProgress] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
 
-  // Sync Logic as a standalone function (outside of useCallback)
   const syncData = async () => {
-    // If already syncing, don't start again
     if (syncStatus === "syncing") return;
-
     setSyncStatus("syncing");
     setSyncProgress(0);
 
@@ -45,20 +43,12 @@ export function TopNav() {
     }
   };
 
-  // Auto Sync on Mount & every 5 minutes
   useEffect(() => {
-    // 1. Run once on load
     syncData();
-    
-    // 2. Run every 5 minutes
-    const interval = setInterval(() => {
-      syncData();
-    }, 5 * 60 * 1000);
-
-    // Cleanup on unmount
+    const interval = setInterval(syncData, 5 * 60 * 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // <--- Empty array means it only runs once on mount
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md">
@@ -75,43 +65,23 @@ export function TopNav() {
 
         <div className="flex items-center gap-3">
           
-          {/* Sync Icon & Status */}
+          {/* Sync Icon */}
           <button 
             onClick={syncData}
             disabled={syncStatus === "syncing"}
             className="relative p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors"
-            title="Sync Data"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              className={syncStatus === "syncing" ? "animate-spin" : ""}
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={syncStatus === "syncing" ? "animate-spin" : ""}>
               <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/>
             </svg>
-            
-            {/* Status Text Overlay */}
-            {syncStatus === "syncing" && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-accent)] whitespace-nowrap">
-                {syncProgress}%
-              </span>
-            )}
-            {syncStatus === "done" && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-success)] whitespace-nowrap">
-                Done
-              </span>
-            )}
-            {syncStatus === "error" && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-error)] whitespace-nowrap">
-                Retry
-              </span>
-            )}
+            {syncStatus === "syncing" && <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-accent)]">{syncProgress}%</span>}
+            {syncStatus === "done" && <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-success)]">Done</span>}
           </button>
 
           {/* Notification Bell */}
           <button className="relative p-2 text-[var(--nx-text-primary)] hover:text-[var(--nx-accent-secondary)] transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
             </svg>
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--nx-error)] rounded-full border border-[var(--nx-bg-base-deep)]"></span>
           </button>
@@ -119,18 +89,45 @@ export function TopNav() {
           {/* Online Count */}
           <div className="flex items-center gap-1.5 text-[var(--nx-accent-secondary)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             <span className="text-sm font-semibold">24</span>
           </div>
 
-          {/* Profile Avatar */}
-          <Link href="/profile" className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--nx-primary)] text-white text-sm font-bold border border-[var(--nx-primary)] hover:brightness-110">
-            {session?.user?.name?.charAt(0).toUpperCase() || "N"}
-          </Link>
+          {/* Profile Avatar + Dropdown Menu */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowMenu(!showMenu)}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--nx-primary)] text-white text-sm font-bold border border-[var(--nx-primary)] hover:brightness-110"
+            >
+              {session?.user?.name?.charAt(0).toUpperCase() || "N"}
+            </button>
+            
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl shadow-xl overflow-hidden z-50">
+                <div className="p-3 border-b border-[var(--nx-border-updated)]">
+                  <p className="text-sm font-semibold text-white truncate">{session?.user?.name || "User"}</p>
+                  <p className="text-xs text-[var(--nx-text-muted-updated)] truncate">{session?.user?.email}</p>
+                </div>
+                <Link 
+                  href="/profile" 
+                  className="block px-4 py-3 text-sm text-white hover:bg-[var(--nx-bg-surface-deep)] transition-colors"
+                  onClick={() => setShowMenu(false)}
+                >
+                  My Profile
+                </Link>
+                <button 
+                  onClick={() => {
+                    setShowMenu(false);
+                    signOut({ callbackUrl: "/login" });
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm text-[var(--nx-error)] hover:bg-[var(--nx-bg-surface-deep)] transition-colors border-t border-[var(--nx-border-updated)]"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
