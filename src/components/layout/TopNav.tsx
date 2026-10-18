@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { saveLocalData, cacheImage } from "@/lib/local-db";
+import { useToast } from "@/components/ui/Toast";
 
 type SyncDataItem = {
   imageUrl?: string;
@@ -12,25 +13,29 @@ type SyncDataItem = {
 
 export function TopNav() {
   const { data: session } = useSession();
+  const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "done" | "error">("idle");
   const [syncProgress, setSyncProgress] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const hasSynced = useRef(false);
+  const lastSyncRef = useRef<number>(0);
 
-  const syncData = async () => {
+  const syncData = async (isManual = false) => {
     if (syncStatus === "syncing") return;
     setSyncStatus("syncing");
-    setSyncProgress(0);
+    if (isManual) setSyncProgress(0);
 
-    const progressInterval = setInterval(() => {
+    const progressInterval = isManual ? setInterval(() => {
       setSyncProgress((prev) => (prev < 90 ? prev + 10 : prev));
-    }, 200);
+    }, 200) : null;
 
     try {
       const res = await fetch("/api/sync");
       const json = await res.json();
       if (!json.ok) throw new Error("Sync failed");
 
-      // 1. Cache Images
       const imageUrls: string[] = [
         ...(json.data.machines || []).map((m: SyncDataItem) => m.imageUrl).filter((u: string | undefined): u is string => !!u),
         ...(json.data.errorContents || []).map((c: SyncDataItem) => c.mediaUrl || c.imageUrl).filter((u: string | undefined): u is string => !!u),
@@ -38,7 +43,6 @@ export function TopNav() {
 
       await Promise.all(imageUrls.map((url: string) => cacheImage(url)));
 
-      // 2. Save Data to IndexedDB (with articles)
       await saveLocalData({
         machines: json.data.machines || [],
         errorCodes: json.data.errorCodes || [],
@@ -48,22 +52,78 @@ export function TopNav() {
         lastSyncedAt: json.data.lastSyncedAt,
       });
 
-      setSyncProgress(100);
-      setSyncStatus("done");
+      if (isManual) {
+        setSyncProgress(100);
+        setSyncStatus("done");
+        showToast("Sync complete!", "success");
+      } else {
+        setSyncStatus("idle");
+        // Only show toast if this is not the first sync
+        if (lastSyncRef.current > 0) {
+          showToast("New updates available", "info");
+          setUpdateAvailable(true);
+          setTimeout(() => setUpdateAvailable(false), 5000);
+        }
+      }
+      lastSyncRef.current = Date.now();
     } catch {
-      setSyncStatus("error");
+      if (isManual) {
+        setSyncStatus("error");
+        showToast("Sync failed. Please try again.", "error");
+      } else {
+        setSyncStatus("idle");
+      }
     } finally {
-      clearInterval(progressInterval);
-      setTimeout(() => setSyncStatus("idle"), 3000);
+      if (progressInterval) clearInterval(progressInterval);
+      if (isManual) setTimeout(() => setSyncStatus("idle"), 3000);
     }
   };
 
+  // Initial Sync
   useEffect(() => {
-    syncData();
-    const interval = setInterval(syncData, 5 * 60 * 1000);
+    if (!hasSynced.current) {
+      hasSynced.current = true;
+      syncData(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Background Sync (15 min)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncData(false);
+    }, 15 * 60 * 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Heartbeat & Count
+  useEffect(() => {
+    const sendHeartbeat = async () => {
+      if (session?.user) {
+        await fetch("/api/presence/heartbeat", { method: "POST" }).catch(() => {});
+      }
+    };
+
+    const fetchCount = async () => {
+      try {
+        const res = await fetch("/api/presence/count");
+        const data = await res.json();
+        if (data.ok) setOnlineCount(data.count);
+      } catch {}
+    };
+
+    sendHeartbeat();
+    fetchCount();
+
+    const hbInterval = setInterval(sendHeartbeat, 30 * 1000);
+    const countInterval = setInterval(fetchCount, 60 * 1000);
+
+    return () => {
+      clearInterval(hbInterval);
+      clearInterval(countInterval);
+    };
+  }, [session]);
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md">
@@ -79,12 +139,13 @@ export function TopNav() {
         </Link>
 
         <div className="flex items-center gap-3">
-          <button onClick={syncData} disabled={syncStatus === "syncing"} className="relative p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors">
+          <button onClick={() => syncData(true)} disabled={syncStatus === "syncing"} className="relative p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={syncStatus === "syncing" ? "animate-spin" : ""}>
               <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/>
             </svg>
             {syncStatus === "syncing" && <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-accent)]">{syncProgress}%</span>}
             {syncStatus === "done" && <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[var(--nx-success)]">Done</span>}
+            {updateAvailable && <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--nx-success)] rounded-full border border-[var(--nx-bg-base-deep)]"></span>}
           </button>
 
           <button className="relative p-2 text-[var(--nx-text-primary)] hover:text-[var(--nx-accent-secondary)] transition-colors">
@@ -94,7 +155,7 @@ export function TopNav() {
 
           <div className="flex items-center gap-1.5 text-[var(--nx-accent-secondary)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-            <span className="text-sm font-semibold">24</span>
+            <span className="text-sm font-semibold">{onlineCount}</span>
           </div>
 
           <div className="relative">

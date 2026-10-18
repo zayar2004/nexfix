@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, varchar, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, pgEnum, varchar, boolean, index, unique } from "drizzle-orm/pg-core";
 
 // 1. Roles Enum
 export const roleEnum = pgEnum("role", ["user", "staff", "senior_admin", "super_admin"]);
@@ -135,4 +135,35 @@ export const articleContent = pgTable("article_content", {
   body: text("body").notNull(), // HTML or Markdown content
 }, (table) => ({
   articleLocaleUnique: unique("article_content_article_locale_unique").on(table.articleId, table.locale),
+}));
+
+// ============================================
+// PHASE 6: USER PRESENCE (Live System)
+// ============================================
+
+export const presence = pgTable("presence", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow().notNull(),
+}, (table) => ({
+  userIdUnique: unique("presence_user_id_unique").on(table.userId),
+}));
+
+// ============================================
+// PHASE 7: NOTES & REMINDERS
+// ============================================
+
+export const notes = pgTable("notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body"),
+  reminderAt: timestamp("reminder_at"), // null = no reminder
+  recurrence: varchar("recurrence", { length: 20 }).default("none").notNull(), // 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("notes_user_idx").on(table.userId),
+  reminderIdx: index("notes_reminder_idx").on(table.reminderAt),
 }));

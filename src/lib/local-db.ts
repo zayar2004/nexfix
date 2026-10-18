@@ -8,6 +8,7 @@ export type SyncData = {
   articleContents: Record<string, unknown>[];
   media?: Record<string, unknown>[];
   lastSyncedAt: number | null;
+  homepage?: Record<string, unknown>;
 };
 
 const DB_NAME = "nexfix-local";

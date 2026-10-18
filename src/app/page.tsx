@@ -1,38 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { HeroSection } from "@/components/home/HeroSection";
 import { HomeSearchClient } from "@/components/home/HomeSearchClient";
-import { db } from "@/db";
-import { homepageConfig } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { getLocalData } from "@/lib/local-db";
 
+export default function HomePage() {
+  const [heroData, setHeroData] = useState<{
+    heading: string;
+    description: string;
+    imageUrl: string;
+  } | null>(null);
 
-export default async function HomePage() {
-  // Fetch published Home Config from DB (fallback to defaults if not found)
-  const [config] = await db
-    .select()
-    .from(homepageConfig)
-    .where(and(eq(homepageConfig.locale, "en"), eq(homepageConfig.isPublished, "published")))
-    .limit(1);
-
-  const heroData = config ? {
-    heading: config.heroHeading,
-    description: config.heroDescription,
-    imageUrl: config.heroImageUrl,
-  } : null;
+  useEffect(() => {
+    // Read from Local DB (not Database)
+    getLocalData().then((data) => {
+      if (data && data.homepage) {
+        const h = data.homepage as Record<string, unknown>;
+        setHeroData({
+          heading: String(h.heroHeading || "Find Solutions\nKeep Machines Running"),
+          description: String(h.heroDescription || "Error codes, troubleshooting, and more for arcade technicians."),
+          imageUrl: String(h.heroImageUrl || "/images/arcade-hero.jpg"),
+        });
+      }
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       <TopNav />
       
       <main className="max-w-3xl mx-auto">
-        {/* Pass DB data to HeroSection (with fallback) */}
         <HeroSection data={heroData} />
 
         <div className="px-4 py-5">
           <HomeSearchClient locale="en" />
           
-          {/* Recent Diagnostics (UI only for now) */}
           <div className="mt-8 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 className="nx-section-heading text-white flex items-center gap-2">
