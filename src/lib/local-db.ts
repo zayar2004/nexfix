@@ -270,3 +270,21 @@ export async function clearPrivateExcelData(): Promise<void> {
     request.onerror = () => reject(request.error);
   });
 }
+
+// ----------------------------------------
+// SEARCH PRIVATE EXCEL DATA
+// ----------------------------------------
+export async function searchPrivateExcelData(query: string): Promise<UserExcelRow[]> {
+  if (!query.trim()) return [];
+  const data = await getPrivateExcelData();
+  if (!data) return [];
+
+  const lowerQuery = query.toLowerCase();
+  
+  // Filter rows where any field matches the query
+  return data.filter((row) => {
+    return Object.values(row).some((value) => 
+      String(value).toLowerCase().includes(lowerQuery)
+    );
+  });
+}
