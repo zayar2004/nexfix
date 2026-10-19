@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
+import { Progress } from "@/components/ui/Progress"; // We'll create this
 
 type PreviewRow = {
   machineName: string;
@@ -21,13 +22,14 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handlePreview = async () => {
     if (!file) return;
-    setLoading(true); setMessage(""); setSummary(null); setPreview(null);
+    setLoading(true); setMessage(""); setSummary(null); setPreview(null); setProgress(10);
 
     try {
       const formData = new FormData();
@@ -35,19 +37,22 @@ export default function ImportPage() {
       formData.append("dryRun", "true");
 
       const res = await fetch("/api/admin/import-errors", { method: "POST", body: formData });
+      setProgress(70);
       const data = await res.json();
+      setProgress(100);
       if (!data.ok) throw new Error(data.error);
       setPreview(data.preview);
     } catch (err) {
       setMessage("" + (err instanceof Error ? err.message : "Error"));
     } finally {
       setLoading(false);
+      setTimeout(() => setProgress(0), 1000);
     }
   };
 
   const handleImport = async () => {
     if (!file) return;
-    setLoading(true); setMessage("");
+    setLoading(true); setMessage(""); setProgress(10);
 
     try {
       const formData = new FormData();
@@ -55,7 +60,9 @@ export default function ImportPage() {
       formData.append("dryRun", "false");
 
       const res = await fetch("/api/admin/import-errors", { method: "POST", body: formData });
+      setProgress(70);
       const data = await res.json();
+      setProgress(100);
       if (!data.ok) throw new Error(data.error);
       setSummary(data.summary);
       setMessage("Import complete!");
@@ -64,6 +71,7 @@ export default function ImportPage() {
       setMessage("" + (err instanceof Error ? err.message : "Error"));
     } finally {
       setLoading(false);
+      setTimeout(() => setProgress(0), 1000);
     }
   };
 
@@ -92,6 +100,8 @@ export default function ImportPage() {
               {loading ? "Reading..." : "Preview Import"}
             </button>
           )}
+
+          {loading && progress > 0 && <Progress value={progress} />}
 
           {message && <p className="mt-4 text-center text-sm">{message}</p>}
         </div>
@@ -139,6 +149,7 @@ export default function ImportPage() {
               </button>
               <button onClick={() => setPreview(null)} className="px-4 py-3 bg-[var(--nx-bg-surface-deep)] text-white rounded-lg">Cancel</button>
             </div>
+            {loading && progress > 0 && <Progress value={progress} />}
           </div>
         )}
 

@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Toast, ToastType } from "@/components/ui/Toast";
+import { Progress } from "@/components/ui/Progress";
 import { Plus, Search, Filter, Trash2, CheckSquare, Square } from "lucide-react";
 
 type ErrorCode = {
@@ -26,6 +27,10 @@ export default function ErrorListPage() {
   // Modal & Toast state
   const [deleteTarget, setDeleteTarget] = useState<string | string[] | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  
+  // Progress state
+  const [deletingProgress, setDeletingProgress] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchErrors = async () => {
     setLoading(true);
@@ -69,17 +74,37 @@ export default function ErrorListPage() {
     if (!deleteTarget) return;
     const targets = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
     setDeleteTarget(null);
+    setIsDeleting(true);
+    setDeletingProgress(0);
+
+    let successCount = 0;
+    let failCount = 0;
 
     try {
-      // For single delete, use existing API. For bulk, loop through.
-      for (const id of targets) {
-        await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
+      for (let i = 0; i < targets.length; i++) {
+        const id = targets[i];
+        try {
+          await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
+          successCount++;
+        } catch (err) {
+          failCount++;
+        }
+        // Update progress
+        setDeletingProgress(Math.round(((i + 1) / targets.length) * 100));
+      }
+
+      if (failCount === 0) {
+        setToast({ 
+          message: targets.length > 1 ? `${successCount} errors deleted successfully` : "Error deleted successfully", 
+          type: "success" 
+        });
+      } else {
+        setToast({ 
+          message: `${successCount} deleted, ${failCount} failed`, 
+          type: "error" 
+        });
       }
       
-      setToast({ 
-        message: targets.length > 1 ? `${targets.length} errors deleted successfully` : "Error deleted successfully", 
-        type: "success" 
-      });
       setSelectedIds([]);
       fetchErrors();
     } catch (err) {
@@ -87,6 +112,9 @@ export default function ErrorListPage() {
         message: err instanceof Error ? err.message : "Failed to delete", 
         type: "error" 
       });
+    } finally {
+      setIsDeleting(false);
+      setTimeout(() => setDeletingProgress(0), 1000);
     }
   };
 
@@ -118,9 +146,10 @@ export default function ErrorListPage() {
             {selectedIds.length > 0 ? (
               <button 
                 onClick={handleDeleteBulk} 
-                className="px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 font-bold rounded-lg hover:bg-red-500/30 transition flex items-center gap-2 text-sm"
+                disabled={isDeleting}
+                className="px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 font-bold rounded-lg hover:bg-red-500/30 transition flex items-center gap-2 text-sm disabled:opacity-50"
               >
-                <Trash2 size={18} /> Delete Selected ({selectedIds.length})
+                <Trash2 size={18} /> {isDeleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}
               </button>
             ) : (
               <Link href="/admin/content/errors" className="px-4 py-2.5 bg-[var(--nx-accent)] text-black font-bold rounded-lg hover:opacity-90 transition flex items-center gap-2 text-sm">
@@ -129,6 +158,14 @@ export default function ErrorListPage() {
             )}
           </div>
         </div>
+
+        {/* Delete Progress Bar */}
+        {isDeleting && deletingProgress > 0 && (
+          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6">
+            <p className="text-sm text-white mb-2 font-medium">Deleting errors...</p>
+            <Progress value={deletingProgress} />
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4">
