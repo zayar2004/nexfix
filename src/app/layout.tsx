@@ -4,6 +4,7 @@ import "./globals.css";
 import { NetworkProvider } from "@/lib/network-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { SessionProvider } from "next-auth/react";
+import { UserBackButton } from "@/components/layout/UserBackButton";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -45,6 +46,7 @@ export default function RootLayout({
         <SessionProvider refetchOnWindowFocus={false}>
           <NetworkProvider>
             <SettingsProvider>
+              <UserBackButton />
               {children}
             </SettingsProvider>
           </NetworkProvider>

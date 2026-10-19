@@ -272,7 +272,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           <p className="text-sm font-medium text-white/80 mb-1">{data.machineName}</p>
           <h2 className="text-4xl font-black text-[var(--nx-accent-secondary)] font-mono mb-1 drop-shadow-lg">{data.code}</h2>
           {/* Title is shown here ONLY ONCE */}
-          <p className="text-xl font-bold text-white drop-shadow-lg">{data.title}</p>
         </div>
       </div>
 
@@ -308,7 +307,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                 <Info size={16} className="text-[var(--nx-accent)]" /> Error Name
               </h3>
-              <p className="text-lg text-[var(--nx-text-primary)] font-semibold">{data.title}</p>
             </div>
 
             {content?.notes && (

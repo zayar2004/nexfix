@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
 import { List, Upload, Image as ImageIcon, Video, Plus, X, Save, CheckCircle, AlertCircle, Edit } from "lucide-react";
@@ -12,6 +12,7 @@ type Machine = { id: string; name: string };
 
 function ErrorFormContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const editId = searchParams.get("id");
 
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -86,6 +87,7 @@ function ErrorFormContent() {
       if (!data.ok) throw new Error(data.error);
 
       setMessage({ text: editId ? "Error updated successfully!" : "Error added successfully!", type: "success" });
+      if (editId) { router.push("/admin/content/errors/list"); }
       if (!editId) resetForm();
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : "Error", type: "error" });
@@ -102,7 +104,11 @@ function ErrorFormContent() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6 flex flex-wrap gap-3">
+      <div className="mb-6 flex flex-wrap gap-3 items-center">
+        <button onClick={() => router.back()} className="px-4 py-2.5 bg-transparent text-white hover:text-[var(--nx-accent)] transition flex items-center gap-1 text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
         <Link href="/admin/content/errors/list" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2 text-sm">
           <List size={18} /> View All Errors
         </Link>
