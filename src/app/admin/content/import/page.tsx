@@ -7,6 +7,8 @@ type PreviewRow = {
   machineName: string;
   errorCode: string;
   errorFix: string;
+  imageUrl?: string;
+  youtubeUrl?: string;
   status: "new" | "update" | "duplicate" | "invalid";
   error?: string;
 };
@@ -72,8 +74,11 @@ export default function ImportPage() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-white mb-2">Upload Excel or CSV</h2>
+          <p className="text-sm text-[var(--nx-text-muted-updated)] mb-2">
+            <strong>Required columns:</strong> Machine Name, Error Code, Error Fix
+          </p>
           <p className="text-sm text-[var(--nx-text-muted-updated)] mb-4">
-            Required columns: Machine Name, Error Code, Error Fix
+            <strong>Optional columns:</strong> Image URL, YouTube URL
           </p>
 
           <input
@@ -110,6 +115,7 @@ export default function ImportPage() {
                     <th className="p-2">Machine</th>
                     <th className="p-2">Error Code</th>
                     <th className="p-2">Error Fix</th>
+                    <th className="p-2">Media</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -127,6 +133,11 @@ export default function ImportPage() {
                       <td className="p-2 text-white">{row.machineName}</td>
                       <td className="p-2 text-[var(--nx-accent)] font-mono">{row.errorCode}</td>
                       <td className="p-2 text-[var(--nx-text-secondary-updated)] max-w-xs truncate">{row.errorFix}</td>
+                      <td className="p-2 text-xs text-[var(--nx-text-muted-updated)]">
+                        {row.imageUrl && <div className="text-blue-400">🖼️ Image</div>}
+                        {row.youtubeUrl && <div className="text-red-400">📺 Video</div>}
+                        {!row.imageUrl && !row.youtubeUrl && "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

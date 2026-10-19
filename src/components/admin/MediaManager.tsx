@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type MediaItem = {
   id: string;
@@ -14,14 +14,13 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const loadImages = async () => {
+  // useCallback ကို သုံးပြီး Function ကို မှတ်ထားပေးပါတယ်
+  const loadImages = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/media?ownerType=${ownerType}&ownerId=${ownerId}`);
       const data = await res.json();
       if (data.ok) {
-        // Filter by owner if API returns all
         const filtered = data.data.filter((m: any) => m.ownerType === ownerType && m.ownerId === ownerId);
-        // Construct URLs from storageKey (assuming S3 public URL format)
         const withUrls = filtered.map((m: any) => ({
           ...m,
           url: m.url || `${process.env.NEXT_PUBLIC_S3_URL}/${m.storageKey}`
@@ -31,11 +30,11 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [ownerType, ownerId]);
 
   useEffect(() => {
     if (ownerId) loadImages();
-  }, [ownerId]);
+  }, [ownerId, loadImages]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

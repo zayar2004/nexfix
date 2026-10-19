@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { machines, errorCodes, errorContent } from "@/db/schema";
+import { machines, errorCodes, errorContent, media, mediaVideos } from "@/db/schema";
 import { auth } from "@/auth";
 import { eq, and } from "drizzle-orm";
 import * as XLSX from "xlsx";
+import { randomUUID } from "crypto";
 
 type ImportRow = {
   machineName: string;
   errorCode: string;
   errorFix: string;
+  imageUrl: string;
+  youtubeUrl: string;
   status: "new" | "update" | "duplicate" | "invalid";
   error?: string;
 };
@@ -42,12 +45,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Too many rows (max 1000)" }, { status: 400 });
     }
 
-    // First row determines headers
     const firstRow = rows[0];
     const keys = Object.keys(firstRow);
     const machineKey = keys.find(k => k.toLowerCase().includes("machine"));
     const codeKey = keys.find(k => k.toLowerCase().includes("code"));
     const fixKey = keys.find(k => k.toLowerCase().includes("fix") || k.toLowerCase().includes("solution"));
+    const imageKey = keys.find(k => k.toLowerCase().includes("image") || k.toLowerCase().includes("photo"));
+    const videoKey = keys.find(k => k.toLowerCase().includes("youtube") || k.toLowerCase().includes("video"));
 
     if (!machineKey || !codeKey || !fixKey) {
       return NextResponse.json({
@@ -56,34 +60,32 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Validate rows
     const results: ImportRow[] = [];
     for (const row of rows) {
       const machineName = String(row[machineKey] || "").trim();
       const errorCode = String(row[codeKey] || "").trim();
       const errorFix = String(row[fixKey] || "").trim();
+      const imageUrl = imageKey ? String(row[imageKey] || "").trim() : "";
+      const youtubeUrl = videoKey ? String(row[videoKey] || "").trim() : "";
 
       if (!machineName || !errorCode || !errorFix) {
-        results.push({ machineName, errorCode, errorFix, status: "invalid", error: "Missing required fields" });
+        results.push({ machineName, errorCode, errorFix, imageUrl, youtubeUrl, status: "invalid", error: "Missing required fields" });
         continue;
       }
 
-      // Check duplicates within file
       const isDuplicateInFile = results.some(r => r.machineName === machineName && r.errorCode === errorCode && r.status !== "invalid");
       if (isDuplicateInFile) {
-        results.push({ machineName, errorCode, errorFix, status: "duplicate", error: "Duplicate in file" });
+        results.push({ machineName, errorCode, errorFix, imageUrl, youtubeUrl, status: "duplicate", error: "Duplicate in file" });
         continue;
       }
 
-      results.push({ machineName, errorCode, errorFix, status: "new" });
+      results.push({ machineName, errorCode, errorFix, imageUrl, youtubeUrl, status: "new" });
     }
 
-    // If dry run, just return preview
     if (dryRun) {
       return NextResponse.json({ ok: true, preview: results, total: results.length });
     }
 
-    // Actual import (transaction)
     let inserted = 0;
     let skipped = 0;
     let failed = 0;
@@ -92,7 +94,7 @@ export async function POST(req: Request) {
       for (const row of results) {
         if (row.status !== "new") { skipped++; continue; }
         try {
-          // Find or create machine
+          // 1. Find or create machine
           let [machine] = await tx.select().from(machines).where(eq(machines.name, row.machineName)).limit(1);
           if (!machine) {
             const machineCode = row.machineName.toUpperCase().replace(/[^A-Z0-9]/g, "-").substring(0, 50);
@@ -103,14 +105,14 @@ export async function POST(req: Request) {
             }).returning();
           }
 
-          // Check existing error code
+          // 2. Check existing error
           const [existing] = await tx.select().from(errorCodes)
             .where(and(eq(errorCodes.machineId, machine.id), eq(errorCodes.code, row.errorCode)))
             .limit(1);
 
           if (existing) { skipped++; continue; }
 
-          // Insert error code
+          // 3. Insert error code
           const [newError] = await tx.insert(errorCodes).values({
             machineId: machine.id,
             code: row.errorCode,
@@ -118,15 +120,39 @@ export async function POST(req: Request) {
             status: "published",
           }).returning();
 
-          // Insert error content
+          // 4. Insert error content
           await tx.insert(errorContent).values({
             errorCodeId: newError.id,
             locale: "en",
             solution: row.errorFix,
           });
 
+          // 5. Insert Image if URL provided
+          if (row.imageUrl) {
+            await tx.insert(media).values({
+              ownerType: "error",
+              ownerId: newError.id,
+              mime: "image/jpeg", // default assumption, or detect from URL
+              size: "0", // we don't know actual file size
+              storageKey: row.imageUrl, // We store the full URL as storageKey, but this might need handling
+              status: "approved",
+            });
+          }
+
+          // 6. Insert Video if URL provided
+          if (row.youtubeUrl) {
+            await tx.insert(mediaVideos).values({
+              ownerType: "error",
+              ownerId: newError.id,
+              youtubeUrl: row.youtubeUrl,
+              title: "Imported Video",
+              displayOrder: "0",
+            });
+          }
+
           inserted++;
-        } catch {
+        } catch (e) {
+          console.error("Row insert error:", e);
           failed++;
         }
       }
