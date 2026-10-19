@@ -3,35 +3,33 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useAdminLang } from "@/lib/admin-lang-context";
-import { AdminTranslationKey } from "@/lib/admin-translations";
 
-type NavItem = { labelKey: AdminTranslationKey; href: string; icon: string; disabled?: boolean };
+type NavItem = { label: string; href: string; icon: string; disabled?: boolean };
 
-const navGroups: { titleKey: AdminTranslationKey | null; items: NavItem[] }[] = [
+const navGroups: { title: string | null; items: NavItem[] }[] = [
   {
-    titleKey: null,
+    title: null,
     items: [
-      { labelKey: "dashboard", href: "/admin", icon: "grid" },
+      { label: "Dashboard", href: "/admin", icon: "grid" },
     ],
   },
   {
-    titleKey: "websiteContent",
+    title: "Website Content",
     items: [
-      { labelKey: "homePage", href: "/admin/content/home", icon: "home" },
-      { labelKey: "addError", href: "/admin/content/errors", icon: "alert-circle" },
-      { labelKey: "viewErrors", href: "/admin/content/errors/list", icon: "list" },
-      { labelKey: "knowledgeLibrary", href: "/admin/content/library", icon: "book" },
-      { labelKey: "mediaLibrary", href: "/admin/media", icon: "image" },
+      { label: "Home Page", href: "/admin/content/home", icon: "home" },
+      { label: "Add Error", href: "/admin/content/errors", icon: "alert-circle" },
+      { label: "View Errors", href: "/admin/content/errors/list", icon: "list" },
+      { label: "Knowledge Library", href: "/admin/content/library", icon: "book" },
+      { label: "Media Library", href: "/admin/media", icon: "image" },
     ],
   },
   {
-    titleKey: null,
+    title: null,
     items: [
-      { labelKey: "contentVersion", href: "/admin/versions", icon: "clock", disabled: true },
-      { labelKey: "users", href: "/admin/users", icon: "users", disabled: true },
-      { labelKey: "auditLog", href: "/admin/audit", icon: "list", disabled: true },
-      { labelKey: "settings", href: "/admin/settings", icon: "settings", disabled: true },
+      { label: "Content Version", href: "/admin/versions", icon: "clock", disabled: true },
+      { label: "Users", href: "/admin/users", icon: "users", disabled: true },
+      { label: "Audit Log", href: "/admin/audit", icon: "list", disabled: true },
+      { label: "Settings", href: "/admin/settings", icon: "settings", disabled: true },
     ],
   },
 ];
@@ -53,7 +51,6 @@ const icons: Record<string, React.ReactNode> = {
 export function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const { t } = useAdminLang();
 
   return (
     <>
@@ -71,7 +68,7 @@ export function AdminSidebar() {
               <span className="text-[var(--nx-accent-secondary)]">FIX</span>
             </div>
             <span className="text-[9px] uppercase tracking-widest text-[var(--nx-text-muted-updated)] font-semibold">
-              {t("adminPortal")}
+              Admin Portal
             </span>
           </Link>
         </div>
@@ -79,9 +76,9 @@ export function AdminSidebar() {
         <nav className="p-3 flex flex-col gap-4">
           {navGroups.map((group, gi) => (
             <div key={gi}>
-              {group.titleKey && (
+              {group.title && (
                 <p className="px-3 mb-2 text-[10px] uppercase tracking-widest text-[var(--nx-text-muted-updated)] font-semibold">
-                  {t(group.titleKey)}
+                  {group.title}
                 </p>
               )}
               <div className="flex flex-col gap-0.5">
@@ -91,7 +88,7 @@ export function AdminSidebar() {
                     return (
                       <div key={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[var(--nx-text-muted-updated)] opacity-40 cursor-not-allowed">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[item.icon]}</svg>
-                        <span className="text-sm">{t(item.labelKey)}</span>
+                        <span className="text-sm">{item.label}</span>
                       </div>
                     );
                   }
@@ -105,7 +102,7 @@ export function AdminSidebar() {
                       }`}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[item.icon]}</svg>
-                      <span className="text-sm font-medium">{t(item.labelKey)}</span>
+                      <span className="text-sm font-medium">{item.label}</span>
                     </Link>
                   );
                 })}
@@ -117,7 +114,7 @@ export function AdminSidebar() {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[var(--nx-border-updated)] bg-[var(--nx-bg-surface-deep)]">
           <Link href="/" className="flex items-center gap-2 text-sm text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-            {t("backToUserWeb")}
+            Back to User Web
           </Link>
         </div>
       </aside>
