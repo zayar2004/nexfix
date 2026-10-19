@@ -1,0 +1,220 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { VideoManager } from "@/components/admin/VideoManager";
+import { MediaManager } from "@/components/admin/MediaManager";
+
+type Machine = { id: string; name: string };
+type ErrorCode = {
+  id: string;
+  code: string;
+  title: string;
+  machineId: string;
+  machineName?: string;
+  videoUrl?: string | null;
+  cause?: string;
+  troubleshooting?: string;
+  solution?: string;
+  safety?: string;
+  notes?: string;
+};
+
+export default function AdminErrorsPage() {
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [errors, setErrors] = useState<ErrorCode[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    machineId: "", code: "", title: "", videoUrl: "",
+    cause: "", troubleshooting: "", solution: "", safety: "", notes: ""
+  });
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [mRes, eRes] = await Promise.all([
+      fetch("/api/admin/machines").then(r => r.json()),
+      fetch("/api/admin/errors").then(r => r.json())
+    ]);
+    if (mRes.ok) setMachines(mRes.data);
+    if (eRes.ok) setErrors(eRes.data);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const resetForm = () => {
+    setForm({ machineId: "", code: "", title: "", videoUrl: "", cause: "", troubleshooting: "", solution: "", safety: "", notes: "" });
+    setIsEditing(false);
+    setEditId(null);
+    setMessage("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage("");
+    const method = isEditing ? "PATCH" : "POST";
+    const body = isEditing ? { id: editId, ...form } : form;
+
+    try {
+      const res = await fetch("/api/admin/errors", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+
+      setMessage(isEditing ? "✅ Error updated!" : "✅ Error added!");
+      resetForm();
+      fetchData();
+    } catch (err) {
+      setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
+    }
+  };
+
+  const handleEdit = (err: ErrorCode) => {
+    setIsEditing(true);
+    setEditId(err.id);
+    setForm({
+      machineId: err.machineId,
+      code: err.code,
+      title: err.title,
+      videoUrl: err.videoUrl || "",
+      cause: err.cause || "",
+      troubleshooting: err.troubleshooting || "",
+      solution: err.solution || "",
+      safety: err.safety || "",
+      notes: err.notes || "",
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this error?")) return;
+    try {
+      const res = await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      setMessage("✅ Error deleted!");
+      fetchData();
+    } catch (err) {
+      setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
+    }
+  };
+
+  const filteredErrors = errors.filter(e => 
+    e.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (e.machineName && e.machineName.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  return (
+    <AdminLayout title="Error Code Management">
+      <div className="max-w-5xl mx-auto">
+        {/* Form Section */}
+        <form onSubmit={handleSubmit} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-5 mb-8 shadow-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">{isEditing ? "✏️ Edit Error Code" : "➕ Add New Error Code"}</h2>
+            {isEditing && (
+              <button type="button" onClick={resetForm} className="text-sm px-3 py-1 bg-[var(--nx-bg-surface-deep)] text-white rounded-lg hover:bg-[var(--nx-border-updated)] transition">Cancel Edit</button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Machine <span className="text-red-400">*</span></label>
+              <select value={form.machineId} onChange={(e) => setForm({ ...form, machineId: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required>
+                <option value="">Select a Machine...</option>
+                {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Error Code <span className="text-red-400">*</span></label>
+              <input type="text" placeholder="e.g., E-001" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Error Title <span className="text-red-400">*</span></label>
+            <input type="text" placeholder="e.g., Motor Overheat" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required />
+          </div>
+
+          <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
+            <h3 className="text-sm font-bold text-white mb-3">Technical Details</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <textarea placeholder="Cause (What causes this error?)" value={form.cause} onChange={(e) => setForm({ ...form, cause: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Troubleshooting (How to check/find the issue)" value={form.troubleshooting} onChange={(e) => setForm({ ...form, troubleshooting: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Solution (How to fix it)" value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Safety Warning (Optional)" value={form.safety} onChange={(e) => setForm({ ...form, safety: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Technician Notes (Optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+            </div>
+          </div>
+
+          {isEditing && editId && (
+            <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4">
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-white mb-2">📸 Photos</h3>
+                <MediaManager ownerType="error" ownerId={editId} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white mb-2">📺 Videos</h3>
+                <VideoManager ownerType="error" ownerId={editId} />
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6">
+            <button type="submit" className="w-full py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg hover:opacity-90 transition text-lg">
+              {isEditing ? "Update Error Code" : "Save New Error Code"}
+            </button>
+          </div>
+          {message && <p className="mt-3 text-center text-sm font-semibold p-2 rounded bg-[var(--nx-bg-surface-deep)]">{message}</p>}
+        </form>
+
+        {/* List Section */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
+          <h2 className="text-lg font-bold text-white">Existing Error Codes ({errors.length})</h2>
+          <input 
+            type="text" 
+            placeholder="🔍 Search by code, title, or machine..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full md:w-64 bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-accent)] outline-none"
+          />
+        </div>
+
+        {loading ? <p className="text-white text-center py-8">Loading...</p> : (
+          <div className="flex flex-col gap-3">
+            {filteredErrors.length === 0 ? (
+              <p className="text-center text-[var(--nx-text-muted-updated)] py-8">No errors found.</p>
+            ) : (
+              filteredErrors.map(e => (
+                <div key={e.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-accent)]/50 transition gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2 py-0.5 bg-[var(--nx-accent)]/10 text-[var(--nx-accent)] text-xs font-mono font-bold rounded">{e.code}</span>
+                      <p className="font-semibold text-white text-base">{e.title}</p>
+                    </div>
+                    <p className="text-xs text-[var(--nx-text-muted-updated)] flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--nx-text-muted-updated)]"></span>
+                      {e.machineName}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEdit(e)} className="px-4 py-2 text-xs font-medium bg-[var(--nx-bg-surface-deep)] text-white rounded-lg hover:bg-[var(--nx-border-updated)] transition">Edit</button>
+                    <button onClick={() => handleDelete(e.id)} className="px-4 py-2 text-xs font-medium bg-[var(--nx-error)]/10 text-[var(--nx-error)] border border-[var(--nx-error)]/30 rounded-lg hover:bg-[var(--nx-error)]/20 transition">Delete</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+}

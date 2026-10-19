@@ -17,9 +17,8 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
     title: "Website Content",
     items: [
       { label: "Home Page", href: "/admin/content/home", icon: "home" },
-      { label: "Machines", href: "/admin/content/machines", icon: "cpu" },
-      { label: "Error Codes", href: "/admin/content/errors", icon: "alert-circle" },
-      { label: "Bulk Import", href: "/admin/content/import", icon: "upload" },
+      { label: "Add Error", href: "/admin/content/errors", icon: "alert-circle" },
+      { label: "View Errors", href: "/admin/content/errors/list", icon: "list" },
       { label: "Knowledge Library", href: "/admin/content/library", icon: "book" },
       { label: "Media Library", href: "/admin/media", icon: "image" },
     ],

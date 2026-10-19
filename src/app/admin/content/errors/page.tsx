@@ -2,169 +2,160 @@
 
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { VideoManager } from "@/components/admin/VideoManager";
-import { MediaManager } from "@/components/admin/MediaManager";
+import Link from "next/link";
 
 type Machine = { id: string; name: string };
-type ErrorCode = {
-  id: string;
-  code: string;
-  title: string;
-  machineId: string;
-  machineName?: string;
-  videoUrl?: string | null;
-  cause?: string;
-  troubleshooting?: string;
-  solution?: string;
-  safety?: string;
-  notes?: string;
-};
 
 export default function AdminErrorsPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [errors, setErrors] = useState<ErrorCode[]>([]);
-  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    machineId: "", code: "", title: "", videoUrl: "",
-    cause: "", troubleshooting: "", solution: "", safety: "", notes: ""
+    machineName: "", code: "", title: "", videoUrl: "",
+    cause: "", troubleshooting: "", solution: "", safety: "", notes: "",
   });
+  const [imageUrls, setImageUrls] = useState<string[]>([""]);
+  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([""]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    const [mRes, eRes] = await Promise.all([
-      fetch("/api/admin/machines").then(r => r.json()),
-      fetch("/api/admin/errors").then(r => r.json())
-    ]);
-    if (mRes.ok) setMachines(mRes.data);
-    if (eRes.ok) setErrors(eRes.data);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetch("/api/admin/machines").then(r => r.json()).then(data => {
+      if (data.ok) setMachines(data.data);
+    }).catch(console.error);
+  }, []);
 
   const resetForm = () => {
-    setForm({ machineId: "", code: "", title: "", videoUrl: "", cause: "", troubleshooting: "", solution: "", safety: "", notes: "" });
-    setIsEditing(false);
-    setEditId(null);
+    setForm({ machineName: "", code: "", title: "", videoUrl: "", cause: "", troubleshooting: "", solution: "", safety: "", notes: "" });
+    setImageUrls([""]);
+    setYoutubeUrls([""]);
+    setMessage("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setMessage("");
-    const method = isEditing ? "PATCH" : "POST";
-    const body = isEditing ? { id: editId, ...form } : form;
 
     try {
+      const body = {
+        ...form,
+        imageUrls: imageUrls.filter(url => url.trim() !== ""),
+        youtubeUrls: youtubeUrls.filter(url => url.trim() !== ""),
+      };
+
       const res = await fetch("/api/admin/errors", {
-        method,
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
 
-      setMessage(isEditing ? "✅ Error updated!" : "✅ Error added!");
+      setMessage("✅ Error and Media added successfully!");
       resetForm();
-      fetchData();
     } catch (err) {
       setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
-    }
-  };
-
-  const handleEdit = (err: ErrorCode) => {
-    setIsEditing(true);
-    setEditId(err.id);
-    setForm({
-      machineId: err.machineId,
-      code: err.code,
-      title: err.title,
-      videoUrl: err.videoUrl || "",
-      cause: err.cause || "",
-      troubleshooting: err.troubleshooting || "",
-      solution: err.solution || "",
-      safety: err.safety || "",
-      notes: err.notes || "",
-    });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this error?")) return;
-    try {
-      const res = await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error);
-      setMessage("✅ Error deleted!");
-      fetchData();
-    } catch (err) {
-      setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <AdminLayout title="Error Code Management">
+    <AdminLayout title="Add New Error">
       <div className="max-w-4xl mx-auto">
-        <form onSubmit={handleSubmit} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-white">{isEditing ? "Edit Error Code" : "Add New Error Code"}</h2>
+        
+        {/* Header Buttons */}
+        <div className="mb-6 flex flex-wrap gap-3 justify-between">
+          <div className="flex gap-3">
+            <Link href="/admin/content/errors/list" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2">
+              📋 View All Errors
+            </Link>
+            <Link href="/admin/content/import" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2">
+              📥 Excel Bulk Import
+            </Link>
+          </div>
+        </div>
 
-          <select value={form.machineId} onChange={(e) => setForm({ ...form, machineId: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required>
-            <option value="">Select Machine...</option>
-            {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+        <form onSubmit={handleSubmit} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-5 shadow-lg">
+          <h2 className="text-xl font-bold text-white mb-6">➕ Add New Error Code</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input type="text" placeholder="Error Code (e.g., E-001)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
-            <input type="text" placeholder="Error Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Machine Name <span className="text-red-400">*</span></label>
+              <input type="text" list="machine-suggestions" placeholder="Type or select machine..." value={form.machineName} onChange={(e) => setForm({ ...form, machineName: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required />
+              <datalist id="machine-suggestions">
+                {machines.map(m => <option key={m.id} value={m.name} />)}
+              </datalist>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Error Code <span className="text-red-400">*</span></label>
+              <input type="text" placeholder="e.g., E-001" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required />
+            </div>
           </div>
 
-          <textarea placeholder="Cause (Optional)" value={form.cause} onChange={(e) => setForm({ ...form, cause: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
-          <textarea placeholder="Troubleshooting (Optional)" value={form.troubleshooting} onChange={(e) => setForm({ ...form, troubleshooting: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
-          <textarea placeholder="Solution (Optional)" value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
-          <textarea placeholder="Safety Warning (Optional)" value={form.safety} onChange={(e) => setForm({ ...form, safety: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
-          <textarea placeholder="Technician Notes (Optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" rows={2} />
-
-          {isEditing && editId && (
-            <>
-              <div className="border-t border-[var(--nx-border-updated)] pt-3">
-                <p className="text-sm text-[var(--nx-text-muted)] mb-2">Photos</p>
-                <MediaManager ownerType="error" ownerId={editId} />
-              </div>
-              <div className="border-t border-[var(--nx-border-updated)] pt-3">
-                <p className="text-sm text-[var(--nx-text-muted)] mb-2">Videos</p>
-                <VideoManager ownerType="error" ownerId={editId} />
-              </div>
-            </>
-          )}
-
-          <div className="flex gap-2">
-            <button type="submit" className="flex-1 py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg">{isEditing ? "Update Error" : "Add Error Code"}</button>
-            {isEditing && (
-              <button type="button" onClick={resetForm} className="px-4 py-3 bg-[var(--nx-bg-surface-deep)] text-white rounded-lg">Cancel</button>
-            )}
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Error Title <span className="text-red-400">*</span></label>
+            <input type="text" placeholder="e.g., Motor Overheat" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required />
           </div>
-          {message && <p className="text-center text-sm">{message}</p>}
+
+          <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
+            <h3 className="text-sm font-bold text-white mb-3">Technical Details</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <textarea placeholder="Cause" value={form.cause} onChange={(e) => setForm({ ...form, cause: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Troubleshooting" value={form.troubleshooting} onChange={(e) => setForm({ ...form, troubleshooting: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Solution" value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Safety Warning" value={form.safety} onChange={(e) => setForm({ ...form, safety: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+              <textarea placeholder="Technician Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" rows={2} />
+            </div>
+          </div>
+
+          {/* Multiple Images Section */}
+          <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
+            <h3 className="text-sm font-bold text-white mb-3">📸 Images (Multiple)</h3>
+            <div className="flex flex-col gap-2">
+              {imageUrls.map((url, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input type="url" placeholder="https://example.com/image.jpg" value={url} onChange={(e) => {
+                    const newUrls = [...imageUrls];
+                    newUrls[idx] = e.target.value;
+                    setImageUrls(newUrls);
+                  }} className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-accent)] outline-none" />
+                  {imageUrls.length > 1 && (
+                    <button type="button" onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== idx))} className="px-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30">✕</button>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={() => setImageUrls([...imageUrls, ""])} className="text-sm text-[var(--nx-accent)] text-left hover:underline mt-1">+ Add another image</button>
+            </div>
+          </div>
+
+          {/* Multiple Videos Section */}
+          <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
+            <h3 className="text-sm font-bold text-white mb-3">📺 YouTube Videos (Multiple)</h3>
+            <div className="flex flex-col gap-2">
+              {youtubeUrls.map((url, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input type="url" placeholder="https://youtube.com/watch?v=..." value={url} onChange={(e) => {
+                    const newUrls = [...youtubeUrls];
+                    newUrls[idx] = e.target.value;
+                    setYoutubeUrls(newUrls);
+                  }} className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-accent)] outline-none" />
+                  {youtubeUrls.length > 1 && (
+                    <button type="button" onClick={() => setYoutubeUrls(youtubeUrls.filter((_, i) => i !== idx))} className="px-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30">✕</button>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={() => setYoutubeUrls([...youtubeUrls, ""])} className="text-sm text-[var(--nx-accent)] text-left hover:underline mt-1">+ Add another video</button>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button type="submit" disabled={loading} className="w-full py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg hover:opacity-90 transition text-lg disabled:opacity-50">
+              {loading ? "Saving..." : "Save New Error Code"}
+            </button>
+          </div>
+          {message && <p className="mt-3 text-center text-sm font-semibold p-2 rounded bg-[var(--nx-bg-surface-deep)]">{message}</p>}
         </form>
-
-        <h2 className="text-lg font-semibold text-white mb-3">Existing Error Codes ({errors.length})</h2>
-        {loading ? <p className="text-white">Loading...</p> : (
-          <div className="flex flex-col gap-2">
-            {errors.map(e => (
-              <div key={e.id} className="flex items-center justify-between p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
-                <div>
-                  <p className="font-semibold text-white">{e.code} - {e.title}</p>
-                  <p className="text-xs text-[var(--nx-text-muted)]">{e.machineName}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(e)} className="px-3 py-1.5 text-xs font-medium bg-[var(--nx-bg-surface-deep)] text-white rounded-lg hover:bg-[var(--nx-bg-elevated-deep)]">Edit</button>
-                  <button onClick={() => handleDelete(e.id)} className="px-3 py-1.5 text-xs font-medium bg-[var(--nx-error)]/10 text-[var(--nx-error)] border border-[var(--nx-error)]/30 rounded-lg hover:bg-[var(--nx-error)]/20">Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </AdminLayout>
   );
