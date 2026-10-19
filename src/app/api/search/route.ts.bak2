@@ -1,0 +1,111 @@
+import { NextResponse } from "next/server";
+import { and, eq, ilike, inArray, SQL } from "drizzle-orm";
+import { db } from "@/db";
+import { machines, errorCodes, errorContent, media, mediaVideos } from "@/db/schema";
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const machineName = searchParams.get("machine")?.trim() || "";
+    const errorCode = searchParams.get("code")?.trim() || "";
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
+    const offset = parseInt(searchParams.get("offset") || "0");
+
+    const machineConditions: SQL[] = [eq(machines.status, "published")];
+    if (machineName) machineConditions.push(ilike(machines.name, `%${machineName}%`));
+
+    const machineResults = await db
+      .select({ id: machines.id, name: machines.name, code: machines.code })
+      .from(machines)
+      .where(and(...machineConditions))
+      .limit(limit);
+
+    const machineIds = machineResults.map((m) => m.id);
+    if (machineIds.length === 0 && (machineName || errorCode)) {
+      return NextResponse.json({ ok: true, results: [], total: 0, exactMatch: false });
+    }
+
+    let exactMatch = false;
+    const errorConditions: SQL[] = [eq(errorCodes.status, "published")];
+    if (machineIds.length > 0) errorConditions.push(inArray(errorCodes.machineId, machineIds));
+
+    if (errorCode) {
+      const exact = await db
+        .select({ id: errorCodes.id })
+        .from(errorCodes)
+        .where(and(...errorConditions, eq(errorCodes.code, errorCode)))
+        .limit(1);
+      if (exact.length > 0) {
+        exactMatch = true;
+        errorConditions.push(eq(errorCodes.code, errorCode));
+      } else {
+        errorConditions.push(ilike(errorCodes.code, `%${errorCode}%`));
+      }
+    }
+
+    const errorResults = await db
+      .select({
+        id: errorCodes.id,
+        code: errorCodes.code,
+        title: errorCodes.title,
+        machineId: errorCodes.machineId,
+        machineName: machines.name,
+        machineCode: machines.code,
+      })
+      .from(errorCodes)
+      .innerJoin(machines, eq(machines.id, errorCodes.machineId))
+      .where(and(...errorConditions))
+      .limit(limit)
+      .offset(offset);
+
+    // Fetch associated media and videos for the found errors
+    const errorIds = errorResults.map((e) => e.id);
+    let allMedia: any[] = [];
+    let allVideos: any[] = [];
+
+    if (errorIds.length > 0) {
+      allMedia = await db.select().from(media).where(inArray(media.ownerId, errorIds));
+      allVideos = await db.select().from(mediaVideos).where(inArray(mediaVideos.ownerId, errorIds));
+    }
+
+    const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
+
+    // Attach media and videos to each error result
+    const resultsWithMedia = errorResults.map((err) => {
+      const errMedia = allMedia
+        .filter((m) => m.ownerId === err.id)
+        .map((m) => ({
+          id: m.id,
+          url: m.storageKey.startsWith("http") ? m.storageKey : `${S3_URL}/${m.storageKey}`,
+          mime: m.mime,
+        }));
+      
+      const errVideos = allVideos
+        .filter((v) => v.ownerId === err.id)
+        .map((v) => ({
+          id: v.id,
+          url: v.youtubeUrl,
+          title: v.title,
+        }));
+
+      return {
+        ...err,
+        media: errMedia,
+        videos: errVideos,
+      };
+    });
+
+    // Get total count for pagination
+    const total = resultsWithMedia.length;
+
+    return NextResponse.json({ 
+      ok: true, 
+      results: resultsWithMedia, 
+      total, 
+      exactMatch 
+    });
+  } catch (err) {
+    console.error("Search error:", err);
+    return NextResponse.json({ ok: false, error: "Search failed" }, { status: 500 });
+  }
+}

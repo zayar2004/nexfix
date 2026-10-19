@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq, ilike, inArray, SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { machines, errorCodes, errorContent } from "@/db/schema";
+import { machines, errorCodes, media, mediaVideos } from "@/db/schema";
 
 export async function GET(req: Request) {
   try {
@@ -11,31 +11,41 @@ export async function GET(req: Request) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    const machineConditions: SQL[] = [eq(machines.status, "published")];
-    if (machineName) machineConditions.push(ilike(machines.name, `%${machineName}%`));
+    // --- 1. Machine Condition ---
+    let targetMachineIds: string[] | null = null;
+    
+    if (machineName) {
+      // Find machines matching the name
+      const matchedMachines = await db
+        .select({ id: machines.id })
+        .from(machines)
+        .where(and(eq(machines.status, "published"), ilike(machines.name, `%${machineName}%`)));
 
-    const machineResults = await db
-      .select({ id: machines.id, name: machines.name, code: machines.code })
-      .from(machines)
-      .where(and(...machineConditions))
-      .limit(limit);
+      if (matchedMachines.length === 0) {
+        // If machine name provided but no machine found, return empty
+        return NextResponse.json({ ok: true, results: [], total: 0, exactMatch: false });
+      }
+      
+      targetMachineIds = matchedMachines.map(m => m.id);
+    }
 
-    const machineIds = machineResults.map((m) => m.id);
-    if (machineIds.length === 0 && (machineName || errorCode)) {
-      return NextResponse.json({ ok: true, results: [], total: 0, exactMatch: false });
+    // --- 2. Error Code Condition ---
+    const errorConditions: SQL[] = [eq(errorCodes.status, "published")];
+    
+    if (targetMachineIds) {
+      errorConditions.push(inArray(errorCodes.machineId, targetMachineIds));
     }
 
     let exactMatch = false;
-    const errorConditions: SQL[] = [eq(errorCodes.status, "published")];
-    if (machineIds.length > 0) errorConditions.push(inArray(errorCodes.machineId, machineIds));
-
     if (errorCode) {
-      const exact = await db
+      // Check for exact match first
+      const exactCheck = await db
         .select({ id: errorCodes.id })
         .from(errorCodes)
         .where(and(...errorConditions, eq(errorCodes.code, errorCode)))
         .limit(1);
-      if (exact.length > 0) {
+
+      if (exactCheck.length > 0) {
         exactMatch = true;
         errorConditions.push(eq(errorCodes.code, errorCode));
       } else {
@@ -43,6 +53,7 @@ export async function GET(req: Request) {
       }
     }
 
+    // --- 3. Fetch Errors ---
     const errorResults = await db
       .select({
         id: errorCodes.id,
@@ -58,36 +69,52 @@ export async function GET(req: Request) {
       .limit(limit)
       .offset(offset);
 
+    // --- 4. Fetch Media ---
     const errorIds = errorResults.map((e) => e.id);
-    const contents = errorIds.length > 0
-      ? await db.select().from(errorContent).where(inArray(errorContent.errorCodeId, errorIds))
-      : [];
+    let allMedia: any[] = [];
+    let allVideos: any[] = [];
 
-    const contentMap = new Map<string, (typeof contents)[0]>();
-    for (const c of contents) {
-      const existing = contentMap.get(c.errorCodeId);
-      if (!existing || c.locale === "my") contentMap.set(c.errorCodeId, c);
+    if (errorIds.length > 0) {
+      allMedia = await db.select().from(media).where(inArray(media.ownerId, errorIds));
+      allVideos = await db.select().from(mediaVideos).where(inArray(mediaVideos.ownerId, errorIds));
     }
 
-    const results = errorResults.map((e) => ({
-      ...e,
-      cause: contentMap.get(e.id)?.cause || null,
-      solution: contentMap.get(e.id)?.solution || null,
-      safety: contentMap.get(e.id)?.safety || null,
-    }));
+    const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
 
-    return NextResponse.json({ ok: true, results, total: results.length, exactMatch });
-  } catch (error: unknown) {
-    console.error("Search API Error:", error);
-    
-    // Catch connection reset errors specifically
-    if (typeof error === 'object' && error !== null && (('code' in error && error.code === 'ECONNRESET') || ('cause' in error && typeof error.cause === 'object' && error.cause !== null && 'code' in error.cause && error.cause.code === 'ECONNRESET'))) {
-      return NextResponse.json(
-        { ok: false, error: "Database connection lost. Please try again." }, 
-        { status: 503 } // Service Unavailable
-      );
-    }
-    
+    // --- 5. Combine Results ---
+    const resultsWithMedia = errorResults.map((err) => {
+      const errMedia = allMedia
+        .filter((m) => m.ownerId === err.id)
+        .map((m) => ({
+          id: m.id,
+          url: m.storageKey.startsWith("http") ? m.storageKey : `${S3_URL}/${m.storageKey}`,
+          mime: m.mime,
+        }));
+      
+      const errVideos = allVideos
+        .filter((v) => v.ownerId === err.id)
+        .map((v) => ({
+          id: v.id,
+          url: v.youtubeUrl,
+          title: v.title,
+        }));
+
+      return {
+        ...err,
+        media: errMedia,
+        videos: errVideos,
+      };
+    });
+
+    return NextResponse.json({ 
+      ok: true, 
+      results: resultsWithMedia, 
+      total: resultsWithMedia.length, 
+      exactMatch 
+    });
+
+  } catch (err) {
+    console.error("Search error:", err);
     return NextResponse.json({ ok: false, error: "Search failed" }, { status: 500 });
   }
 }
