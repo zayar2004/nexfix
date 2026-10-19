@@ -15,7 +15,6 @@ const schema = z.object({
   solution: z.string().optional(),
   safety: z.string().optional(),
   notes: z.string().optional(),
-  // Arrays for multiple media
   imageUrls: z.array(z.string().url()).optional().default([]),
   youtubeUrls: z.array(z.string().url()).optional().default([]),
 });
@@ -60,7 +59,6 @@ export async function POST(req: Request) {
   const { machineName, cause, troubleshooting, solution, safety, notes, imageUrls, youtubeUrls, ...errorData } = result.data;
 
   try {
-    // 1. Find or create machine
     let [machine] = await db.select().from(machines).where(eq(machines.name, machineName)).limit(1);
     if (!machine) {
       const machineCode = machineName.toUpperCase().replace(/[^A-Z0-9]/g, "-").substring(0, 50);
@@ -71,7 +69,6 @@ export async function POST(req: Request) {
       }).returning();
     }
 
-    // 2. Insert error code
     const [newError] = await db.insert(errorCodes).values({
       machineId: machine.id,
       code: errorData.code,
@@ -79,7 +76,6 @@ export async function POST(req: Request) {
       videoUrl: errorData.videoUrl || null,
     }).returning();
 
-    // 3. Insert error content
     await db.insert(errorContent).values({
       errorCodeId: newError.id,
       locale: "en",
@@ -90,10 +86,9 @@ export async function POST(req: Request) {
       notes: notes || null,
     });
 
-    // 4. Insert Multiple Images if provided
     if (imageUrls && imageUrls.length > 0) {
       await db.insert(media).values(
-        imageUrls.map((url, idx) => ({
+        imageUrls.map((url) => ({
           ownerType: "error",
           ownerId: newError.id,
           mime: "image/jpeg",
@@ -104,7 +99,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 5. Insert Multiple Videos if provided
     if (youtubeUrls && youtubeUrls.length > 0) {
       await db.insert(mediaVideos).values(
         youtubeUrls.map((url, idx) => ({
@@ -117,7 +111,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6. Create Notification
     await db.insert(notifications).values({
       userId: null,
       type: "error_new",
@@ -130,5 +123,43 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("POST /api/admin/errors error:", err);
     return NextResponse.json({ ok: false, error: "Failed to create error" }, { status: 500 });
+  }
+}
+
+// DELETE - Fixed to handle related data
+export async function DELETE(req: Request) {
+  const session = await auth();
+  if (!session?.user || !["senior_admin", "super_admin"].includes(session.user.role)) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
+
+  try {
+    // Use a transaction to ensure all related data is deleted
+    await db.transaction(async (tx) => {
+      // 1. Delete related images
+      await tx.delete(media).where(eq(media.ownerId, id));
+      
+      // 2. Delete related videos
+      await tx.delete(mediaVideos).where(eq(mediaVideos.ownerId, id));
+      
+      // 3. Delete related error content
+      await tx.delete(errorContent).where(eq(errorContent.errorCodeId, id));
+      
+      // 4. Finally delete the error code itself
+      await tx.delete(errorCodes).where(eq(errorCodes.id, id));
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE error:", err);
+    // Return a specific error message
+    return NextResponse.json(
+      { ok: false, error: "Failed to delete error. " + (err instanceof Error ? err.message : "") }, 
+      { status: 500 }
+    );
   }
 }
