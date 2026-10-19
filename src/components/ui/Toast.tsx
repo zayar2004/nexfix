@@ -1,64 +1,43 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { useEffect, useState } from "react";
 
-type ToastType = "success" | "error" | "info";
+export type ToastType = "success" | "error" | "info";
 
-type Toast = {
-  id: string;
+interface ToastProps {
   message: string;
   type: ToastType;
-};
-
-type ToastContextType = {
-  showToast: (message: string, type?: ToastType) => void;
-};
-
-const ToastContext = createContext<ToastContextType | null>(null);
-
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const showToast = useCallback((message: string, type: ToastType = "info") => {
-    // 🌟 crypto.randomUUID() ကို သုံးမယ် (Math.random() အစား)
-    const id = typeof crypto !== "undefined" && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  }, []);
-
-  return (
-    <ToastContext.Provider value={{ showToast }}>
-      {children}
-      <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-[90%] max-w-sm">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 animate-in slide-in-from-top fade-in ${
-              toast.type === "success"
-                ? "bg-[var(--nx-success)] text-white"
-                : toast.type === "error"
-                ? "bg-[var(--nx-error)] text-white"
-                : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"
-            }`}
-          >
-            {toast.type === "success" && "✓"}
-            {toast.type === "error" && "✕"}
-            {toast.type === "info" && "ℹ"}
-            {toast.message}
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
+  onClose: () => void;
+  duration?: number;
 }
 
-export function useToast() {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within ToastProvider");
-  return ctx;
+export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
+
+  const styles = {
+    success: "bg-[var(--nx-success)]/10 border-[var(--nx-success)] text-[var(--nx-success)]",
+    error: "bg-[var(--nx-error)]/10 border-[var(--nx-error)] text-[var(--nx-error)]",
+    info: "bg-[var(--nx-accent)]/10 border-[var(--nx-accent)] text-[var(--nx-accent)]",
+  };
+
+  const icons = {
+    success: "✅",
+    error: "❌",
+    info: "ℹ️",
+  };
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300 w-[90%] max-w-sm">
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg backdrop-blur-md ${styles[type]}`}>
+        <span className="text-lg">{icons[type]}</span>
+        <p className="flex-1 text-sm font-semibold text-white">{message}</p>
+        <button onClick={onClose} className="text-white/50 hover:text-white transition">✕</button>
+      </div>
+    </div>
+  );
 }

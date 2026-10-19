@@ -3,33 +3,35 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAdminLang } from "@/lib/admin-lang-context";
+import { AdminTranslationKey } from "@/lib/admin-translations";
 
-type NavItem = { label: string; href: string; icon: string; disabled?: boolean };
+type NavItem = { labelKey: AdminTranslationKey; href: string; icon: string; disabled?: boolean };
 
-const navGroups: { title: string | null; items: NavItem[] }[] = [
+const navGroups: { titleKey: AdminTranslationKey | null; items: NavItem[] }[] = [
   {
-    title: null,
+    titleKey: null,
     items: [
-      { label: "Dashboard", href: "/admin", icon: "grid" },
+      { labelKey: "dashboard", href: "/admin", icon: "grid" },
     ],
   },
   {
-    title: "Website Content",
+    titleKey: "websiteContent",
     items: [
-      { label: "Home Page", href: "/admin/content/home", icon: "home" },
-      { label: "Add Error", href: "/admin/content/errors", icon: "alert-circle" },
-      { label: "View Errors", href: "/admin/content/errors/list", icon: "list" },
-      { label: "Knowledge Library", href: "/admin/content/library", icon: "book" },
-      { label: "Media Library", href: "/admin/media", icon: "image" },
+      { labelKey: "homePage", href: "/admin/content/home", icon: "home" },
+      { labelKey: "addError", href: "/admin/content/errors", icon: "alert-circle" },
+      { labelKey: "viewErrors", href: "/admin/content/errors/list", icon: "list" },
+      { labelKey: "knowledgeLibrary", href: "/admin/content/library", icon: "book" },
+      { labelKey: "mediaLibrary", href: "/admin/media", icon: "image" },
     ],
   },
   {
-    title: null,
+    titleKey: null,
     items: [
-      { label: "Content Version", href: "/admin/versions", icon: "clock", disabled: true },
-      { label: "Users", href: "/admin/users", icon: "users", disabled: true },
-      { label: "Audit Log", href: "/admin/audit", icon: "list", disabled: true },
-      { label: "Settings", href: "/admin/settings", icon: "settings", disabled: true },
+      { labelKey: "contentVersion", href: "/admin/versions", icon: "clock", disabled: true },
+      { labelKey: "users", href: "/admin/users", icon: "users", disabled: true },
+      { labelKey: "auditLog", href: "/admin/audit", icon: "list", disabled: true },
+      { labelKey: "settings", href: "/admin/settings", icon: "settings", disabled: true },
     ],
   },
 ];
@@ -51,19 +53,15 @@ const icons: Record<string, React.ReactNode> = {
 export function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useAdminLang();
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white"
-      >
+      <button onClick={() => setIsOpen(!isOpen)} className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
       </button>
 
-      {isOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/60 z-40" onClick={() => setIsOpen(false)} />
-      )}
+      {isOpen && <div className="lg:hidden fixed inset-0 bg-black/60 z-40" onClick={() => setIsOpen(false)} />}
 
       <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-[var(--nx-bg-surface-deep)] border-r border-[var(--nx-border-updated)] z-50 transition-transform lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} overflow-y-auto`}>
         <div className="p-5 border-b border-[var(--nx-border-updated)]">
@@ -73,7 +71,7 @@ export function AdminSidebar() {
               <span className="text-[var(--nx-accent-secondary)]">FIX</span>
             </div>
             <span className="text-[9px] uppercase tracking-widest text-[var(--nx-text-muted-updated)] font-semibold">
-              Admin Portal
+              {t("adminPortal")}
             </span>
           </Link>
         </div>
@@ -81,9 +79,9 @@ export function AdminSidebar() {
         <nav className="p-3 flex flex-col gap-4">
           {navGroups.map((group, gi) => (
             <div key={gi}>
-              {group.title && (
+              {group.titleKey && (
                 <p className="px-3 mb-2 text-[10px] uppercase tracking-widest text-[var(--nx-text-muted-updated)] font-semibold">
-                  {group.title}
+                  {t(group.titleKey)}
                 </p>
               )}
               <div className="flex flex-col gap-0.5">
@@ -93,7 +91,7 @@ export function AdminSidebar() {
                     return (
                       <div key={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-[var(--nx-text-muted-updated)] opacity-40 cursor-not-allowed">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[item.icon]}</svg>
-                        <span className="text-sm">{item.label}</span>
+                        <span className="text-sm">{t(item.labelKey)}</span>
                       </div>
                     );
                   }
@@ -103,13 +101,11 @@ export function AdminSidebar() {
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-[var(--nx-accent)]/10 text-[var(--nx-accent)]"
-                          : "text-[var(--nx-text-secondary-updated)] hover:bg-[var(--nx-bg-card)] hover:text-white"
+                        isActive ? "bg-[var(--nx-accent)]/10 text-[var(--nx-accent)]" : "text-[var(--nx-text-secondary-updated)] hover:bg-[var(--nx-bg-card)] hover:text-white"
                       }`}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[item.icon]}</svg>
-                      <span className="text-sm font-medium">{item.label}</span>
+                      <span className="text-sm font-medium">{t(item.labelKey)}</span>
                     </Link>
                   );
                 })}
@@ -121,7 +117,7 @@ export function AdminSidebar() {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[var(--nx-border-updated)] bg-[var(--nx-bg-surface-deep)]">
           <Link href="/" className="flex items-center gap-2 text-sm text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-            Back to User Web
+            {t("backToUserWeb")}
           </Link>
         </div>
       </aside>

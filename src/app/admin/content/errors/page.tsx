@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
+import { List, Upload, Image as ImageIcon, Video, Plus, CheckCircle } from "lucide-react";
 
 type Machine = { id: string; name: string };
 
@@ -65,19 +66,19 @@ export default function AdminErrorsPage() {
       <div className="max-w-4xl mx-auto">
         
         {/* Header Buttons */}
-        <div className="mb-6 flex flex-wrap gap-3 justify-between">
-          <div className="flex gap-3">
-            <Link href="/admin/content/errors/list" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2">
-              📋 View All Errors
-            </Link>
-            <Link href="/admin/content/import" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2">
-              📥 Excel Bulk Import
-            </Link>
-          </div>
+        <div className="mb-6 flex flex-wrap gap-3">
+          <Link href="/admin/content/errors/list" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2 text-sm">
+            <List size={18} /> View All Errors
+          </Link>
+          <Link href="/admin/content/import" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2 text-sm">
+            <Upload size={18} /> Excel Bulk Import
+          </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-5 shadow-lg">
-          <h2 className="text-xl font-bold text-white mb-6">➕ Add New Error Code</h2>
+          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <Plus size={24} className="text-[var(--nx-accent)]" /> Add New Error Code
+          </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
@@ -111,7 +112,9 @@ export default function AdminErrorsPage() {
 
           {/* Multiple Images Section */}
           <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
-            <h3 className="text-sm font-bold text-white mb-3">📸 Images (Multiple)</h3>
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+              <ImageIcon size={16} /> Images (Multiple)
+            </h3>
             <div className="flex flex-col gap-2">
               {imageUrls.map((url, idx) => (
                 <div key={idx} className="flex gap-2">
@@ -131,7 +134,9 @@ export default function AdminErrorsPage() {
 
           {/* Multiple Videos Section */}
           <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
-            <h3 className="text-sm font-bold text-white mb-3">📺 YouTube Videos (Multiple)</h3>
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+              <Video size={16} /> YouTube Videos (Multiple)
+            </h3>
             <div className="flex flex-col gap-2">
               {youtubeUrls.map((url, idx) => (
                 <div key={idx} className="flex gap-2">
