@@ -39,7 +39,7 @@ export default function ImportPage() {
       if (!data.ok) throw new Error(data.error);
       setPreview(data.preview);
     } catch (err) {
-      setMessage("" + " + (err instanceof Error ? err.message : "Error"));
+      setMessage("" + (err instanceof Error ? err.message : "Error"));
     } finally {
       setLoading(false);
     }
@@ -58,10 +58,10 @@ export default function ImportPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setSummary(data.summary);
-      setMessage("✅ Import complete!");
+      setMessage("Import complete!");
       setPreview(null);
     } catch (err) {
-      setMessage("" + " + (err instanceof Error ? err.message : "Error"));
+      setMessage("" + (err instanceof Error ? err.message : "Error"));
     } finally {
       setLoading(false);
     }
@@ -124,8 +124,8 @@ export default function ImportPage() {
                       <td className="p-2 text-[var(--nx-accent)] font-mono">{row.errorCode}</td>
                       <td className="p-2 text-[var(--nx-text-secondary-updated)] max-w-xs truncate">{row.errorName}</td>
                       <td className="p-2 text-xs text-[var(--nx-text-muted-updated)]">
-                        {row.imageUrl && <div className="text-blue-400">🖼 Image</div>}
-                        {row.youtubeUrl && <div className="text-red-400">📺 Video</div>}
+                        {row.imageUrl && <div className="text-blue-400">Image</div>}
+                        {row.youtubeUrl && <div className="text-red-400">Video</div>}
                         {!row.imageUrl && !row.youtubeUrl && "-"}
                       </td>
                     </tr>
