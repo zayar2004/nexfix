@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { media } from "@/db/schema";
 import { auth } from "@/auth";
 import { randomUUID } from "crypto";
-import { eq, desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { uploadToS3, deleteFromS3 } from "@/lib/s3";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -27,7 +27,11 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const ownerType = formData.get("ownerType") as string | null;
+    const ownerId = formData.get("ownerId") as string | null;
+
     if (!file) return NextResponse.json({ ok: false, error: "No file" }, { status: 400 });
+    if (!ownerType || !ownerId) return NextResponse.json({ ok: false, error: "Missing ownerType or ownerId" }, { status: 400 });
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json({ ok: false, error: "Invalid file type. Only JPG, PNG, WebP, GIF allowed." }, { status: 400 });
@@ -38,13 +42,12 @@ export async function POST(req: Request) {
 
     const ext = file.name.split(".").pop() || "jpg";
     const fileName = `${randomUUID()}.${ext}`;
-
     const buffer = Buffer.from(await file.arrayBuffer());
     const publicUrl = await uploadToS3(fileName, buffer, file.type);
 
     const [newMedia] = await db.insert(media).values({
-      ownerType: "asset",
-      ownerId: session.user.id || "admin",
+      ownerType: ownerType,
+      ownerId: ownerId,
       mime: file.type,
       size: String(file.size),
       storageKey: fileName,

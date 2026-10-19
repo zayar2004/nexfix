@@ -50,6 +50,7 @@ function SearchResultsContent() {
     };
   }, [modeParam, searchMode]); 
 
+  // 🌟 Live Search
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchMode === "machineError") {
@@ -103,6 +104,10 @@ function SearchResultsContent() {
       console.error("Copy failed");
     }
   };
+
+  const currentQuery = searchMode === "machineError" 
+    ? [machineName, errorCode].filter(Boolean).join(" / ")
+    : machineCode;
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav relative">
@@ -179,46 +184,67 @@ function SearchResultsContent() {
       <main className={`max-w-3xl mx-auto px-4 py-4 ${isKeyboardOpen ? 'pb-[40vh]' : 'pb-20'}`}>
         
         {loading ? (
-          <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div></div>
+          <div className="flex justify-center py-10">
+            <div className="w-6 h-6 border-2 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div>
+          </div>
         ) : searchMode === "machineError" ? (
-          results.length === 0 ? (
-            <p className="text-center py-10 text-[var(--nx-text-muted-updated)]">
-              {(machineName || errorCode) ? t("noResults") : t("typeToSearch")}
-            </p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {results.map((r) => (
-                <div key={r.id} className={`p-3 rounded-xl border ${r.isFromExcel ? 'bg-[var(--nx-bg-card)] border-[var(--nx-success)]/30' : 'bg-[var(--nx-bg-card)] border-[var(--nx-border-updated)]'}`}>
-                  {r.isFromExcel ? (
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <span className="font-semibold text-[var(--nx-text-primary)] text-sm break-words block">{r.machineName}</span>
-                        <div className="text-xs text-[var(--nx-text-secondary-updated)] mt-1.5 flex flex-col gap-0.5">
-                          <span className="break-words"><strong className="text-[var(--nx-text-primary)]">{t("date")}:</strong> {r.code || "N/A"}</span>
-                          <span className="break-words"><strong className="text-[var(--nx-text-primary)]">{t("location")}:</strong> {r.solution || "N/A"}</span>
+          <>
+            {/* 🌟 Results Count */}
+            {results.length > 0 && (
+              <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
+                <p className="text-xs text-[var(--nx-text-muted-updated)]">
+                  <span className="font-bold text-[var(--nx-accent)]">{results.length}</span> result{results.length !== 1 ? 's' : ''} found
+                </p>
+                {currentQuery && (
+                  <p className="text-xs text-[var(--nx-text-muted-updated)] truncate max-w-[200px]">
+                    Searching: <span className="text-[var(--nx-accent)]">"{currentQuery}"</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {results.length === 0 ? (
+              <div className="text-center py-10">
+                <p className="text-[var(--nx-text-muted-updated)] mb-4">
+                  {(machineName || errorCode) ? "No results found." : "Type above to search."}
+                </p>
+                {(machineName || errorCode) && (
+                  <div className="mt-4 p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-xs text-[var(--nx-text-muted-updated)] text-left max-w-xs mx-auto">
+                    <p className="font-bold text-[var(--nx-accent)] mb-2">💡 Search Tips:</p>
+                    <ul className="space-y-1 list-disc list-inside">
+                      <li>Check spelling</li>
+                      <li>Try partial keywords</li>
+                      <li>Try error code without prefix</li>
+                      <li>Try searching in only one field</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {results.map((r, idx) => (
+                  <Link key={r.id} href={`/errors/${r.id}`}>
+                    <div className="flex gap-4 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-accent)] transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-[var(--nx-text-primary)] text-sm">{r.machineName}</span>
+                          <span className="text-xs font-mono text-[var(--nx-accent)] bg-[var(--nx-accent)]/10 px-2 py-0.5 rounded">{r.code}</span>
+                          {idx === 0 && results.length > 1 && (
+                            <span className="text-[10px] font-bold text-[var(--nx-success)] bg-[var(--nx-success)]/10 px-1.5 py-0.5 rounded">✨ Best Match</span>
+                          )}
                         </div>
+                        <p className="text-xs text-[var(--nx-text-secondary-updated)] mt-1 line-clamp-2">{r.title}</p>
                       </div>
-                      <button onClick={(e) => handleCopy(e, r.machineName)} className="text-[10px] text-[var(--nx-accent)] font-medium bg-[var(--nx-accent)]/10 px-2 py-1 rounded flex-shrink-0">{t("copy")}</button>
                     </div>
-                  ) : (
-                    <Link href={`/errors/${r.id}`}>
-                      <div className="flex gap-4">
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-[var(--nx-text-primary)] text-sm truncate">{r.machineName}</span>
-                          <span className="text-xs font-mono text-[var(--nx-accent)] ml-2">{r.code}</span>
-                          <span className="text-xs text-[var(--nx-text-secondary-updated)] truncate block mt-1">{r.title}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          )
+                  </Link>
+                ))}
+              </div>
+            )}
+          </>
         ) : (
           results.length === 0 ? (
             <p className="text-center py-10 text-[var(--nx-text-muted-updated)]">
-              {machineCode ? t("noMatchingCodes") : t("typeToSearch")}
+              {machineCode ? "No matching codes found." : "Type above to search."}
             </p>
           ) : (
             <div className="flex flex-col gap-3">

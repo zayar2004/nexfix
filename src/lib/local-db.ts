@@ -78,27 +78,83 @@ export async function searchLocalData(
   const data = await getCachedLocalData();
   if (!data) return [];
 
-  let matchedErrors = data.errorCodes;
+  // 🌟 ရှာတဲ့စာသားကို သန့်ရှင်းအောင် လုပ်မယ်
+  const cleanQuery = query.trim().toLowerCase();
+  const cleanCode = errorCode.trim().toLowerCase();
+  
+  // 🌟 စာသားကို စကားလုံးတွေအဖြစ် ခွဲမယ် (Multiple Keywords အတွက်)
+  const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 0);
+  const codeWords = cleanCode.split(/\s+/).filter(w => w.length > 0);
 
-  if (query) {
-    const lowerQuery = query.toLowerCase();
-    matchedErrors = matchedErrors.filter((e) => {
-      const machine = data.machines.find((m) => m.id === e.machineId);
-      const mName = String(machine?.name || "").toLowerCase();
-      const eCode = String(e.code || "").toLowerCase();
-      const eTitle = String(e.title || "").toLowerCase();
-      return mName.includes(lowerQuery) || eCode.includes(lowerQuery) || eTitle.includes(lowerQuery);
+  // 🌟 Machine ID တွေကို ရှာမယ်
+  let matchedMachineIds: string[] = [];
+  
+  if (queryWords.length > 0) {
+    const exactMatch = data.machines.filter((m) => {
+      const mName = String(m.name).toLowerCase();
+      return queryWords.every(word => mName.includes(word));
     });
-  }
-
-  if (query) {
-    const exactCodeMatch = matchedErrors.filter(e => String(e.code).toLowerCase() === query.toLowerCase());
-    if (exactCodeMatch.length > 0) {
-      matchedErrors = [...exactCodeMatch, ...matchedErrors.filter(e => String(e.code).toLowerCase() !== query.toLowerCase())];
+    
+    if (exactMatch.length > 0) {
+      matchedMachineIds = exactMatch.map(m => String(m.id));
+    } else {
+      matchedMachineIds = data.machines
+        .filter((m) => {
+          const mName = String(m.name).toLowerCase();
+          return queryWords.some(word => mName.includes(word));
+        })
+        .map(m => String(m.id));
     }
+  } else {
+    matchedMachineIds = data.machines.map(m => String(m.id));
   }
 
-  return matchedErrors.map((e) => {
+  // 🌟 Error Code တွေကို ရှာမယ်
+  let matchedErrors = data.errorCodes.filter((e) => {
+    if (queryWords.length > 0 && matchedMachineIds.length > 0) {
+      if (!matchedMachineIds.includes(String(e.machineId))) return false;
+    }
+    
+    if (codeWords.length > 0) {
+      const eCode = String(e.code).toLowerCase();
+      return codeWords.every(word => eCode.includes(word));
+    }
+    
+    if (queryWords.length > 0) {
+      const eTitle = String(e.title).toLowerCase();
+      return queryWords.some(word => eTitle.includes(word));
+    }
+    
+    return true;
+  });
+
+  // 🌟 Ranking လုပ်မယ်
+  const rankedResults = matchedErrors.map((e) => {
+    const eCode = String(e.code).toLowerCase();
+    const eTitle = String(e.title).toLowerCase();
+    const machine = data.machines.find((m) => m.id === e.machineId);
+    const mName = String(machine?.name || "").toLowerCase();
+    
+    let score = 0;
+    
+    if (cleanCode && eCode === cleanCode) score += 100;
+    if (cleanQuery && eCode === cleanQuery) score += 100;
+    if (cleanCode && eCode.startsWith(cleanCode)) score += 50;
+    if (cleanQuery && eCode.startsWith(cleanQuery)) score += 50;
+    if (cleanQuery && eTitle === cleanQuery) score += 80;
+    if (cleanQuery && eTitle.startsWith(cleanQuery)) score += 40;
+    if (cleanQuery && mName === cleanQuery) score += 70;
+    if (cleanQuery && mName.startsWith(cleanQuery)) score += 30;
+    if (queryWords.length > 0 && queryWords.every(w => eTitle.includes(w))) score += 20;
+    if (queryWords.length > 0 && queryWords.every(w => mName.includes(w))) score += 20;
+    score -= eCode.length * 0.1;
+    
+    return { error: e, score };
+  });
+
+  rankedResults.sort((a, b) => b.score - a.score);
+
+  return rankedResults.map(({ error: e }) => {
     const machine = data.machines.find((m) => m.id === e.machineId);
     const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
     const myContent = contents.find((c) => c.locale === "my");
@@ -114,6 +170,7 @@ export async function searchLocalData(
       solution: content ? String(content.solution) : null,
     };
   });
+
 }
 
 // 🌟 Image Caching ကို ပြင်မယ်
