@@ -9,7 +9,6 @@ type MediaItem = {
   size: string;
   storageKey: string;
   status: string;
-  url?: string;
 };
 
 export default function MediaLibraryPage() {
@@ -19,18 +18,13 @@ export default function MediaLibraryPage() {
   const [message, setMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
+
   const fetchMedia = () => {
     fetch("/api/admin/media")
       .then((res) => res.json())
       .then((data) => {
-        if (data.ok) {
-          setMediaItems(
-            data.data.map((m: MediaItem) => ({
-              ...m,
-              url: `/uploads/${m.storageKey}`,
-            }))
-          );
-        }
+        if (data.ok) setMediaItems(data.data);
         setLoading(false);
       });
   };
@@ -75,11 +69,8 @@ export default function MediaLibraryPage() {
     }
   };
 
-  // Copy URL function အသစ်
   const handleCopy = (url: string) => {
-    // localhost ကို အစားထိုးပြီး လက်ရှိ domain ကို ယူမယ် (အွန်လိုင်းတင်ရင် အလုပ်ဖြစ်အောင်)
-    const fullUrl = typeof window !== "undefined" ? window.location.origin + url : url;
-    navigator.clipboard.writeText(fullUrl);
+    navigator.clipboard.writeText(url);
     setMessage("✅ URL Copied!");
     setTimeout(() => setMessage(""), 2000);
   };
@@ -90,16 +81,10 @@ export default function MediaLibraryPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-white">Image Assets</h2>
-            <p className="text-sm text-[var(--nx-text-muted-updated)]">JPG, PNG, WebP. Max 5MB each.</p>
+            <p className="text-sm text-[var(--nx-text-muted-updated)]">JPG, PNG, WebP, GIF. Max 5MB each.</p>
           </div>
           <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleUpload}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleUpload} className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
@@ -120,30 +105,29 @@ export default function MediaLibraryPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {mediaItems.map((m) => (
-              <div key={m.id} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl overflow-hidden">
-                <div
-                  className="aspect-video bg-[var(--nx-bg-surface-deep)] bg-cover bg-center"
-                  style={{ backgroundImage: `url(${m.url})` }}
-                />
-                <div className="p-3">
-                  <p className="text-xs text-[var(--nx-text-muted-updated)] truncate">{m.storageKey}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-[var(--nx-text-muted-updated)]">
-                      {(Number(m.size) / 1024).toFixed(1)} KB
-                    </span>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleCopy(m.url!)} className="text-xs text-[var(--nx-accent)] hover:underline">
-                        Copy URL
-                      </button>
-                      <button onClick={() => handleDelete(m.id)} className="text-xs text-[var(--nx-error)] hover:underline">
-                        Delete
-                      </button>
+            {mediaItems.map((m) => {
+              const url = `${S3_URL}/${m.storageKey}`;
+              return (
+                <div key={m.id} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl overflow-hidden">
+                  <div
+                    className="aspect-video bg-[var(--nx-bg-surface-deep)] bg-cover bg-center"
+                    style={{ backgroundImage: `url(${url})` }}
+                  />
+                  <div className="p-3">
+                    <p className="text-xs text-[var(--nx-text-muted-updated)] truncate">{m.storageKey}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-[var(--nx-text-muted-updated)]">
+                        {(Number(m.size) / 1024).toFixed(1)} KB
+                      </span>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleCopy(url)} className="text-xs text-[var(--nx-accent)] hover:underline">Copy URL</button>
+                        <button onClick={() => handleDelete(m.id)} className="text-xs text-[var(--nx-error)] hover:underline">Delete</button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -14,7 +14,6 @@ export const adminTranslations = {
     backToUserWeb: "Back to User Web",
     adminPortal: "Admin Portal",
     
-    // Errors Pages
     addNewError: "Add New Error Code",
     viewAllErrors: "View All Errors",
     excelBulkImport: "Excel Bulk Import",
@@ -34,7 +33,6 @@ export const adminTranslations = {
     addAnotherImage: "+ Add another image",
     addAnotherVideo: "+ Add another video",
     
-    // Error List Page
     allErrorCodes: "All Error Codes",
     manageErrors: "Manage and view all reported errors.",
     searchPlaceholder: "Search by error code or title...",
@@ -47,6 +45,28 @@ export const adminTranslations = {
     deleteErrorMessage: "Are you sure you want to delete this error? This action cannot be undone and will also remove all related images and videos.",
     yesDelete: "Yes, Delete",
     cancel: "Cancel",
+
+    // NEW: Library & Media Translations
+    titleEn: "Title (EN)",
+    titleMy: "Title (MY)",
+    summaryEn: "Summary (EN)",
+    summaryMy: "Summary (MY)",
+    bodyEn: "Body (EN)",
+    bodyMy: "Body (MY)",
+    category: "Category",
+    coverImage: "Cover Image URL",
+    saveArticle: "Save Article",
+    savingArticle: "Saving...",
+    existingArticles: "Existing Articles",
+    libraryTitle: "Manage Knowledge Articles",
+    addArticle: "Add New Article",
+    slug: "Slug",
+    uploadMedia: "Upload Media",
+    copyUrl: "Copy URL",
+    deleteMedia: "Delete",
+    uploading: "Uploading...",
+    noArticles: "No articles found.",
+    createArticle: "Create Article",
   },
   my: {
     dashboard: "ဒက်ရှ်ဘုတ်",
@@ -63,7 +83,6 @@ export const adminTranslations = {
     backToUserWeb: "အသုံးပြုသူ ဝဘ်သို့ ပြန်သွားရန်",
     adminPortal: "အက်ဒမင် ပေါ်တယ်",
     
-    // Errors Pages
     addNewError: "အမှားကုဒ်အသစ် ထည့်ရန်",
     viewAllErrors: "အမှားအားလုံး ကြည့်ရန်",
     excelBulkImport: "Excel အစုလိုက် တင်သွင်းရန်",
@@ -83,7 +102,6 @@ export const adminTranslations = {
     addAnotherImage: "+ နောက်ထပ်ပုံ ထည့်ရန်",
     addAnotherVideo: "+ နောက်ထပ်ဗီဒီယို ထည့်ရန်",
     
-    // Error List Page
     allErrorCodes: "အမှားကုဒ် အားလုံး",
     manageErrors: "အစီရင်ခံထားသော အမှားများကို စီမံခန့်ခွဲပြီး ကြည့်ရှုပါ။",
     searchPlaceholder: "အမှားကုဒ် သို့မဟုတ် ခေါင်းစဉ်ဖြင့် ရှာပါ...",
@@ -96,6 +114,28 @@ export const adminTranslations = {
     deleteErrorMessage: "ဤအမှားကို ဖျက်ရန် သေချာပါသလား? ဤလုပ်ဆောင်ချက်ကို ပြန်ပြင်၍ မရနိုင်ပါ။ ဆက်စပ်နေသော ပုံများနှင့် ဗီဒီယိုများကိုပါ ဖျက်သွားမည်ဖြစ်ပါသည်။",
     yesDelete: "ဟုတ်ကဲ့၊ ဖျက်ပါ",
     cancel: "မလုပ်တော့ပါ",
+
+    // NEW: Library & Media Translations
+    titleEn: "ခေါင်းစဉ် (English)",
+    titleMy: "ခေါင်းစဉ် (မြန်မာ)",
+    summaryEn: "အကျဉ်းချုပ် (English)",
+    summaryMy: "အကျဉ်းချုပ် (မြန်မာ)",
+    bodyEn: "အကြောင်းအရာ (English)",
+    bodyMy: "အကြောင်းအရာ (မြန်မာ)",
+    category: "အမျိုးအစား",
+    coverImage: "မျက်နှာဖုံးပုံ URL",
+    saveArticle: "ဆောင်းပါး သိမ်းရန်",
+    savingArticle: "သိမ်းဆည်းနေသည်...",
+    existingArticles: "လက်ရှိ ဆောင်းပါးများ",
+    libraryTitle: "ဗဟုသုတ ဆောင်းပါးများ စီမံရန်",
+    addArticle: "ဆောင်းပါးအသစ် ထည့်ရန်",
+    slug: "Slug (URL အမည်)",
+    uploadMedia: "မီဒီယာ တင်ရန်",
+    copyUrl: "URL ကူးယူရန်",
+    deleteMedia: "ဖျက်ရန်",
+    uploading: "တင်နေသည်...",
+    noArticles: "ဆောင်းပါးများ မတွေ့ပါ။",
+    createArticle: "ဆောင်းပါး ဖန်တီးရန်",
   }
 };
 
