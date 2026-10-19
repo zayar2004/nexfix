@@ -14,8 +14,17 @@ export async function GET() {
   if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role as string)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
   }
+  
   const data = await db.select().from(media).orderBy(desc(media.createdAt));
-  return NextResponse.json({ ok: true, data });
+  
+  // Add full URL to each media item
+  const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
+  const dataWithUrls = data.map(m => ({
+    ...m,
+    url: `${S3_URL}/${m.storageKey}`
+  }));
+
+  return NextResponse.json({ ok: true, data: dataWithUrls });
 }
 
 export async function POST(req: Request) {
