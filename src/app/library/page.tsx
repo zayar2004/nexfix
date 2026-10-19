@@ -109,7 +109,7 @@ export default function LibraryPage() {
               <Link key={a.id} href={`/library/${a.slug}`}>
                 <div className="flex gap-3 p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-accent)] transition-colors">
                   {a.coverImageUrl && (
-                    <img src={a.coverImageUrl} alt={a.title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0 border border-[var(--nx-border-updated)]" />
+                    <img src={a.coverImageUrl.startsWith("http") ? a.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${a.coverImageUrl}`} alt={a.title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0 border border-[var(--nx-border-updated)]" />
                   )}
                   <div className="flex-1 min-w-0">
                     {a.category && (

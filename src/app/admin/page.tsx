@@ -6,16 +6,15 @@ import { count } from "drizzle-orm";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
 
+// 🌟 ဒီ Page ကို Build လုပ်တဲ့အခါ Static မလုပ်ခိုင်းဘူး (Runtime မှာပဲ ခေါ်မယ်)
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const session = await auth();
   
-  // ၁။ လုံးဝ Login မဝင်ထားရင် Admin Login ကို ပို့မယ်
   if (!session?.user) redirect("/admin/login");
-  
-  // ၂။ Role က "user" ဖြစ်နေရင် Admin ထဲကို လုံးဝ မဝင်ခွင့်ပြုဘူး (User Web ကို ပို့မယ်)
   if (session.user.role === "user") redirect("/");
 
-  // ၃။ ကျန်တဲ့ Role တွေ (staff, senior_admin, super_admin) ကို Dashboard ပြမယ်
   let stats = { users: 0, machines: 0, errors: 0, articles: 0 };
   try {
     const [u, m, e, a] = await Promise.all([

@@ -64,7 +64,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
       </header>
 
       <main className="max-w-3xl mx-auto p-4 py-6">
-        {article.coverImageUrl && <img src={article.coverImageUrl} alt={article.title} className="w-full aspect-video object-cover rounded-xl mb-4 border border-[var(--nx-border-updated)]" />}
+        {article.coverImageUrl && <img src={article.coverImageUrl.startsWith("http") ? article.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${article.coverImageUrl}`} alt={article.title} className="w-full aspect-video object-cover rounded-xl mb-4 border border-[var(--nx-border-updated)]" />}
         {article.category && <span className="inline-block px-3 py-1 text-xs font-bold bg-[#176BFF] text-white rounded-full mb-3">{article.category}</span>}
         <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-4">{article.title}</h1>
         {article.summary && <p className="text-[var(--nx-text-secondary-updated)] mb-4 border-l-2 border-[#20E3FF] pl-3 italic">{article.summary}</p>}

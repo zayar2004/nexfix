@@ -1,0 +1,124 @@
+"use client";
+
+import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
+
+type HeroData = {
+  heading: string;
+  description: string;
+  imageUrl: string;
+  imageUrls?: string[];
+} | null;
+
+export function HeroSection({ data }: { data: HeroData }) {
+  const heading = data?.heading || "Find Solutions\nKeep Machines Running";
+  const description = data?.description || "Error codes, troubleshooting, and more for arcade technicians.";
+  
+  // 🌟 ပုံအများ ရှိရင် အဲဒါကို သုံးမယ်၊ မရှိရင် တစ်ပုံတည်း
+  const images = data?.imageUrls && data.imageUrls.length > 0 
+    ? data.imageUrls 
+    : [data?.imageUrl || "/images/arcade-hero.jpg"];
+  
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const headingLines = heading.split("\n");
+
+  // 🌟 ၁၀ စက္ကန့်တစ်ခါ Auto ပြောင်းမယ် (ပုံ ၂ ပုံအထက် ရှိမှ)
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+
+  // 🌟 Swipe လုပ်လို့ရအောင်
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (images.length <= 1) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        // ဘယ်ဘက်ကို ဆွဲ → နောက်ပုံ
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+      } else {
+        // ညာဘက်ကို ဆွဲ → အရှေ့ပုံ
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="relative w-full h-[320px] sm:h-[400px] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="absolute inset-0 bg-[var(--nx-bg-surface-deep)]">
+        {images.map((url, idx) => (
+          <div
+            key={idx}
+            className={`absolute inset-0 transition-opacity duration-1000 ${
+              idx === currentIndex ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <Image
+              src={url}
+              alt={`Arcade machines ${idx + 1}`}
+              fill
+              className="object-cover object-center"
+              priority={idx === 0}
+            />
+          </div>
+        ))}
+        <div className="absolute inset-0 bg-[var(--nx-hero-overlay)]"></div>
+      </div>
+
+      {/* 🌟 ပုံအရေအတွက် Indicator */}
+      {images.length > 1 && (
+        <div className="absolute top-4 right-4 z-20 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
+          <span className="text-white text-xs font-bold">{currentIndex + 1} / {images.length}</span>
+        </div>
+      )}
+
+      {/* 🌟 Dot Indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 right-4 z-20 flex gap-1.5">
+          {images.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 rounded-full transition-all ${
+                idx === currentIndex ? "w-6 bg-[var(--nx-accent)]" : "w-1.5 bg-white/50"
+              }`}
+              aria-label={`Go to image ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="absolute bottom-0 left-0 p-5 pb-12 flex flex-col gap-2 w-full">
+        <h1 className="nx-hero-heading">
+          {headingLines.map((line, idx) => (
+            <span key={idx}>
+              {line}
+              {idx < headingLines.length - 1 && <br />}
+            </span>
+          ))}
+        </h1>
+        <p className="text-[var(--nx-text-secondary-updated)] text-sm max-w-[280px]">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}

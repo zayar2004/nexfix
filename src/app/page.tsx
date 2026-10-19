@@ -9,20 +9,22 @@ import { HomeSearchClient } from "@/components/home/HomeSearchClient";
 import { getLocalData, saveLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
 
-type RecentItem = {
-  id: string;
-  machineName: string;
-  code: string;
-  title: string;
-};
+type RecentItem = { id: string; machineName: string; code: string; title: string; };
+type ArticleItem = { id: string; slug: string; title: string; summary: string | null; category: string | null; };
 
-type ArticleItem = {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string | null;
-  category: string | null;
-};
+// 🌟 Helper: Image URL ကို မှန်ကန်စွာ ပြောင်းမယ်
+function fixImageUrl(url: string): string {
+  if (!url) return "/images/arcade-hero.jpg";
+  if (url.startsWith("http")) return url;
+  const s3Url = process.env.NEXT_PUBLIC_S3_URL || "";
+  if (url.startsWith("/uploads/")) {
+    return `${s3Url}/${url.replace("/uploads/", "")}`;
+  }
+  if (!url.startsWith("/")) {
+    return `${s3Url}/${url}`;
+  }
+  return url;
+}
 
 export default function HomePage() {
   const { t, locale } = useSettings();
@@ -30,33 +32,60 @@ export default function HomePage() {
     heading: string;
     description: string;
     imageUrl: string;
+    imageUrls?: string[];
+    config?: any;
   } | null>(null);
   const [recentSearches, setRecentSearches] = useState<RecentItem[]>([]);
   const [recentArticles, setRecentArticles] = useState<ArticleItem[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
-      let localData = await getLocalData();
-      if (!localData) {
+      // 🌟 အရင် Sync လုပ်မယ်
+      if (navigator.onLine) {
         try {
           const res = await fetch("/api/sync");
           const data = await res.json();
           if (data.ok) {
             await saveLocalData(data.data);
-            localData = data.data;
           }
         } catch (err) {
           console.log("Offline mode");
         }
       }
 
-      // Hero Data
+      const localData = await getLocalData();
+
+      // 🌟 Hero Data
       if (localData && localData.homepage) {
         const h = localData.homepage as Record<string, unknown>;
+        
+        const mainImageUrl = fixImageUrl(String(h.heroImageUrl || "/images/arcade-hero.jpg"));
+        
+        // 🌟 heroImages (JSON string) ကို Parse လုပ်မယ်
+        let imageUrls: string[] | undefined = undefined;
+        if (h.heroImages) {
+          try {
+            const parsed = JSON.parse(String(h.heroImages));
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              imageUrls = parsed.map((url: string) => fixImageUrl(url));
+            }
+          } catch {}
+        }
+
+        // 🌟 heroConfig (JSON string) ကို Parse လုပ်မယ်
+        let config: any = undefined;
+        if (h.heroConfig) {
+          try {
+            config = JSON.parse(String(h.heroConfig));
+          } catch {}
+        }
+        
         setHeroData({
           heading: String(h.heroHeading || t("findSolutions")),
           description: String(h.heroDescription || "Error codes, troubleshooting, and more for arcade technicians."),
-          imageUrl: String(h.heroImageUrl || "/images/arcade-hero.jpg"),
+          imageUrl: mainImageUrl,
+          imageUrls,
+          config,
         });
       } else {
         setHeroData({
@@ -66,13 +95,13 @@ export default function HomePage() {
         });
       }
 
-      // 🌟 Recent Articles (နောက်ဆုံး ၃ ခု)
+      // Recent Articles
       if (localData && localData.articles && localData.articleContents) {
         const contents = localData.articleContents as Record<string, unknown>[];
         const articles = (localData.articles as Record<string, unknown>[])
           .slice(0, 3)
           .map((a) => {
-            const content = contents.find((c) => c.articleId === a.id && c.locale === "my") 
+            const content = contents.find((c) => c.articleId === a.id && c.locale === "my")
               || contents.find((c) => c.articleId === a.id);
             return {
               id: String(a.id),
@@ -107,7 +136,7 @@ export default function HomePage() {
         <div className="px-4 py-5">
           <HomeSearchClient locale={locale} />
 
-          {/* 🌟 Recent Diagnostics */}
+          {/* Recent Diagnostics */}
           <div className="mt-8 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 className="nx-section-heading text-[var(--nx-text-primary)] flex items-center gap-2">
@@ -151,7 +180,7 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* 🌟 Recent Articles (Library Preview) */}
+          {/* Recent Articles */}
           {recentArticles.length > 0 && (
             <div className="mt-8 flex flex-col gap-3">
               <div className="flex items-center justify-between">

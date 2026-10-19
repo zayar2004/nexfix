@@ -12,7 +12,7 @@ export type SyncData = {
   homepage?: Record<string, unknown>;
 };
 
-const DB_NAME = "nexfix-local-v2"; // Version တင်လိုက်တယ်
+const DB_NAME = "nexfix-local-v2";
 const STORE_NAME = "sync-data";
 
 function getDB(): Promise<IDBDatabase> {
@@ -67,52 +67,75 @@ export type LocalSearchResult = {
   machineName: string;
   machineCode: string;
   solution: string | null;
+  isFromExcel?: boolean;
 };
 
+// 🌟 App Data နဲ့ Excel Data ကို ရောပြီး ရှာမယ့် Function
 export async function searchLocalData(
   query: string,
   errorCode: string = ""
 ): Promise<LocalSearchResult[]> {
   const data = await getCachedLocalData();
-  if (!data) return [];
+  const userData = await getPrivateExcelData(); // Excel Data ကိုပါ ယူမယ်
+  
+  let appResults: LocalSearchResult[] = [];
+  let excelResults: LocalSearchResult[] = [];
 
-  let matchedErrors = data.errorCodes;
+  const lowerQuery = query.toLowerCase();
 
-  if (query) {
-    const lowerQuery = query.toLowerCase();
+  // ၁။ App ရဲ့ Default Data ကို ရှာမယ်
+  if (data && query) {
+    let matchedErrors = data.errorCodes;
     matchedErrors = matchedErrors.filter((e) => {
       const machine = data.machines.find((m) => m.id === e.machineId);
       const mName = String(machine?.name || "").toLowerCase();
       const eCode = String(e.code || "").toLowerCase();
       const eTitle = String(e.title || "").toLowerCase();
-
       return mName.includes(lowerQuery) || eCode.includes(lowerQuery) || eTitle.includes(lowerQuery);
+    });
+
+    appResults = matchedErrors.map((e) => {
+      const machine = data.machines.find((m) => m.id === e.machineId);
+      const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
+      const myContent = contents.find((c) => c.locale === "my");
+      const enContent = contents.find((c) => c.locale === "en");
+      const content = myContent || enContent || null;
+
+      return {
+        id: String(e.id),
+        code: String(e.code),
+        title: String(e.title),
+        machineName: String(machine?.name || "Unknown"),
+        machineCode: String(machine?.code || "Unknown"),
+        solution: content ? String(content.solution) : null,
+        isFromExcel: false,
+      };
     });
   }
 
-  if (query) {
-    const exactCodeMatch = matchedErrors.filter(e => String(e.code).toLowerCase() === query.toLowerCase());
-    if (exactCodeMatch.length > 0) {
-      matchedErrors = [...exactCodeMatch, ...matchedErrors.filter(e => String(e.code).toLowerCase() !== query.toLowerCase())];
-    }
+  // ၂။ Excel Data ကို ရှာမယ်
+  if (userData && query) {
+    excelResults = userData
+      .filter(row => 
+        row.machineName.toLowerCase().includes(lowerQuery)
+      )
+      .map((row, idx) => ({
+        id: `excel-${idx}`,
+        code: row.errorCode, 
+        title: row.errorFix, 
+        machineName: row.machineName, 
+        machineCode: row.machineName,
+        solution: row.errorFix,
+        isFromExcel: true,
+      }));
   }
 
-  return matchedErrors.map((e) => {
-    const machine = data.machines.find((m) => m.id === e.machineId);
-    const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
-    const myContent = contents.find((c) => c.locale === "my");
-    const enContent = contents.find((c) => c.locale === "en");
-    const content = myContent || enContent || null;
+  // Exact Match ကို အပေါ်ဆုံးထားမယ်
+  const allResults = [...appResults, ...excelResults];
+  const exactMatches = allResults.filter(r => r.machineName.toLowerCase() === lowerQuery || r.code.toLowerCase() === lowerQuery);
+  const otherMatches = allResults.filter(r => r.machineName.toLowerCase() !== lowerQuery && r.code.toLowerCase() !== lowerQuery);
 
-    return {
-      id: String(e.id),
-      code: String(e.code),
-      title: String(e.title),
-      machineName: String(machine?.name || "Unknown"),
-      machineCode: String(machine?.code || "Unknown"),
-      solution: content ? String(content.solution) : null,
-    };
-  });
+  return [...exactMatches, ...otherMatches];
 }
 
 export async function cacheImage(url: string): Promise<void> {
@@ -124,9 +147,7 @@ export async function cacheImage(url: string): Promise<void> {
     const response = await fetch(url);
     if (!response.ok) return;
     await cache.put(url, response);
-  } catch {
-    console.warn("Failed to cache image:", url);
-  }
+  } catch {}
 }
 
 export async function getCachedImageUrl(url: string): Promise<string> {
@@ -139,9 +160,7 @@ export async function getCachedImageUrl(url: string): Promise<string> {
       return URL.createObjectURL(blob);
     }
     return url;
-  } catch {
-    return url;
-  }
+  } catch { return url; }
 }
 
 export async function clearLocalData(): Promise<void> {
@@ -177,7 +196,7 @@ function getPrivateDB(): Promise<IDBDatabase> {
 }
 
 export type UserExcelRow = {
-  machineName: string; // ဒီနေရာမှာ Machine Code ကို သိမ်းပါမယ်
+  machineName: string; // Machine Code
   errorCode: string;   // Arrival Date
   errorFix: string;    // Location
 };

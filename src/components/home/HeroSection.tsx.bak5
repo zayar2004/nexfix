@@ -1,0 +1,120 @@
+"use client";
+
+import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
+
+type HeroConfig = {
+  fontSize?: "sm" | "md" | "lg" | "xl";
+  alignment?: "left" | "center" | "right";
+  position?: "top" | "middle" | "bottom";
+};
+
+type HeroData = {
+  heading: string;
+  description: string;
+  imageUrl: string;
+  imageUrls?: string[];
+  config?: HeroConfig;
+} | null;
+
+export function HeroSection({ data }: { data: HeroData }) {
+  const heading = data?.heading || "Find Solutions\nKeep Machines Running";
+  const description = data?.description || "Error codes, troubleshooting, and more for arcade technicians.";
+  
+  const images = data?.imageUrls && data.imageUrls.length > 0 
+    ? data.imageUrls 
+    : [data?.imageUrl || "/images/arcade-hero.jpg"];
+  
+  const config: HeroConfig = data?.config || {};
+  const fontSize = config.fontSize || "md";
+  const alignment = config.alignment || "left";
+  const position = config.position || "bottom";
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const headingLines = heading.split("\n");
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (images.length <= 1) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) setCurrentIndex((prev) => (prev + 1) % images.length);
+      else setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
+  };
+
+  const headingClass = 
+    fontSize === "sm" ? "text-2xl sm:text-3xl" :
+    fontSize === "lg" ? "text-4xl sm:text-5xl" :
+    fontSize === "xl" ? "text-5xl sm:text-6xl" :
+    "text-3xl sm:text-4xl";
+
+  const descClass = fontSize === "sm" ? "text-xs" : fontSize === "lg" ? "text-base" : "text-sm";
+  const positionClass = position === "top" ? "justify-start pt-8" : position === "middle" ? "justify-center" : "justify-end pb-12";
+  const alignmentClass = alignment === "center" ? "items-center text-center" : alignment === "right" ? "items-end text-right" : "items-start text-left";
+
+  return (
+    <div 
+      className="relative w-full h-[360px] sm:h-[440px] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="absolute inset-0 bg-[var(--nx-bg-surface-deep)]">
+        {images.map((url, idx) => (
+          <div key={idx} className={`absolute inset-0 transition-opacity duration-1000 ${idx === currentIndex ? "opacity-100" : "opacity-0"}`}>
+            <Image src={url} alt={`Arcade ${idx + 1}`} fill className="object-cover object-center" priority={idx === 0} />
+          </div>
+        ))}
+        <div className="absolute inset-0 bg-[var(--nx-hero-overlay)]"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] via-transparent to-transparent"></div>
+      </div>
+
+      {images.length > 1 && (
+        <div className="absolute top-4 right-4 z-20 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
+          <span className="text-white text-xs font-bold">{currentIndex + 1} / {images.length}</span>
+        </div>
+      )}
+
+      <div className={`absolute inset-0 p-5 flex flex-col gap-2 z-10 ${positionClass} ${alignmentClass}`}>
+        <span className="text-[10px] font-bold text-[#20E3FF] uppercase tracking-[0.3em]">Arcade Diagnostics</span>
+        <h1 className={`${headingClass} font-black text-white leading-tight`} style={{ textShadow: "0 0 30px rgba(23, 107, 255, 0.5)" }}>
+          {headingLines.map((line, idx) => (
+            <span key={idx} className="block">{line}</span>
+          ))}
+        </h1>
+        <p className={`${descClass} text-[var(--nx-text-secondary-updated)] max-w-[280px] leading-relaxed`}>
+          {description}
+        </p>
+        {images.length > 1 && (
+          <div className={`flex gap-1.5 mt-2 ${alignment === "center" ? "justify-center" : alignment === "right" ? "justify-end" : "justify-start"}`}>
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? "w-8 bg-gradient-to-r from-[#176BFF] to-[#20E3FF]" : "w-1.5 bg-white/40"}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

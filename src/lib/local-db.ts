@@ -9,6 +9,7 @@ export type SyncData = {
   media?: Record<string, unknown>[];
   mediaVideos?: Record<string, unknown>[];
   lastSyncedAt: number | null;
+  lastUpdated?: number;
   homepage?: Record<string, unknown>;
 };
 
@@ -57,7 +58,7 @@ export async function getCachedLocalData(): Promise<SyncData | null> {
   if (cachedData) return cachedData;
   const data = await getLocalData();
   cachedData = data;
-  return data;
+  return cachedData;
 }
 
 export type LocalSearchResult = {
@@ -70,22 +71,17 @@ export type LocalSearchResult = {
   isFromExcel?: boolean;
 };
 
-// 🌟 App Data နဲ့ Excel Data ကို ရောပြီး ရှာမယ့် Function
 export async function searchLocalData(
   query: string,
   errorCode: string = ""
 ): Promise<LocalSearchResult[]> {
   const data = await getCachedLocalData();
-  const userData = await getPrivateExcelData(); // Excel Data ကိုပါ ယူမယ်
-  
-  let appResults: LocalSearchResult[] = [];
-  let excelResults: LocalSearchResult[] = [];
+  if (!data) return [];
 
-  const lowerQuery = query.toLowerCase();
+  let matchedErrors = data.errorCodes;
 
-  // ၁။ App ရဲ့ Default Data ကို ရှာမယ်
-  if (data && query) {
-    let matchedErrors = data.errorCodes;
+  if (query) {
+    const lowerQuery = query.toLowerCase();
     matchedErrors = matchedErrors.filter((e) => {
       const machine = data.machines.find((m) => m.id === e.machineId);
       const mName = String(machine?.name || "").toLowerCase();
@@ -93,51 +89,34 @@ export async function searchLocalData(
       const eTitle = String(e.title || "").toLowerCase();
       return mName.includes(lowerQuery) || eCode.includes(lowerQuery) || eTitle.includes(lowerQuery);
     });
-
-    appResults = matchedErrors.map((e) => {
-      const machine = data.machines.find((m) => m.id === e.machineId);
-      const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
-      const myContent = contents.find((c) => c.locale === "my");
-      const enContent = contents.find((c) => c.locale === "en");
-      const content = myContent || enContent || null;
-
-      return {
-        id: String(e.id),
-        code: String(e.code),
-        title: String(e.title),
-        machineName: String(machine?.name || "Unknown"),
-        machineCode: String(machine?.code || "Unknown"),
-        solution: content ? String(content.solution) : null,
-        isFromExcel: false,
-      };
-    });
   }
 
-  // ၂။ Excel Data ကို ရှာမယ်
-  if (userData && query) {
-    excelResults = userData
-      .filter(row => 
-        row.machineName.toLowerCase().includes(lowerQuery)
-      )
-      .map((row, idx) => ({
-        id: `excel-${idx}`,
-        code: row.errorCode, 
-        title: row.errorFix, 
-        machineName: row.machineName, 
-        machineCode: row.machineName,
-        solution: row.errorFix,
-        isFromExcel: true,
-      }));
+  if (query) {
+    const exactCodeMatch = matchedErrors.filter(e => String(e.code).toLowerCase() === query.toLowerCase());
+    if (exactCodeMatch.length > 0) {
+      matchedErrors = [...exactCodeMatch, ...matchedErrors.filter(e => String(e.code).toLowerCase() !== query.toLowerCase())];
+    }
   }
 
-  // Exact Match ကို အပေါ်ဆုံးထားမယ်
-  const allResults = [...appResults, ...excelResults];
-  const exactMatches = allResults.filter(r => r.machineName.toLowerCase() === lowerQuery || r.code.toLowerCase() === lowerQuery);
-  const otherMatches = allResults.filter(r => r.machineName.toLowerCase() !== lowerQuery && r.code.toLowerCase() !== lowerQuery);
+  return matchedErrors.map((e) => {
+    const machine = data.machines.find((m) => m.id === e.machineId);
+    const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
+    const myContent = contents.find((c) => c.locale === "my");
+    const enContent = contents.find((c) => c.locale === "en");
+    const content = myContent || enContent || null;
 
-  return [...exactMatches, ...otherMatches];
+    return {
+      id: String(e.id),
+      code: String(e.code),
+      title: String(e.title),
+      machineName: String(machine?.name || "Unknown"),
+      machineCode: String(machine?.code || "Unknown"),
+      solution: content ? String(content.solution) : null,
+    };
+  });
 }
 
+// 🌟 Image Caching ကို ပြင်မယ်
 export async function cacheImage(url: string): Promise<void> {
   if (!url) return;
   try {
@@ -147,20 +126,21 @@ export async function cacheImage(url: string): Promise<void> {
     const response = await fetch(url);
     if (!response.ok) return;
     await cache.put(url, response);
-  } catch {}
+  } catch {
+    console.warn("Failed to cache image:", url);
+  }
 }
 
 export async function getCachedImageUrl(url: string): Promise<string> {
   if (!url) return "";
-  try {
-    const cache = await caches.open("nexfix-images");
-    const response = await cache.match(url);
-    if (response) {
-      const blob = await response.blob();
-      return URL.createObjectURL(blob);
-    }
+  // 🌟 URL က http နဲ့ စရင် တိုက်ရိုက် ပြန်ပေးမယ်
+  if (url.startsWith("http")) {
     return url;
-  } catch { return url; }
+  }
+  // 🌟 မဟုတ်ရင် S3 URL နဲ့ ချိတ်မယ်
+  const s3Url = process.env.NEXT_PUBLIC_S3_URL || "";
+  if (s3Url) return `${s3Url}/${url}`;
+  return url;
 }
 
 export async function clearLocalData(): Promise<void> {
@@ -196,9 +176,9 @@ function getPrivateDB(): Promise<IDBDatabase> {
 }
 
 export type UserExcelRow = {
-  machineName: string; // Machine Code
-  errorCode: string;   // Arrival Date
-  errorFix: string;    // Location
+  machineName: string;
+  errorCode: string;
+  errorFix: string;
 };
 
 export async function savePrivateExcelData(rows: UserExcelRow[]): Promise<void> {

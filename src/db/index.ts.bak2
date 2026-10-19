@@ -1,0 +1,21 @@
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set. Please check your .env file.");
+}
+
+const client = postgres(connectionString, {
+  prepare: false,
+  max: 1,
+  idle_timeout: 20,
+  connect_timeout: 10,      // 🌟 ၁၀ စက္ကန့်ပဲ စောင့်မယ် (မြန်မြန် Error ပြမယ်)
+  max_lifetime: 60 * 5,
+  // 🌟 Error တက်ရင် အလိုအလျောက် ပြန်ကြိုးစားမယ်
+  onnotice: () => {},
+});
+
+export const db = drizzle(client, { schema });

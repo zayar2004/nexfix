@@ -8,12 +8,12 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set. Please check your .env file.");
 }
 
-const client = postgres(connectionString, { 
+const client = postgres(connectionString, {
   prepare: false,
-  max: 1, // Only 1 connection (faster for mobile)
-  idle_timeout: 20,
-  connect_timeout: 30,
-  max_lifetime: 60 * 5,
+  max: 1,
+  idle_timeout: 60,
+  connect_timeout: 60,
+  max_lifetime: 60 * 10,
 });
 
 export const db = drizzle(client, { schema });

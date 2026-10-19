@@ -100,7 +100,9 @@ export const homepageConfig = pgTable("homepage_config", {
   locale: varchar("locale", { length: 5 }).notNull(),
   heroHeading: text("hero_heading").notNull(),
   heroDescription: text("hero_description").notNull(),
-  heroImageUrl: text("hero_image_url").notNull(),
+  heroImageUrl: text("hero_image_url"),
+  heroImages: text("hero_images"),
+  heroConfig: text("hero_config"),
   isPublished: varchar("is_published", { length: 10 }).default("draft").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

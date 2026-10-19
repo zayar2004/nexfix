@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { homepageConfig } from "@/db/schema";
 import { auth } from "@/auth";
 
-// GET: Fetch current config (for Admin editor)
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -27,7 +26,6 @@ export async function GET(req: Request) {
   }
 }
 
-// POST: Save or Update config
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -36,11 +34,19 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { locale, heroHeading, heroDescription, heroImageUrl, isPublished } = body;
+    const { locale, heroHeading, heroDescription, heroImageUrl, heroImages, heroConfig, isPublished } = body;
 
-    if (!locale || !heroHeading || !heroDescription || !heroImageUrl) {
-      return NextResponse.json({ ok: false, error: "Missing fields" }, { status: 400 });
+    if (!locale || !heroHeading || !heroDescription) {
+      return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
     }
+
+    const heroImagesJson = Array.isArray(heroImages) && heroImages.length > 0
+      ? JSON.stringify(heroImages)
+      : null;
+
+    const heroConfigJson = heroConfig ? JSON.stringify(heroConfig) : null;
+
+    const mainImageUrl = heroImageUrl || (Array.isArray(heroImages) && heroImages.length > 0 ? heroImages[0] : null);
 
     const existing = await db
       .select()
@@ -49,20 +55,33 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (existing.length > 0) {
-      // Update
       await db
         .update(homepageConfig)
-        .set({ heroHeading, heroDescription, heroImageUrl, isPublished, updatedAt: new Date() })
+        .set({
+          heroHeading,
+          heroDescription,
+          heroImageUrl: mainImageUrl,
+          heroImages: heroImagesJson,
+          heroConfig: heroConfigJson,
+          isPublished,
+          updatedAt: new Date(),
+        })
         .where(eq(homepageConfig.locale, locale));
     } else {
-      // Insert
       await db.insert(homepageConfig).values({
-        locale, heroHeading, heroDescription, heroImageUrl, isPublished,
+        locale,
+        heroHeading,
+        heroDescription,
+        heroImageUrl: mainImageUrl,
+        heroImages: heroImagesJson,
+        heroConfig: heroConfigJson,
+        isPublished,
       });
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error("Home API error:", err);
     return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
   }
 }

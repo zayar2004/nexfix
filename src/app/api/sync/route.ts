@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { machines, errorCodes, errorContent, knowledgeArticles, articleContent, media, mediaVideos } from "@/db/schema";
+import { machines, errorCodes, errorContent, knowledgeArticles, articleContent, media, mediaVideos, homepageConfig } from "@/db/schema";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
   try {
-    // Database ကို တစ်ပြိုင်နက်တည်း ခေါ်မယ် (ပိုမြန်တယ်)
     const [
       allMachines,
       allErrorCodes,
@@ -16,7 +15,8 @@ export async function GET() {
       allArticles,
       allArticleContents,
       allMedia,
-      allVideos
+      allVideos,
+      allHomepage
     ] = await Promise.all([
       db.select().from(machines).where(eq(machines.status, "published")),
       db.select().from(errorCodes).where(eq(errorCodes.status, "published")),
@@ -24,8 +24,20 @@ export async function GET() {
       db.select().from(knowledgeArticles).where(eq(knowledgeArticles.status, "published")),
       db.select().from(articleContent),
       db.select().from(media).where(eq(media.status, "approved")),
-      db.select().from(mediaVideos)
+      db.select().from(mediaVideos),
+      db.select().from(homepageConfig).where(eq(homepageConfig.isPublished, "published"))
     ]);
+
+    const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
+    const mediaWithUrls = allMedia.map(m => ({
+      ...m,
+      url: `${S3_URL}/${m.storageKey}`,
+    }));
+
+    // 🌟 Homepage ကို Locale အလိုက် ခွဲမယ်
+    const homepageMy = allHomepage.find(h => h.locale === "my");
+    const homepageEn = allHomepage.find(h => h.locale === "en");
+    const homepage = homepageEn || homepageMy || null;
 
     return NextResponse.json({
       ok: true,
@@ -35,8 +47,9 @@ export async function GET() {
         errorContents: allContents,
         articles: allArticles,
         articleContents: allArticleContents,
-        media: allMedia,
+        media: mediaWithUrls,
         mediaVideos: allVideos,
+        homepage,
         lastSyncedAt: Date.now(),
       },
     });
