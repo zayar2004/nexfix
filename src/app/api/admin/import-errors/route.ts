@@ -48,10 +48,16 @@ export async function POST(req: Request) {
     const firstRow = rows[0];
     const keys = Object.keys(firstRow);
     
-    // Column Mapping
+    // Column Mapping (Improved)
     const machineKey = keys.find(k => k.toLowerCase().includes("machine"));
     const codeKey = keys.find(k => k.toLowerCase().includes("code") && !k.toLowerCase().includes("machine"));
-    const nameKey = keys.find(k => k.toLowerCase().includes("name") || k.toLowerCase().includes("title"));
+    
+    // Find "Error Name" - explicitly exclude "Machine Name"
+    const nameKey = keys.find(k => {
+      const lower = k.toLowerCase();
+      return (lower.includes("error name") || lower.includes("title") || (lower.includes("name") && !lower.includes("machine")));
+    });
+    
     const fixKey = keys.find(k => k.toLowerCase().includes("fix") || k.toLowerCase().includes("solution"));
     const imageKey = keys.find(k => k.toLowerCase().includes("image") || k.toLowerCase().includes("photo"));
     const videoKey = keys.find(k => k.toLowerCase().includes("youtube") || k.toLowerCase().includes("video"));
@@ -59,7 +65,7 @@ export async function POST(req: Request) {
     if (!machineKey || !codeKey) {
       return NextResponse.json({
         ok: false,
-        error: `Missing required columns. Found: ${keys.join(", ")}. Need: Machine Name, Error Code, Error Name.`,
+        error: `Missing required columns. Found: ${keys.join(", ")}. Need: Machine Name, Error Code.`,
       }, { status: 400 });
     }
 
@@ -67,7 +73,16 @@ export async function POST(req: Request) {
     for (const row of rows) {
       const machineName = String(row[machineKey] || "").trim();
       const errorCode = String(row[codeKey] || "").trim();
-      const errorName = nameKey ? String(row[nameKey] || "").trim() : errorCode; // Fallback to code if no name
+      
+      // Get Error Name from nameKey. If not found, fallback to errorCode
+      let errorName = "";
+      if (nameKey) {
+        errorName = String(row[nameKey] || "").trim();
+      }
+      if (!errorName) {
+        errorName = errorCode; // Fallback if Error Name column is empty
+      }
+      
       const errorFix = fixKey ? String(row[fixKey] || "").trim() : "";
       const imageUrl = imageKey ? String(row[imageKey] || "").trim() : "";
       const youtubeUrl = videoKey ? String(row[videoKey] || "").trim() : "";
@@ -98,7 +113,6 @@ export async function POST(req: Request) {
       for (const row of results) {
         if (row.status !== "new") { skipped++; continue; }
         try {
-          // 1. Find or create machine
           let [machine] = await tx.select().from(machines).where(eq(machines.name, row.machineName)).limit(1);
           if (!machine) {
             const machineCode = row.machineName.toUpperCase().replace(/[^A-Z0-9]/g, "-").substring(0, 50);
@@ -109,29 +123,26 @@ export async function POST(req: Request) {
             }).returning();
           }
 
-          // 2. Check existing error
           const [existing] = await tx.select().from(errorCodes)
             .where(and(eq(errorCodes.machineId, machine.id), eq(errorCodes.code, row.errorCode)))
             .limit(1);
 
           if (existing) { skipped++; continue; }
 
-          // 3. Insert error code (with title from Error Name column)
+          // Use the Error Name from Excel as title
           const [newError] = await tx.insert(errorCodes).values({
             machineId: machine.id,
             code: row.errorCode,
-            title: row.errorName || row.errorCode,
+            title: row.errorName, // Use Error Name from Excel
             status: "published",
           }).returning();
 
-          // 4. Insert error content
           await tx.insert(errorContent).values({
             errorCodeId: newError.id,
             locale: "en",
             solution: row.errorFix || null,
           });
 
-          // 5. Insert Image if provided
           if (row.imageUrl) {
             await tx.insert(media).values({
               ownerType: "error",
@@ -143,7 +154,6 @@ export async function POST(req: Request) {
             });
           }
 
-          // 6. Insert Video if provided
           if (row.youtubeUrl) {
             await tx.insert(mediaVideos).values({
               ownerType: "error",
@@ -154,7 +164,6 @@ export async function POST(req: Request) {
             });
           }
 
-          // 7. Notification
           await tx.insert(notifications).values({
             userId: null,
             type: "error_new",
