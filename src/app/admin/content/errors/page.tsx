@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
-import { List, Upload, Image as ImageIcon, Video, Plus, CheckCircle } from "lucide-react";
+import { List, Upload, Image as ImageIcon, Video, Plus } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 type Machine = { id: string; name: string };
 
@@ -65,7 +67,6 @@ export default function AdminErrorsPage() {
     <AdminLayout title="Add New Error">
       <div className="max-w-4xl mx-auto">
         
-        {/* Header Buttons */}
         <div className="mb-6 flex flex-wrap gap-3">
           <Link href="/admin/content/errors/list" className="px-5 py-2.5 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-medium rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2 text-sm">
             <List size={18} /> View All Errors
@@ -110,7 +111,6 @@ export default function AdminErrorsPage() {
             </div>
           </div>
 
-          {/* Multiple Images Section */}
           <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <ImageIcon size={16} /> Images (Multiple)
@@ -132,7 +132,6 @@ export default function AdminErrorsPage() {
             </div>
           </div>
 
-          {/* Multiple Videos Section */}
           <div className="border-t border-[var(--nx-border-updated)] pt-4 mb-4 mt-6">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <Video size={16} /> YouTube Videos (Multiple)
