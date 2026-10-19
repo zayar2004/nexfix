@@ -283,3 +283,47 @@ body[lang="my"] {
 .nx-pb-bottom-nav {
   padding-bottom: calc(var(--nx-bottom-nav-height) + var(--nx-bottom-nav-safe-area) + 1rem);
 }
+
+/* ============================================
+   LIGHT MODE OVERRIDES
+   ============================================ */
+.nx-light {
+  --nx-bg-base-deep: #F4F7FF;
+  --nx-bg-card: #FFFFFF;
+  --nx-bg-surface-deep: #E8EDF5;
+  --nx-bg-elevated-deep: #DDE5F0;
+  --nx-text-primary: #0B1020;
+  --nx-text-secondary-updated: #4A5568;
+  --nx-text-muted-updated: #718096;
+  --nx-border-updated: #D1D9E6;
+  --nx-accent: #176BFF;
+  --nx-accent-secondary: #20E3FF;
+}
+
+.nx-light body {
+  background-color: #F4F7FF !important;
+  color: #0B1020 !important;
+}
+
+.nx-light .text-white {
+  color: #0B1020 !important;
+}
+
+.nx-light header, .nx-light nav {
+  background-color: rgba(244, 247, 255, 0.95) !important;
+}
+
+/* ============================================
+   LARGE FONT SIZE
+   ============================================ */
+.nx-text-large {
+  font-size: 18px;
+}
+
+.nx-text-large p, .nx-text-large span, .nx-text-large li {
+  line-height: 1.8;
+}
+
+.nx-text-large h1 { font-size: 2.2rem; }
+.nx-text-large h2 { font-size: 1.8rem; }
+.nx-text-large h3 { font-size: 1.4rem; }

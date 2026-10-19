@@ -12,7 +12,7 @@ export type SyncData = {
   homepage?: Record<string, unknown>;
 };
 
-const DB_NAME = "nexfix-local-v2"; // Version တင်လိုက်တယ်
+const DB_NAME = "nexfix-local-v2";
 const STORE_NAME = "sync-data";
 
 function getDB(): Promise<IDBDatabase> {
@@ -51,11 +51,10 @@ export async function getLocalData(): Promise<SyncData | null> {
   });
 }
 
-// ဒီ Function ကို သုံးပြီး Data တွေကို Memory ထဲမှာ ခဏသိမ်းထားမယ် (Cache လုပ်မယ်)
 let cachedData: SyncData | null = null;
 
 export async function getCachedLocalData(): Promise<SyncData | null> {
-  if (cachedData) return cachedData; // Memory ထဲမှာရှိရင် ချက်ချင်းပြန်ပေးမယ်
+  if (cachedData) return cachedData;
   const data = await getLocalData();
   cachedData = data;
   return data;
@@ -68,65 +67,77 @@ export type LocalSearchResult = {
   machineName: string;
   machineCode: string;
   solution: string | null;
+  isFromExcel?: boolean;
 };
 
+// 🌟 App Data နဲ့ Excel Data ကို ရောပြီး ရှာမယ့် Function
 export async function searchLocalData(
-  machineName: string,
-  errorCode: string
+  query: string,
+  errorCode: string = ""
 ): Promise<LocalSearchResult[]> {
-  const data = await getCachedLocalData(); // Cache ကနေ ယူမယ်
-  if (!data) return [];
+  const data = await getCachedLocalData();
+  const userData = await getPrivateExcelData(); // Excel Data ကိုပါ ယူမယ်
+  
+  let appResults: LocalSearchResult[] = [];
+  let excelResults: LocalSearchResult[] = [];
 
-  let matchedMachineIds: string[] = [];
-  if (machineName) {
-    const lowerMachine = machineName.toLowerCase();
-    matchedMachineIds = data.machines
-      .filter((m) => String(m.name).toLowerCase().includes(lowerMachine))
-      .map((m) => String(m.id));
-  } else {
-    matchedMachineIds = data.machines.map((m) => String(m.id));
+  const lowerQuery = query.toLowerCase();
+
+  // ၁။ App ရဲ့ Default Data ကို ရှာမယ်
+  if (data && query) {
+    let matchedErrors = data.errorCodes;
+    matchedErrors = matchedErrors.filter((e) => {
+      const machine = data.machines.find((m) => m.id === e.machineId);
+      const mName = String(machine?.name || "").toLowerCase();
+      const eCode = String(e.code || "").toLowerCase();
+      const eTitle = String(e.title || "").toLowerCase();
+      return mName.includes(lowerQuery) || eCode.includes(lowerQuery) || eTitle.includes(lowerQuery);
+    });
+
+    appResults = matchedErrors.map((e) => {
+      const machine = data.machines.find((m) => m.id === e.machineId);
+      const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
+      const myContent = contents.find((c) => c.locale === "my");
+      const enContent = contents.find((c) => c.locale === "en");
+      const content = myContent || enContent || null;
+
+      return {
+        id: String(e.id),
+        code: String(e.code),
+        title: String(e.title),
+        machineName: String(machine?.name || "Unknown"),
+        machineCode: String(machine?.code || "Unknown"),
+        solution: content ? String(content.solution) : null,
+        isFromExcel: false,
+      };
+    });
   }
 
-  if (matchedMachineIds.length === 0 && machineName) return [];
-
-  let matchedErrors = data.errorCodes.filter((e) =>
-    matchedMachineIds.length > 0 ? matchedMachineIds.includes(String(e.machineId)) : true
-  );
-
-  if (errorCode) {
-    const lowerCode = errorCode.toLowerCase();
-    const exactMatch = matchedErrors.filter(
-      (e) => String(e.code).toLowerCase() === lowerCode
-    );
-
-    if (exactMatch.length > 0) {
-      matchedErrors = exactMatch;
-    } else {
-      matchedErrors = matchedErrors.filter((e) =>
-        String(e.code).toLowerCase().includes(lowerCode)
-      );
-    }
+  // ၂။ Excel Data ကို ရှာမယ်
+  if (userData && query) {
+    excelResults = userData
+      .filter(row => 
+        row.machineName.toLowerCase().includes(lowerQuery)
+      )
+      .map((row, idx) => ({
+        id: `excel-${idx}`,
+        code: row.errorCode, 
+        title: row.errorFix, 
+        machineName: row.machineName, 
+        machineCode: row.machineName,
+        solution: row.errorFix,
+        isFromExcel: true,
+      }));
   }
 
-  return matchedErrors.map((e) => {
-    const machine = data.machines.find((m) => m.id === e.machineId);
-    const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
-    const myContent = contents.find((c) => c.locale === "my");
-    const enContent = contents.find((c) => c.locale === "en");
-    const content = myContent || enContent || null;
+  // Exact Match ကို အပေါ်ဆုံးထားမယ်
+  const allResults = [...appResults, ...excelResults];
+  const exactMatches = allResults.filter(r => r.machineName.toLowerCase() === lowerQuery || r.code.toLowerCase() === lowerQuery);
+  const otherMatches = allResults.filter(r => r.machineName.toLowerCase() !== lowerQuery && r.code.toLowerCase() !== lowerQuery);
 
-    return {
-      id: String(e.id),
-      code: String(e.code),
-      title: String(e.title),
-      machineName: String(machine?.name || "Unknown"),
-      machineCode: String(machine?.code || "Unknown"),
-      solution: content ? String(content.solution) : null,
-    };
-  });
+  return [...exactMatches, ...otherMatches];
 }
 
-// ပုံတွေကို Cache လုပ်မယ်
 export async function cacheImage(url: string): Promise<void> {
   if (!url) return;
   try {
@@ -136,9 +147,7 @@ export async function cacheImage(url: string): Promise<void> {
     const response = await fetch(url);
     if (!response.ok) return;
     await cache.put(url, response);
-  } catch {
-    console.warn("Failed to cache image:", url);
-  }
+  } catch {}
 }
 
 export async function getCachedImageUrl(url: string): Promise<string> {
@@ -151,18 +160,75 @@ export async function getCachedImageUrl(url: string): Promise<string> {
       return URL.createObjectURL(blob);
     }
     return url;
-  } catch {
-    return url;
-  }
+  } catch { return url; }
 }
 
 export async function clearLocalData(): Promise<void> {
   const db = await getDB();
-  cachedData = null; // Cache ကိုပါ ရှင်းမယ်
+  cachedData = null;
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
     const request = store.delete("all-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// ============================================
+// PRIVATE USER MACHINE CODES (Excel Data)
+// ============================================
+const PRIVATE_DB_NAME = "nexfix-private-codes";
+const PRIVATE_STORE_NAME = "user-excel";
+
+function getPrivateDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PRIVATE_DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PRIVATE_STORE_NAME)) {
+        db.createObjectStore(PRIVATE_STORE_NAME);
+      }
+    };
+  });
+}
+
+export type UserExcelRow = {
+  machineName: string; // Machine Code
+  errorCode: string;   // Arrival Date
+  errorFix: string;    // Location
+};
+
+export async function savePrivateExcelData(rows: UserExcelRow[]): Promise<void> {
+  const db = await getPrivateDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.put(rows, "excel-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getPrivateExcelData(): Promise<UserExcelRow[] | null> {
+  const db = await getPrivateDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readonly");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.get("excel-data");
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function clearPrivateExcelData(): Promise<void> {
+  const db = await getPrivateDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.delete("excel-data");
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });

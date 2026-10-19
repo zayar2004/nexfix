@@ -12,7 +12,7 @@ export type SyncData = {
   homepage?: Record<string, unknown>;
 };
 
-const DB_NAME = "nexfix-local";
+const DB_NAME = "nexfix-local-v2"; // Version တင်လိုက်တယ်
 const STORE_NAME = "sync-data";
 
 function getDB(): Promise<IDBDatabase> {
@@ -51,20 +51,14 @@ export async function getLocalData(): Promise<SyncData | null> {
   });
 }
 
-export async function clearLocalData(): Promise<void> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.delete("all-data");
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
+let cachedData: SyncData | null = null;
 
-// ============================================
-// SEARCH FUNCTIONS (Local-First)
-// ============================================
+export async function getCachedLocalData(): Promise<SyncData | null> {
+  if (cachedData) return cachedData;
+  const data = await getLocalData();
+  cachedData = data;
+  return data;
+}
 
 export type LocalSearchResult = {
   id: string;
@@ -76,40 +70,30 @@ export type LocalSearchResult = {
 };
 
 export async function searchLocalData(
-  machineName: string,
-  errorCode: string
+  query: string,
+  errorCode: string = ""
 ): Promise<LocalSearchResult[]> {
-  const data = await getLocalData();
+  const data = await getCachedLocalData();
   if (!data) return [];
 
-  let matchedMachineIds: string[] = [];
-  if (machineName) {
-    const lowerMachine = machineName.toLowerCase();
-    matchedMachineIds = data.machines
-      .filter((m) => String(m.name).toLowerCase().includes(lowerMachine))
-      .map((m) => String(m.id));
-  } else {
-    matchedMachineIds = data.machines.map((m) => String(m.id));
+  let matchedErrors = data.errorCodes;
+
+  if (query) {
+    const lowerQuery = query.toLowerCase();
+    matchedErrors = matchedErrors.filter((e) => {
+      const machine = data.machines.find((m) => m.id === e.machineId);
+      const mName = String(machine?.name || "").toLowerCase();
+      const eCode = String(e.code || "").toLowerCase();
+      const eTitle = String(e.title || "").toLowerCase();
+
+      return mName.includes(lowerQuery) || eCode.includes(lowerQuery) || eTitle.includes(lowerQuery);
+    });
   }
 
-  if (matchedMachineIds.length === 0) return [];
-
-  let matchedErrors = data.errorCodes.filter((e) => 
-    matchedMachineIds.includes(String(e.machineId))
-  );
-
-  if (errorCode) {
-    const lowerCode = errorCode.toLowerCase();
-    const exactMatch = matchedErrors.filter((e) => 
-      String(e.code).toLowerCase() === lowerCode
-    );
-
-    if (exactMatch.length > 0) {
-      matchedErrors = exactMatch;
-    } else {
-      matchedErrors = matchedErrors.filter((e) => 
-        String(e.code).toLowerCase().includes(lowerCode)
-      );
+  if (query) {
+    const exactCodeMatch = matchedErrors.filter(e => String(e.code).toLowerCase() === query.toLowerCase());
+    if (exactCodeMatch.length > 0) {
+      matchedErrors = [...exactCodeMatch, ...matchedErrors.filter(e => String(e.code).toLowerCase() !== query.toLowerCase())];
     }
   }
 
@@ -130,10 +114,6 @@ export async function searchLocalData(
     };
   });
 }
-
-// ============================================
-// IMAGE CACHING (Offline Support)
-// ============================================
 
 export async function cacheImage(url: string): Promise<void> {
   if (!url) return;
@@ -162,4 +142,75 @@ export async function getCachedImageUrl(url: string): Promise<string> {
   } catch {
     return url;
   }
+}
+
+export async function clearLocalData(): Promise<void> {
+  const db = await getDB();
+  cachedData = null;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete("all-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// ============================================
+// PRIVATE USER MACHINE CODES (Excel Data)
+// ============================================
+const PRIVATE_DB_NAME = "nexfix-private-codes";
+const PRIVATE_STORE_NAME = "user-excel";
+
+function getPrivateDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PRIVATE_DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PRIVATE_STORE_NAME)) {
+        db.createObjectStore(PRIVATE_STORE_NAME);
+      }
+    };
+  });
+}
+
+export type UserExcelRow = {
+  machineName: string; // ဒီနေရာမှာ Machine Code ကို သိမ်းပါမယ်
+  errorCode: string;   // Arrival Date
+  errorFix: string;    // Location
+};
+
+export async function savePrivateExcelData(rows: UserExcelRow[]): Promise<void> {
+  const db = await getPrivateDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.put(rows, "excel-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getPrivateExcelData(): Promise<UserExcelRow[] | null> {
+  const db = await getPrivateDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readonly");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.get("excel-data");
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function clearPrivateExcelData(): Promise<void> {
+  const db = await getPrivateDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.delete("excel-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
 }

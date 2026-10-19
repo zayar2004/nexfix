@@ -1,0 +1,222 @@
+export const translations = {
+  en: {
+    // Common
+    "settings": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "fontSize": "Font Size",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "normal": "Normal",
+    "large": "Large",
+    "dataStorage": "Data & Storage",
+    "clearSharedData": "Clear Shared Data",
+    "clearExcelData": "Clear My Excel Data",
+    "version": "Version",
+    "logout": "Logout",
+    "login": "Sign In",
+    "logoutConfirm": "Are you sure you want to logout?",
+    "clearSharedConfirm": "Clear shared data? You will need to sync again.",
+    "clearExcelConfirm": "Clear your private Excel data?",
+    
+    // Settings Notifications
+    "languageChanged": "Language changed!",
+    "themeChanged": "Theme changed!",
+    "fontChanged": "Font size changed!",
+    "dataCleared": "Data cleared!",
+    
+    // Profile
+    "myActivity": "My Activity",
+    "appPreferences": "App preferences",
+    "viewHistory": "View search history",
+    
+    // Navigation
+    "home": "Home",
+    "library": "Library",
+    "chat": "Chat",
+    "notes": "Notes",
+    "more": "More",
+    
+    // Home
+    "findSolutions": "Find Solutions\nKeep Machines Running",
+    "searchMachine": "Select Machine (e.g. Tekken 7)",
+    "searchError": "Enter Error Code (e.g. E-001)",
+    "searchMachineCode": "Search your Excel Machine Code...",
+    "recentDiagnostics": "Recent Diagnostics",
+    "noRecent": "No recent diagnostics yet.",
+    "uploadExcel": "Upload Excel File",
+    "replaceExcel": "Replace File",
+    "removeExcel": "Remove",
+    "popular": "Popular:",
+    
+    // Search Page
+    "searchResults": "Search Results",
+    "machineErrorTab": "Machine / Error",
+    "machineCodeTab": "My Machine Codes",
+    "machineNamePlaceholder": "Machine Name...",
+    "errorCodePlaceholder": "Error Code...",
+    "machineCodePlaceholder": "Search Machine Code...",
+    "noResults": "No results found.",
+    "typeToSearch": "Type above to search.",
+    "noMatchingCodes": "No matching codes found.",
+    "copy": "Copy",
+    "copied": "Copied!",
+    
+    // Error Detail Page
+    "errorDetail": "Error Detail",
+    "overview": "Overview",
+    "cause": "Cause",
+    "solution": "Solution",
+    "media": "Media",
+    "safetyWarning": "Safety Warning",
+    "technicianNotes": "Technician Notes",
+    "knownCauses": "Known Causes",
+    "stepByStep": "Step-by-Step Solution",
+    "noMedia": "No media available.",
+    "date": "Date",
+    "location": "Loc",
+    "description": "Description",
+    "goBack": "Go Back",
+    "errorNotFound": "Error not found",
+    
+    // Library
+    "knowledgeLibrary": "Knowledge Library",
+    "noArticles": "No articles available. Please sync data first.",
+    "loading": "Loading...",
+    "articleNotFound": "Article not found.",
+    "videos": "Videos",
+    
+    // Notes
+    "myNotes": "My Notes",
+    "newNote": "+ New Note",
+    "createNote": "Create Note",
+    "deleteNote": "Delete this note?",
+    "noteTitle": "Title",
+    "noteBody": "Body (Optional)",
+    "noRepeat": "No Repeat",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "delete": "Delete",
+    "signInNotes": "Please sign in to view your notes.",
+    
+    // Chat
+    "publicChat": "Public Chat",
+    "chatComingSoon": "Chat feature is coming soon.",
+    "connectionError": "Connection Error",
+    "chatRequiresInternet": "Chat requires an active internet connection.",
+    "retry": "Retry",
+  },
+  my: {
+    // Common
+    "settings": "ဆက်တင်များ",
+    "language": "ဘာသာစကား",
+    "theme": "အပြင်အဆင်",
+    "fontSize": "စာလုံးအရွယ်အစား",
+    "darkMode": "အမှောင်မုဒ်",
+    "lightMode": "အလင်းမုဒ်",
+    "normal": "ပုံမှန်",
+    "large": "ကြီး",
+    "dataStorage": "ဒေတာနှင့် သိုလှောင်မှု",
+    "clearSharedData": "မျှဝေဒေတာ ရှင်းလင်းမယ်",
+    "clearExcelData": "ကျွန်ုပ်၏ Excel ဒေတာ ရှင်းလင်းမယ်",
+    "version": "ဗားရှင်း",
+    "logout": "အကောင့်ထွက်မယ်",
+    "login": "ဝင်ရောက်မယ်",
+    "logoutConfirm": "အကောင့်ထွက်ရန် သေချာပါသလား?",
+    "clearSharedConfirm": "မျှဝေဒေတာများ ရှင်းလင်းရန် သေချာပါသလား?",
+    "clearExcelConfirm": "ကျွန်ုပ်၏ Excel ဒေတာ ရှင်းလင်းရန် သေချာပါသလား?",
+    
+    // Settings Notifications
+    "languageChanged": "ဘာသာစကား ပြောင်းပြီးပါပြီ!",
+    "themeChanged": "အပြင်အဆင် ပြောင်းပြီးပါပြီ!",
+    "fontChanged": "စာလုံးအရွယ်အစား ပြောင်းပြီးပါပြီ!",
+    "dataCleared": "ဒေတာ ရှင်းလင်းပြီးပါပြီ!",
+    
+    // Profile
+    "myActivity": "ကျွန်ုပ်၏ လုပ်ဆောင်ချက်များ",
+    "appPreferences": "App ကြိုက်နှစ်သက်မှုများ",
+    "viewHistory": "ရှာဖွေမှု မှတ်တမ်းကြည့်မယ်",
+    
+    // Navigation
+    "home": "ပင်မ",
+    "library": "စာကြည့်တိုက်",
+    "chat": "စကားပြော",
+    "notes": "မှတ်စု",
+    "more": "ပိုမို",
+    
+    // Home
+    "findSolutions": "ဖြေရှင်းနည်းများ ရှာပါ\nစက်များ အလုပ်ဆက်လုပ်ပါစေ",
+    "searchMachine": "စက်ကို ရွေးပါ (ဥပမာ - Tekken 7)",
+    "searchError": "Error Code ထည့်ပါ (ဥပမာ - E-001)",
+    "searchMachineCode": "သင့် Excel Machine Code ရှာပါ...",
+    "recentDiagnostics": "မကြာသေးမီက စစ်ဆေးမှုများ",
+    "noRecent": "မကြာသေးမီက စစ်ဆေးမှု မရှိသေးပါ။",
+    "uploadExcel": "Excel ဖိုင် တင်မယ်",
+    "replaceExcel": "ဖိုင် အစားထိုးမယ်",
+    "removeExcel": "ဖျက်မယ်",
+    "popular": "လူကြိုက်များ:",
+    
+    // Search Page
+    "searchResults": "ရှာဖွေမှု ရလဒ်များ",
+    "machineErrorTab": "စက် / Error",
+    "machineCodeTab": "ကျွန်ုပ်၏ စက်ကုဒ်များ",
+    "machineNamePlaceholder": "စက်နာမည်...",
+    "errorCodePlaceholder": "Error Code...",
+    "machineCodePlaceholder": "Machine Code ရှာပါ...",
+    "noResults": "ရလဒ် မတွေ့ပါ။",
+    "typeToSearch": "အထက်တွင် ရိုက်ထည့်ပြီး ရှာပါ။",
+    "noMatchingCodes": "ကိုက်ညီသော ကုဒ် မတွေ့ပါ။",
+    "copy": "ကူးမယ်",
+    "copied": "ကူးပြီးပါပြီ!",
+    
+    // Error Detail Page
+    "errorDetail": "Error အသေးစိတ်",
+    "overview": "ခြုံငုံသုံးသပ်ချက်",
+    "cause": "အကြောင်းရင်း",
+    "solution": "ဖြေရှင်းနည်း",
+    "media": "မီဒီယာ",
+    "safetyWarning": "သတိပေးချက်",
+    "technicianNotes": "နည်းပညာရှင် မှတ်စု",
+    "knownCauses": "သိရှိထားသော အကြောင်းရင်းများ",
+    "stepByStep": "အဆင့်လိုက် ဖြေရှင်းနည်း",
+    "noMedia": "မီဒီယာ မရှိပါ။",
+    "date": "ရက်စွဲ",
+    "location": "တည်နေရာ",
+    "description": "ဖော်ပြချက်",
+    "goBack": "ပြန်သွားမယ်",
+    "errorNotFound": "Error မတွေ့ပါ။",
+    
+    // Library
+    "knowledgeLibrary": "ဗဟုသုတ စာကြည့်တိုက်",
+    "noArticles": "ဆောင်းပါး မရှိပါ။ ဒေတာ Sync လုပ်ပါ။",
+    "loading": "ဖွင့်နေသည်...",
+    "articleNotFound": "ဆောင်းပါး မတွေ့ပါ။",
+    "videos": "ဗီဒီယိုများ",
+    
+    // Notes
+    "myNotes": "ကျွန်ုပ်၏ မှတ်စုများ",
+    "newNote": "+ မှတ်စု အသစ်",
+    "createNote": "မှတ်စု ဖန်တီးမယ်",
+    "deleteNote": "ဤမှတ်စုကို ဖျက်မလား?",
+    "noteTitle": "ခေါင်းစဉ်",
+    "noteBody": "အကြောင်းအရာ (မဖြစ်မနေ မလိုပါ)",
+    "noRepeat": "ထပ်မလုပ်ပါ",
+    "daily": "နေ့စဉ်",
+    "weekly": "အပတ်စဉ်",
+    "monthly": "လစဉ်",
+    "yearly": "နှစ်စဉ်",
+    "delete": "ဖျက်မယ်",
+    "signInNotes": "မှတ်စုများ ကြည့်ရန် ဝင်ရောက်ပါ။",
+    
+    // Chat
+    "publicChat": "အများပြည်သူ စကားပြောခန်း",
+    "chatComingSoon": "စကားပြောခန်း မကြာမီ ရောက်လာပါမည်။",
+    "connectionError": "ချိတ်ဆက်မှု အမှား",
+    "chatRequiresInternet": "စကားပြောရန် အင်တာနက် လိုအပ်ပါသည်။",
+    "retry": "ပြန်ကြိုးစားမယ်",
+  },
+};
+
+export type TranslationKey = keyof typeof translations.en;

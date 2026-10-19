@@ -165,3 +165,23 @@ export const mediaVideos = pgTable("media_videos", {
 }, (table) => ({
   ownerIdx: index("media_videos_owner_idx").on(table.ownerType, table.ownerId),
 }));
+
+// 14. Chat Messages Table
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  createdIdx: index("chat_messages_created_idx").on(table.createdAt),
+}));
+
+// 14. Chat Messages Table
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  createdIdx: index("chat_messages_created_idx").on(table.createdAt),
+}));

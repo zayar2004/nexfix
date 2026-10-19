@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, InputHTMLAttributes } from "react";
+import { forwardRef, useId, InputHTMLAttributes } from "react";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -12,7 +12,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { label, error, hint, id, className = "", ...props },
   ref
 ) {
-  const inputId = id || `nx-input-${Math.random().toString(36).slice(2, 9)}`;
+  // 🌟 useId() ကို သုံးမယ် - Server နဲ့ Client မှာ တူညီတဲ့ ID ထုတ်ပေးတယ်
+  const generatedId = useId();
+  const inputId = id || `nx-input-${generatedId}`;
   const errorId = `${inputId}-error`;
   const hintId = `${inputId}-hint`;
 

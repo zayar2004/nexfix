@@ -12,7 +12,6 @@ export function TopNav() {
   const [onlineCount, setOnlineCount] = useState(0);
   const isSyncingRef = useRef(false);
 
-  // Sync လုပ်တဲ့ Function
   const syncData = useCallback(async (isManual = false) => {
     if (isSyncingRef.current) return;
     if (!navigator.onLine) {
@@ -21,7 +20,7 @@ export function TopNav() {
     }
 
     isSyncingRef.current = true;
-    setMode("syncing"); // Sync လုပ်နေစဉ်
+    setMode("syncing");
     setSyncProgress(10);
 
     try {
@@ -34,18 +33,17 @@ export function TopNav() {
       setSyncProgress(100);
       
       setTimeout(() => {
-        setMode("offline"); // Sync ပြီးရင် Offline ပြန်ချိန်မယ်
+        setMode("offline");
         setSyncProgress(0);
       }, 1500);
     } catch (err) {
-      setMode("offline"); // Error တက်ရင်လည်း Offline ပြန်ချိန်မယ်
+      setMode("offline");
       if (isManual) alert("❌ Sync failed.");
     } finally {
       isSyncingRef.current = false;
     }
   }, [setMode]);
 
-  // App စဝင်တာနဲ့ တစ်ခါပဲ လုပ်မယ်
   useEffect(() => {
     if (!isInternetAvailable) return;
     const lastSync = localStorage.getItem("nexfix_last_sync");
@@ -58,18 +56,25 @@ export function TopNav() {
     }
   }, [syncData, isInternetAvailable]);
 
-  // Online Count ကို နောက်ကွယ်ကနေ စစ်မယ်
+  // 🌟 Online Count ကို ၅ မိနစ်တစ်ခါပဲ စစ်မယ် (ပြီးတော့ Timeout ထည့်မယ်)
   useEffect(() => {
     if (!isInternetAvailable) return;
+    
     const fetchCount = async () => {
       try {
-        const res = await fetch("/api/presence/count");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // ၃ စက္ကန့်အတွင်း မရရင် ရပ်မယ်
+        
+        const res = await fetch("/api/presence/count", { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         const data = await res.json();
         if (data.ok) setOnlineCount(data.count);
-      } catch {}
+      } catch (err) {}
     };
+    
     fetchCount();
-    const cntInterval = setInterval(fetchCount, 30000); 
+    const cntInterval = setInterval(fetchCount, 5 * 60 * 1000); // ၅ မိနစ်တစ်ခါ
     return () => clearInterval(cntInterval);
   }, [isInternetAvailable]);
 
@@ -81,7 +86,6 @@ export function TopNav() {
         </button>
 
         <div className="flex items-center gap-3">
-          {/* Mode ပြသမယ့် နေရာ */}
           {mode === "syncing" ? (
              <span className="text-xs font-bold text-[var(--nx-accent)] bg-[var(--nx-accent)]/10 px-2 py-1 rounded-md animate-pulse">SYNCING {syncProgress}%</span>
           ) : mode === "online" ? (

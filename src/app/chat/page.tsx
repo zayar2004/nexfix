@@ -1,54 +1,256 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useNetwork } from "@/lib/network-context";
+import { useSettings } from "@/lib/settings-context";
+
+type ChatMessage = {
+  id: string;
+  content: string;
+  createdAt: string;
+  userId: string;
+  userName: string | null;
+  userEmail: string;
+};
 
 export default function ChatPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { forceOnlineForChat, returnToOffline } = useNetwork();
+  const { t } = useSettings();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
+  
+  // 🌟 Hydration Error မဖြစ်အောင် isMounted သုံးမယ်
+  const [isMounted, setIsMounted] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // App စဝင်တာနဲ့ isMounted ကို true လုပ်မယ် (ဒါမှ Browser ဘက်မှာ ရှိတယ်ဆိုတာ သေချာမယ်)
   useEffect(() => {
-    // Chat page ထဲ ဝင်တာနဲ့ Online Mode ချိန်မယ်
-    forceOnlineForChat();
+    setIsMounted(true);
     setIsOffline(!navigator.onLine);
 
-    // Chat page ကနေ ထွက်သွားရင် Offline ပြန်ချိန်မယ်
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
     return () => {
-      returnToOffline();
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
-  }, [forceOnlineForChat, returnToOffline]);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    forceOnlineForChat();
+    return () => { returnToOffline(); };
+  }, [forceOnlineForChat, returnToOffline, isMounted]);
+
+  // 🌟 SSE Connection (Real-time)
+  useEffect(() => {
+    if (!isMounted || isOffline) {
+      setLoading(false);
+      return;
+    }
+
+    const connectSSE = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      const lastMsg = messages[messages.length - 1];
+      const lastTime = lastMsg ? lastMsg.createdAt : "";
+      const url = `/api/chat?stream=true${lastTime ? `&after=${encodeURIComponent(lastTime)}` : ""}`;
+      
+      const es = new EventSource(url);
+      eventSourceRef.current = es;
+
+      es.onopen = () => {
+        setConnected(true);
+        setLoading(false);
+      };
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "init") {
+            setMessages(data.messages);
+            setLoading(false);
+          } else if (data.type === "new") {
+            setMessages((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id));
+              const newMsgs = data.messages.filter((m: ChatMessage) => !existingIds.has(m.id));
+              return [...prev, ...newMsgs];
+            });
+          }
+        } catch (err) {
+          console.error("SSE parse error:", err);
+        }
+      };
+
+      es.onerror = () => {
+        setConnected(false);
+        es.close();
+        setTimeout(connectSSE, 3000);
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, isOffline]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || sending) return;
+    setSending(true);
+    const messageToSend = input.trim();
+    setInput("");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: messageToSend }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setInput(messageToSend);
+        alert("Failed to send: " + data.error);
+      }
+    } catch {
+      setInput(messageToSend);
+      alert("Failed to send message");
+    }
+    setSending(false);
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // 🌟 Server နဲ့ Client မကိုက်ညီမှု မဖြစ်အောင် Mount ဖြစ်တဲ့အထိ Loading ပြမယ်
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col nx-pb-bottom-nav">
+        <TopNav />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav flex flex-col">
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col nx-pb-bottom-nav">
       <TopNav />
       
-      <main className="flex-1 flex flex-col items-center justify-center p-4">
-        {!navigator.onLine ? (
-          <div className="text-center p-6 bg-[var(--nx-bg-card)] border border-[var(--nx-error)]/30 rounded-xl">
-            <h2 className="text-lg font-bold text-[var(--nx-error)] mb-2">Connection Error</h2>
-            <p className="text-[var(--nx-text-secondary-updated)] text-sm">Chat requires an active internet connection. Please check your network.</p>
-            <button 
-              onClick={() => router.refresh()} 
-              className="mt-4 px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg"
-            >
-              Retry
-            </button>
+      <main className="flex-1 flex flex-col max-w-3xl mx-auto w-full">
+        {isOffline ? (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-center p-6 bg-[var(--nx-bg-card)] border border-[var(--nx-error)]/30 rounded-xl">
+              <h2 className="text-lg font-bold text-[var(--nx-error)] mb-2">{t("connectionError")}</h2>
+              <p className="text-[var(--nx-text-secondary-updated)] text-sm">{t("chatRequiresInternet")}</p>
+            </div>
           </div>
         ) : (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-[var(--nx-bg-card)] rounded-full flex items-center justify-center mx-auto mb-4 border border-[var(--nx-border-updated)]">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          <>
+            <div className="px-4 py-3 border-b border-[var(--nx-border-updated)] bg-[var(--nx-bg-card)] flex items-center justify-between">
+              <h1 className="text-lg font-bold text-[var(--nx-text-primary)] flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--nx-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                {t("publicChat")}
+              </h1>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${connected ? 'bg-[var(--nx-success)] animate-pulse' : 'bg-[var(--nx-error)]'}`}></span>
+                <span className="text-[10px] font-bold uppercase text-[var(--nx-text-muted-updated)]">
+                  {connected ? "Live" : "Connecting"}
+                </span>
+              </div>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Public Chat</h1>
-            <p className="text-[var(--nx-text-muted-updated)]">Chat feature is coming soon.</p>
-          </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+              {loading ? (
+                <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div></div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-10 text-[var(--nx-text-muted-updated)] text-sm">
+                  No messages yet. Be the first to say hello! 👋
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isMine = msg.userId === session?.user?.id;
+                  return (
+                    <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
+                        {!isMine && (
+                          <span className="text-xs text-[var(--nx-text-muted-updated)] mb-1 px-1">
+                            {msg.userName || msg.userEmail?.split("@")[0] || "Anonymous"}
+                          </span>
+                        )}
+                        <div className={`px-4 py-2 rounded-2xl ${isMine ? 'bg-[var(--nx-accent)] text-black' : 'bg-[var(--nx-bg-card)] text-[var(--nx-text-primary)] border border-[var(--nx-border-updated)]'}`}>
+                          <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                        </div>
+                        <span className="text-[10px] text-[var(--nx-text-muted-updated)] mt-1 px-1">{formatTime(msg.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {session?.user ? (
+              <div className="p-3 border-t border-[var(--nx-border-updated)] bg-[var(--nx-bg-card)]">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder="Type a message..."
+                    className="flex-1 h-[44px] px-4 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-full text-[var(--nx-text-primary)] text-sm focus:outline-none focus:border-[var(--nx-accent)]"
+                    maxLength={500}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!input.trim() || sending}
+                    className="w-[44px] h-[44px] rounded-full bg-[var(--nx-accent)] flex items-center justify-center text-black font-bold disabled:opacity-50 transition-all"
+                  >
+                    {sending ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 border-t border-[var(--nx-border-updated)] bg-[var(--nx-bg-card)] text-center">
+                <p className="text-sm text-[var(--nx-text-muted-updated)] mb-2">Sign in to send messages</p>
+                <button onClick={() => router.push("/login")} className="px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg text-sm">
+                  {t("login")}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
-
       <BottomNav />
     </div>
   );

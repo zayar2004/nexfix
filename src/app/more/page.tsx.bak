@@ -1,0 +1,54 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { TopNav } from "@/components/layout/TopNav";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { useSettings } from "@/lib/settings-context";
+
+export default function MorePage() {
+  const router = useRouter();
+  const { t } = useSettings();
+
+  const options = [
+    { label: t("settings"), href: "/settings", icon: "settings", desc: "App preferences" },
+    { label: "Help & Support", href: "/help", icon: "help", desc: "Get assistance" },
+    { label: "About NEXFIX", href: "/about", icon: "info", desc: `Version 1.0.0` },
+  ];
+
+  const icons: Record<string, React.ReactNode> = {
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+    help: <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></>,
+    info: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>,
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      <TopNav />
+      <main className="max-w-3xl mx-auto p-4 py-6">
+        <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-6">{t("more")}</h1>
+        
+        <div className="flex flex-col gap-3">
+          {options.map((opt) => (
+            <button
+              key={opt.href}
+              onClick={() => router.push(opt.href)}
+              className="w-full p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-left hover:border-[var(--nx-accent)] transition-colors flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[var(--nx-bg-surface-deep)] flex items-center justify-center text-[var(--nx-text-muted-updated)] group-hover:text-[var(--nx-accent)] transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[opt.icon]}</svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-[var(--nx-text-primary)]">{opt.label}</p>
+                  <p className="text-xs text-[var(--nx-text-muted-updated)]">{opt.desc}</p>
+                </div>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--nx-text-muted-updated)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          ))}
+        </div>
+      </main>
+      <BottomNav />
+    </div>
+  );
+}

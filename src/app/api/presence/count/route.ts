@@ -11,10 +11,10 @@ export async function GET() {
       .from(presence)
       .where(gte(presence.lastHeartbeat, ninetySecondsAgo));
 
-    // Browser ကို ၁၀ စက္ကန့်ကြာ မှတ်ထားခိုင်းမယ် (Database ကို ထပ်ခါထပ်ခါ မမေးတော့ဘူး)
+    // Browser ကို ၅ မိနစ်ကြာ မှတ်ထားခိုင်းမယ် (Database ကို ထပ်ခါထပ်ခါ မမေးတော့ဘူး)
     return NextResponse.json(
       { ok: true, count: Number(result?.count || 0) },
-      { headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=20' } }
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
     );
   } catch {
     return NextResponse.json({ ok: true, count: 0 });

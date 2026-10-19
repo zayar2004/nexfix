@@ -25,7 +25,7 @@ function AdminLoginForm() {
         setError("Invalid email or password");
       } else {
         // Login အောင်မြင်ရင် Admin Dashboard ကို ပို့မယ်
-        router.push("/admin/content/home");
+        router.push("/admin");
         router.refresh();
       }
     } catch {

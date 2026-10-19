@@ -2,26 +2,37 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { saveLocalData } from "@/lib/local-db";
 import { useNetwork } from "@/lib/network-context";
+import { useSettings } from "@/lib/settings-context";
 
 export function TopNav() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { mode, isInternetAvailable, setMode } = useNetwork();
+  const { t } = useSettings();
   const [syncProgress, setSyncProgress] = useState(0);
-  const [onlineCount, setOnlineCount] = useState(0);
   const isSyncingRef = useRef(false);
+  
+  // 🌟 Profile Photo အတွက် State အသစ်
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
-  // Sync လုပ်တဲ့ Function
+  // App စဝင်တာနဲ့ Profile Photo ကို LocalStorage ကနေ ယူမယ်
+  useEffect(() => {
+    const savedPhoto = localStorage.getItem("nexfix_profile_photo");
+    if (savedPhoto) setProfilePhoto(savedPhoto);
+  }, []);
+
   const syncData = useCallback(async (isManual = false) => {
     if (isSyncingRef.current) return;
     if (!navigator.onLine) {
-      if (isManual) alert("❌ Internet မရှိပါ။");
+      if (isManual) alert("❌ " + (t("connectionError") || "No internet connection."));
       return;
     }
 
     isSyncingRef.current = true;
-    setMode("syncing"); // Sync လုပ်နေစဉ်
+    setMode("syncing");
     setSyncProgress(10);
 
     try {
@@ -34,18 +45,17 @@ export function TopNav() {
       setSyncProgress(100);
       
       setTimeout(() => {
-        setMode("offline"); // Sync ပြီးရင် Offline ပြန်ချိန်မယ်
+        setMode("offline");
         setSyncProgress(0);
       }, 1500);
     } catch (err) {
-      setMode("offline"); // Error တက်ရင်လည်း Offline ပြန်ချိန်မယ်
+      setMode("offline");
       if (isManual) alert("❌ Sync failed.");
     } finally {
       isSyncingRef.current = false;
     }
-  }, [setMode]);
+  }, [setMode, t]);
 
-  // App စဝင်တာနဲ့ တစ်ခါပဲ လုပ်မယ်
   useEffect(() => {
     if (!isInternetAvailable) return;
     const lastSync = localStorage.getItem("nexfix_last_sync");
@@ -58,28 +68,20 @@ export function TopNav() {
     }
   }, [syncData, isInternetAvailable]);
 
-  // Online Count ကို ၅ မိနစ်တစ်ခါပဲ စစ်မယ် (ဖုန်းကို မလေးစေရန်)
   useEffect(() => {
     if (!isInternetAvailable) return;
     
     const fetchCount = async () => {
       try {
-        // Timeout ထည့်ထားမယ် (၃ စက္ကန့်အတွင်း မရရင် ရပ်မယ်)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
-        
-        const res = await fetch("/api/presence/count", { signal: controller.signal });
+        await fetch("/api/presence/count", { signal: controller.signal });
         clearTimeout(timeoutId);
-        
-        const data = await res.json();
-        if (data.ok) setOnlineCount(data.count);
-      } catch (err) {
-        // Error တက်ရင် ဘာမှ မလုပ်ဘူး (တိတ်တဆိတ် ကျော်သွားမယ်)
-      }
+      } catch (err) {}
     };
     
     fetchCount();
-    const cntInterval = setInterval(fetchCount, 5 * 60 * 1000); // ၅ မိနစ်တစ်ခါ
+    const cntInterval = setInterval(fetchCount, 5 * 60 * 1000);
     return () => clearInterval(cntInterval);
   }, [isInternetAvailable]);
 
@@ -91,7 +93,6 @@ export function TopNav() {
         </button>
 
         <div className="flex items-center gap-3">
-          {/* Mode ပြသမယ့် နေရာ */}
           {mode === "syncing" ? (
              <span className="text-xs font-bold text-[var(--nx-accent)] bg-[var(--nx-accent)]/10 px-2 py-1 rounded-md animate-pulse">SYNCING {syncProgress}%</span>
           ) : mode === "online" ? (
@@ -116,11 +117,13 @@ export function TopNav() {
             </svg>
           </button>
 
-          <button onClick={() => router.push("/profile")} className="p-2 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-accent)] transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+          {/* 🌟 Profile Icon (ပုံရှိရင် ပုံပြ၊ မရှိရင် N ပြ) */}
+          <button 
+            onClick={() => router.push("/profile")} 
+            className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm border border-[var(--nx-border-updated)] hover:border-[var(--nx-accent)] transition-colors"
+            style={profilePhoto ? { backgroundImage: `url(${profilePhoto})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : { backgroundColor: 'var(--nx-accent)', color: 'black' }}
+          >
+            {!profilePhoto && (session?.user?.name?.charAt(0).toUpperCase() || session?.user?.email?.charAt(0).toUpperCase() || "N")}
           </button>
         </div>
       </div>
