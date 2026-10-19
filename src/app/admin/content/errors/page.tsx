@@ -131,7 +131,7 @@ function ErrorFormContent() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Error Name (Title) <span className="text-red-400">*</span></label>
+          <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase tracking-wide">Error Name <span className="text-red-400">*</span></label>
           <input type="text" placeholder="e.g., Motor Overheat" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none transition" required />
         </div>
 

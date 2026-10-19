@@ -1,0 +1,450 @@
+"use client";
+
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { getLocalData } from "@/lib/local-db";
+import { useSettings } from "@/lib/settings-context";
+import { Image as ImageIcon, Video, AlertTriangle, Info, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+
+type ErrorData = { 
+  id: string; 
+  code: string; 
+  title: string; 
+  machineName: string; 
+  machineCode: string; 
+  videoUrl?: string | null; 
+};
+
+type ContentData = { 
+  locale: string; 
+  cause: string | null; 
+  troubleshooting: string | null; 
+  solution: string | null; 
+  safety: string | null; 
+  notes: string | null; 
+};
+
+type VideoData = { 
+  id: string; 
+  youtubeUrl: string; 
+  title: string | null; 
+};
+
+type MediaData = {
+  id: string;
+  url: string;
+  mime: string;
+};
+
+function getYouTubeEmbedId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]+)/);
+  return match ? match[1] : null;
+}
+
+export default function ErrorDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
+  const { id } = use(params);
+  const { t, locale } = useSettings();
+
+  const [activeTab, setActiveTab] = useState<"errorName" | "cause" | "solution" | "media">("errorName");
+  const [data, setData] = useState<ErrorData | null>(null);
+  const [content, setContent] = useState<ContentData | null>(null);
+  const [videos, setVideos] = useState<VideoData[]>([]);
+  const [media, setMedia] = useState<MediaData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  
+  // Carousel State
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const localData = await getLocalData();
+        if (!localData) throw new Error("No local data. Please sync first.");
+
+        const errorRecord = localData.errorCodes.find((e) => String(e.id) === id);
+        if (!errorRecord) throw new Error("Error not found locally.");
+
+        const machineRecord = localData.machines.find((m) => String(m.id) === String(errorRecord.machineId));
+
+        const errorData = {
+          id: String(errorRecord.id),
+          code: String(errorRecord.code),
+          title: String(errorRecord.title),
+          machineName: String(machineRecord?.name || "Unknown"),
+          machineCode: String(machineRecord?.code || "Unknown"),
+          videoUrl: errorRecord.videoUrl ? String(errorRecord.videoUrl) : null,
+        };
+        setData(errorData);
+
+        // Recent Searches
+        const newItem = { id: errorData.id, machineName: errorData.machineName, code: errorData.code, title: errorData.title };
+        const existing = JSON.parse(localStorage.getItem("nexfix_recent_searches") || "[]");
+        const filtered = existing.filter((item: any) => item.id !== newItem.id);
+        const updated = [newItem, ...filtered].slice(0, 10);
+        localStorage.setItem("nexfix_recent_searches", JSON.stringify(updated));
+
+        // Content
+        const contents = localData.errorContents.filter((c) => String(c.errorCodeId) === id);
+        const myContent = contents.find((c) => c.locale === "my");
+        const enContent = contents.find((c) => c.locale === "en");
+        const selected = locale === "my" ? (myContent || enContent || null) : (enContent || myContent || null);
+
+        setContent(selected ? {
+          locale: String(selected.locale),
+          cause: selected.cause ? String(selected.cause) : null,
+          troubleshooting: selected.troubleshooting ? String(selected.troubleshooting) : null,
+          solution: selected.solution ? String(selected.solution) : null,
+          safety: selected.safety ? String(selected.safety) : null,
+          notes: selected.notes ? String(selected.notes) : null,
+        } : null);
+
+        // Videos
+        if (localData.mediaVideos) {
+          const errorVideos = (localData.mediaVideos as Record<string, unknown>[]).filter(
+            (v) => v.ownerType === "error" && String(v.ownerId) === id
+          );
+          setVideos(errorVideos.map((v) => ({
+            id: String(v.id),
+            youtubeUrl: String(v.youtubeUrl),
+            title: v.title ? String(v.title) : null,
+          })));
+        }
+
+        // Images
+        if (localData.media) {
+          const errorMedia = (localData.media as Record<string, unknown>[]).filter(
+            (m) => m.ownerType === "error" && String(m.ownerId) === id
+          );
+          const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
+          setMedia(errorMedia.map((m) => {
+            const storageKey = String(m.storageKey);
+            return {
+              id: String(m.id),
+              url: storageKey.startsWith("http") ? storageKey : `${S3_URL}/${storageKey}`,
+              mime: String(m.mime),
+            };
+          }));
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error loading data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [id, locale]);
+
+  // Auto-slide carousel every 10 seconds
+  useEffect(() => {
+    if (media.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % media.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [media.length]);
+
+  // Touch handlers for swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && media.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % media.length);
+    }
+    if (isRightSwipe && media.length > 1) {
+      setCurrentImageIndex((prev) => (prev - 1 + media.length) % media.length);
+    }
+  };
+
+  const nextImage = () => {
+    if (media.length > 1) setCurrentImageIndex((prev) => (prev + 1) % media.length);
+  };
+
+  const prevImage = () => {
+    if (media.length > 1) setCurrentImageIndex((prev) => (prev - 1 + media.length) % media.length);
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
+  if (error || !data) return (
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col items-center justify-center p-4">
+      <p className="text-[var(--nx-error)] mb-4">{error || t("errorNotFound")}</p>
+      <button onClick={() => router.back()} className="px-4 py-2 bg-[var(--nx-bg-card)] text-[var(--nx-text-primary)] rounded-lg">{t("goBack")}</button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-[var(--nx-bg-base-deep)]/90 backdrop-blur-md border-b border-[var(--nx-border-updated)]">
+        <div className="flex items-center justify-between px-4 h-[var(--nx-top-nav-height)]">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} className="p-2 -ml-2 text-[var(--nx-text-primary)] hover:text-[var(--nx-accent)]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h1 className="text-lg font-bold text-[var(--nx-text-primary)]">Error Detail</h1>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section with Carousel */}
+      <div className="relative overflow-hidden border-b border-[var(--nx-border-updated)]">
+        {media.length > 0 ? (
+          <div 
+            className="relative w-full aspect-video bg-black"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Images */}
+            {media.map((m, idx) => (
+              <div 
+                key={m.id}
+                className={`absolute inset-0 transition-opacity duration-700 ${
+                  idx === currentImageIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+                }`}
+              >
+                <img src={m.url} alt={`${data.machineName} ${idx + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+
+            {/* Gradient overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] via-transparent to-transparent z-20 pointer-events-none" />
+
+            {/* Navigation Arrows (only if > 1 image) */}
+            {media.length > 1 && (
+              <>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition"
+                >
+                  <ChevronRight size={20} />
+                </button>
+
+                {/* Dots indicator (no numbers) */}
+                <div className="absolute bottom-16 left-0 right-0 z-30 flex justify-center gap-1.5">
+                  {media.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                      className={`h-1.5 rounded-full transition-all ${
+                        idx === currentImageIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="h-24 bg-gradient-to-b from-[var(--nx-bg-surface-deep)] to-[var(--nx-bg-base-deep)]" />
+        )}
+        
+        {/* Text Overlay */}
+        <div className={`px-4 pb-6 ${media.length > 0 ? "absolute bottom-0 left-0 right-0 z-20" : "pt-4"}`}>
+          <p className="text-sm font-medium text-white/80 mb-1">{data.machineName}</p>
+          <h2 className="text-4xl font-black text-[var(--nx-accent-secondary)] font-mono mb-1 drop-shadow-lg">{data.code}</h2>
+          {/* Title is shown here ONLY ONCE */}
+          <p className="text-xl font-bold text-white drop-shadow-lg">{data.title}</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-[var(--nx-border-updated)] sticky top-[var(--nx-top-nav-height)] bg-[var(--nx-bg-base-deep)] z-40">
+        {[
+          { id: "errorName", label: "Error Name" },
+          { id: "cause", label: "Cause" },
+          { id: "solution", label: "Solution" },
+          { id: "media", label: "Media" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+              activeTab === tab.id ? "text-[var(--nx-accent)]" : "text-[var(--nx-text-secondary)] hover:text-white"
+            }`}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--nx-accent)]" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {/* Error Name Tab - Only show notes */}
+        {activeTab === "errorName" && (
+          <div className="flex flex-col gap-4">
+            {content?.notes ? (
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <Info size={16} className="text-[var(--nx-accent)]" /> Notes
+                </h3>
+                <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.notes}</p>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
+                <p className="text-sm">No additional information available.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Cause Tab */}
+        {activeTab === "cause" && (
+          <div className="flex flex-col gap-4">
+            {content?.cause ? (
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <Wrench size={16} className="text-[var(--nx-accent)]" /> Known Causes
+                </h3>
+                <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.cause}</p>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
+                <p className="text-sm">No cause information available.</p>
+              </div>
+            )}
+            
+            {content?.troubleshooting && (
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-3">Troubleshooting</h3>
+                <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.troubleshooting}</p>
+              </div>
+            )}
+
+            {content?.safety && (
+              <div className="bg-[var(--nx-warning)]/10 border border-[var(--nx-warning)]/30 rounded-xl p-5">
+                <h3 className="text-sm font-bold text-[var(--nx-warning)] mb-3 flex items-center gap-2">
+                  <AlertTriangle size={16} /> Safety Warning
+                </h3>
+                <p className="text-sm text-[var(--nx-warning)]/90 whitespace-pre-wrap leading-relaxed">{content.safety}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Solution Tab */}
+        {activeTab === "solution" && (
+          <div className="flex flex-col gap-4">
+            {content?.solution ? (
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                  <Wrench size={16} className="text-[var(--nx-accent)]" /> How to Fix
+                </h3>
+                <div className="text-sm text-[var(--nx-text-secondary)] leading-relaxed space-y-3">
+                  {content.solution.split("\n").map((line, idx) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return null;
+                    
+                    if (/^\d+\./.test(trimmed)) {
+                      return (
+                        <div key={idx} className="flex gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--nx-accent)]/10 text-[var(--nx-accent)] text-xs font-bold flex items-center justify-center">
+                            {trimmed.match(/^\d+/)?.[0]}
+                          </span>
+                          <p className="flex-1">{trimmed.replace(/^\d+\.\s*/, "")}</p>
+                        </div>
+                      );
+                    }
+                    
+                    if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+                      return (
+                        <div key={idx} className="flex gap-3">
+                          <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--nx-accent)] mt-2" />
+                          <p className="flex-1">{trimmed.replace(/^[-*]\s*/, "")}</p>
+                        </div>
+                      );
+                    }
+                    
+                    return <p key={idx}>{trimmed}</p>;
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
+                <p className="text-sm">No solution available.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Media Tab */}
+        {activeTab === "media" && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <ImageIcon size={16} className="text-[var(--nx-accent)]" /> Images
+              </h3>
+              {media.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {media.map((m) => (
+                    <a key={m.id} href={m.url} target="_blank" rel="noopener noreferrer" className="relative aspect-square rounded-xl overflow-hidden border border-[var(--nx-border-updated)] bg-[var(--nx-bg-surface-deep)] group">
+                      <img src={m.url} alt="Error photo" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--nx-text-secondary)]">No images available.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <Video size={16} className="text-[var(--nx-accent)]" /> Videos
+              </h3>
+              {videos.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {videos.map((v) => {
+                    const embedId = getYouTubeEmbedId(v.youtubeUrl);
+                    if (!embedId) return null;
+                    return (
+                      <div key={v.id} className="rounded-xl overflow-hidden border border-[var(--nx-border-updated)]">
+                        <div className="aspect-video">
+                          <iframe src={`https://www.youtube.com/embed/${embedId}`} title={v.title || "Video"} className="w-full h-full" allowFullScreen />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--nx-text-secondary)]">No videos available.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}

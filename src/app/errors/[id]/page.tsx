@@ -301,19 +301,22 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Content */}
       <div className="p-4">
-        {/* Error Name Tab - Only show notes */}
+        {/* Error Name Tab */}
         {activeTab === "errorName" && (
           <div className="flex flex-col gap-4">
-            {content?.notes ? (
+            <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <Info size={16} className="text-[var(--nx-accent)]" /> Error Name
+              </h3>
+              <p className="text-lg text-[var(--nx-text-primary)] font-semibold">{data.title}</p>
+            </div>
+
+            {content?.notes && (
               <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
                 <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                   <Info size={16} className="text-[var(--nx-accent)]" /> Notes
                 </h3>
                 <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.notes}</p>
-              </div>
-            ) : (
-              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
-                <p className="text-sm">No additional information available.</p>
               </div>
             )}
           </div>
