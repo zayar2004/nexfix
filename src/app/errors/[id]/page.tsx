@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
-import { Image as ImageIcon, Video, AlertTriangle, Info, Wrench } from "lucide-react";
+import { Image as ImageIcon, Video, AlertTriangle, Info, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
 
 type ErrorData = { 
   id: string; 
@@ -54,6 +54,11 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
   const [media, setMedia] = useState<MediaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // Carousel State
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -135,6 +140,47 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
     fetchData();
   }, [id, locale]);
 
+  // Auto-slide carousel every 10 seconds
+  useEffect(() => {
+    if (media.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % media.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [media.length]);
+
+  // Touch handlers for swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && media.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % media.length);
+    }
+    if (isRightSwipe && media.length > 1) {
+      setCurrentImageIndex((prev) => (prev - 1 + media.length) % media.length);
+    }
+  };
+
+  const nextImage = () => {
+    if (media.length > 1) setCurrentImageIndex((prev) => (prev + 1) % media.length);
+  };
+
+  const prevImage = () => {
+    if (media.length > 1) setCurrentImageIndex((prev) => (prev - 1 + media.length) % media.length);
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex items-center justify-center">
       <div className="w-8 h-8 border-4 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div>
@@ -147,8 +193,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
       <button onClick={() => router.back()} className="px-4 py-2 bg-[var(--nx-bg-card)] text-[var(--nx-text-primary)] rounded-lg">{t("goBack")}</button>
     </div>
   );
-
-  const coverImage = media.length > 0 ? media[0].url : null;
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
@@ -164,21 +208,71 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </header>
 
-      {/* Hero Section - With Cover Image */}
+      {/* Hero Section with Carousel */}
       <div className="relative overflow-hidden border-b border-[var(--nx-border-updated)]">
-        {coverImage ? (
-          <div className="relative h-48 w-full">
-            <img src={coverImage} alt={data.machineName} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] via-[var(--nx-bg-base-deep)]/50 to-transparent" />
+        {media.length > 0 ? (
+          <div 
+            className="relative w-full aspect-video bg-black"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Images */}
+            {media.map((m, idx) => (
+              <div 
+                key={m.id}
+                className={`absolute inset-0 transition-opacity duration-700 ${
+                  idx === currentImageIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+                }`}
+              >
+                <img src={m.url} alt={`${data.machineName} ${idx + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+
+            {/* Gradient overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] via-transparent to-transparent z-20 pointer-events-none" />
+
+            {/* Navigation Arrows (only if > 1 image) */}
+            {media.length > 1 && (
+              <>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition"
+                >
+                  <ChevronRight size={20} />
+                </button>
+
+                {/* Dots indicator (no numbers) */}
+                <div className="absolute bottom-16 left-0 right-0 z-30 flex justify-center gap-1.5">
+                  {media.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                      className={`h-1.5 rounded-full transition-all ${
+                        idx === currentImageIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="h-24 bg-gradient-to-b from-[var(--nx-bg-surface-deep)] to-[var(--nx-bg-base-deep)]" />
         )}
         
-        <div className={`px-4 pb-6 ${coverImage ? "-mt-16 relative z-10" : "pt-4"}`}>
-          <p className="text-sm font-medium text-[var(--nx-text-secondary)] mb-1">{data.machineName}</p>
-          <h2 className="text-4xl font-black text-[var(--nx-accent-secondary)] font-mono mb-1">{data.code}</h2>
-          <p className="text-xl font-bold text-white">{data.title}</p>
+        {/* Text Overlay */}
+        <div className={`px-4 pb-6 ${media.length > 0 ? "absolute bottom-0 left-0 right-0 z-20" : "pt-4"}`}>
+          <p className="text-sm font-medium text-white/80 mb-1">{data.machineName}</p>
+          <h2 className="text-4xl font-black text-[var(--nx-accent-secondary)] font-mono mb-1 drop-shadow-lg">{data.code}</h2>
+          {/* Title is shown here ONLY ONCE */}
+          <p className="text-xl font-bold text-white drop-shadow-lg">{data.title}</p>
         </div>
       </div>
 
@@ -207,7 +301,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Content */}
       <div className="p-4">
-        {/* Error Name Tab - Only show if there is actual content beyond the title */}
+        {/* Error Name Tab - Only show notes */}
         {activeTab === "errorName" && (
           <div className="flex flex-col gap-4">
             {content?.notes ? (
@@ -259,7 +353,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Solution Tab - Better Formatting */}
+        {/* Solution Tab */}
         {activeTab === "solution" && (
           <div className="flex flex-col gap-4">
             {content?.solution ? (
@@ -272,7 +366,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
                     const trimmed = line.trim();
                     if (!trimmed) return null;
                     
-                    // Numbered lists
                     if (/^\d+\./.test(trimmed)) {
                       return (
                         <div key={idx} className="flex gap-3">
@@ -284,7 +377,6 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
                       );
                     }
                     
-                    // Bullet points
                     if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
                       return (
                         <div key={idx} className="flex gap-3">
@@ -311,7 +403,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex flex-col gap-6">
             <div>
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                <ImageIcon size={16} className="text-[var(--nx-accent)]" /> Images ({media.length})
+                <ImageIcon size={16} className="text-[var(--nx-accent)]" /> Images
               </h3>
               {media.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
@@ -328,7 +420,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
 
             <div>
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                <Video size={16} className="text-[var(--nx-accent)]" /> Videos ({videos.length})
+                <Video size={16} className="text-[var(--nx-accent)]" /> Videos
               </h3>
               {videos.length > 0 ? (
                 <div className="flex flex-col gap-4">
