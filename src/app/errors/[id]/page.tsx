@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
+import { Image as ImageIcon, Video, AlertTriangle, Info, Wrench } from "lucide-react";
 
 type ErrorData = { 
   id: string; 
@@ -147,6 +148,8 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
     </div>
   );
 
+  const coverImage = media.length > 0 ? media[0].url : null;
+
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       {/* Header */}
@@ -161,11 +164,22 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-b from-[var(--nx-bg-surface-deep)] to-[var(--nx-bg-base-deep)] px-4 py-8 text-center border-b border-[var(--nx-border-updated)]">
-        <p className="text-sm font-medium text-[var(--nx-text-secondary)] mb-2">{data.machineName}</p>
-        <h2 className="text-4xl font-black text-[var(--nx-accent-secondary)] font-mono mb-2">{data.code}</h2>
-        <p className="text-xl font-bold text-white">{data.title}</p>
+      {/* Hero Section - With Cover Image */}
+      <div className="relative overflow-hidden border-b border-[var(--nx-border-updated)]">
+        {coverImage ? (
+          <div className="relative h-48 w-full">
+            <img src={coverImage} alt={data.machineName} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] via-[var(--nx-bg-base-deep)]/50 to-transparent" />
+          </div>
+        ) : (
+          <div className="h-24 bg-gradient-to-b from-[var(--nx-bg-surface-deep)] to-[var(--nx-bg-base-deep)]" />
+        )}
+        
+        <div className={`px-4 pb-6 ${coverImage ? "-mt-16 relative z-10" : "pt-4"}`}>
+          <p className="text-sm font-medium text-[var(--nx-text-secondary)] mb-1">{data.machineName}</p>
+          <h2 className="text-4xl font-black text-[var(--nx-accent-secondary)] font-mono mb-1">{data.code}</h2>
+          <p className="text-xl font-bold text-white">{data.title}</p>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -193,11 +207,21 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Content */}
       <div className="p-4">
-        {/* Error Name Tab */}
+        {/* Error Name Tab - Only show if there is actual content beyond the title */}
         {activeTab === "errorName" && (
-          <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-6">
-            <h3 className="text-sm font-bold text-white mb-2">Error Name</h3>
-            <p className="text-lg text-[var(--nx-text-primary)] font-semibold">{data.title}</p>
+          <div className="flex flex-col gap-4">
+            {content?.notes ? (
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <Info size={16} className="text-[var(--nx-accent)]" /> Notes
+                </h3>
+                <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.notes}</p>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
+                <p className="text-sm">No additional information available.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -205,52 +229,78 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
         {activeTab === "cause" && (
           <div className="flex flex-col gap-4">
             {content?.cause ? (
-              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-4">
-                <h3 className="text-sm font-bold text-white mb-2">Known Causes</h3>
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <Wrench size={16} className="text-[var(--nx-accent)]" /> Known Causes
+                </h3>
                 <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.cause}</p>
               </div>
             ) : (
-              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-6 text-center">
-                <h3 className="text-sm font-bold text-white mb-2">Known Causes</h3>
-                <p className="text-sm text-[var(--nx-text-secondary)]">No cause information available.</p>
+              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
+                <p className="text-sm">No cause information available.</p>
               </div>
             )}
             
             {content?.troubleshooting && (
-              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-4">
-                <h3 className="text-sm font-bold text-white mb-2">Troubleshooting</h3>
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-3">Troubleshooting</h3>
                 <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.troubleshooting}</p>
               </div>
             )}
 
             {content?.safety && (
-              <div className="bg-[var(--nx-warning)]/10 border border-[var(--nx-warning)]/30 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-[var(--nx-warning)] mb-2">Safety Warning</h3>
-                <p className="text-sm text-[var(--nx-warning)]/90 whitespace-pre-wrap">{content.safety}</p>
+              <div className="bg-[var(--nx-warning)]/10 border border-[var(--nx-warning)]/30 rounded-xl p-5">
+                <h3 className="text-sm font-bold text-[var(--nx-warning)] mb-3 flex items-center gap-2">
+                  <AlertTriangle size={16} /> Safety Warning
+                </h3>
+                <p className="text-sm text-[var(--nx-warning)]/90 whitespace-pre-wrap leading-relaxed">{content.safety}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Solution Tab */}
+        {/* Solution Tab - Better Formatting */}
         {activeTab === "solution" && (
           <div className="flex flex-col gap-4">
             {content?.solution ? (
-              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-4">
-                <h3 className="text-sm font-bold text-white mb-2">How to Fix</h3>
-                <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.solution}</p>
+              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                  <Wrench size={16} className="text-[var(--nx-accent)]" /> How to Fix
+                </h3>
+                <div className="text-sm text-[var(--nx-text-secondary)] leading-relaxed space-y-3">
+                  {content.solution.split("\n").map((line, idx) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return null;
+                    
+                    // Numbered lists
+                    if (/^\d+\./.test(trimmed)) {
+                      return (
+                        <div key={idx} className="flex gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--nx-accent)]/10 text-[var(--nx-accent)] text-xs font-bold flex items-center justify-center">
+                            {trimmed.match(/^\d+/)?.[0]}
+                          </span>
+                          <p className="flex-1">{trimmed.replace(/^\d+\.\s*/, "")}</p>
+                        </div>
+                      );
+                    }
+                    
+                    // Bullet points
+                    if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+                      return (
+                        <div key={idx} className="flex gap-3">
+                          <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--nx-accent)] mt-2" />
+                          <p className="flex-1">{trimmed.replace(/^[-*]\s*/, "")}</p>
+                        </div>
+                      );
+                    }
+                    
+                    return <p key={idx}>{trimmed}</p>;
+                  })}
+                </div>
               </div>
             ) : (
-              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-6 text-center">
-                <h3 className="text-sm font-bold text-white mb-2">Solution</h3>
-                <p className="text-sm text-[var(--nx-text-secondary)]">No solution available.</p>
-              </div>
-            )}
-
-            {content?.notes && (
-              <div className="bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] rounded-xl p-4">
-                <h3 className="text-sm font-bold text-white mb-2">Technician Notes</h3>
-                <p className="text-sm text-[var(--nx-text-secondary)] whitespace-pre-wrap leading-relaxed">{content.notes}</p>
+              <div className="text-center py-10 text-[var(--nx-text-secondary)]">
+                <p className="text-sm">No solution available.</p>
               </div>
             )}
           </div>
@@ -260,7 +310,9 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
         {activeTab === "media" && (
           <div className="flex flex-col gap-6">
             <div>
-              <h3 className="text-sm font-bold text-white mb-3">Images ({media.length})</h3>
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <ImageIcon size={16} className="text-[var(--nx-accent)]" /> Images ({media.length})
+              </h3>
               {media.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                   {media.map((m) => (
@@ -275,7 +327,9 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-white mb-3">Videos ({videos.length})</h3>
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <Video size={16} className="text-[var(--nx-accent)]" /> Videos ({videos.length})
+              </h3>
               {videos.length > 0 ? (
                 <div className="flex flex-col gap-4">
                   {videos.map((v) => {
