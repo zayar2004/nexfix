@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { machines, errorCodes, errorContent, media, mediaVideos } from "@/db/schema";
+import { machines, errorCodes, errorContent, media, mediaVideos, notifications } from "@/db/schema";
 import { auth } from "@/auth";
 import { eq, and } from "drizzle-orm";
 import * as XLSX from "xlsx";
-import { randomUUID } from "crypto";
 
 type ImportRow = {
   machineName: string;
   errorCode: string;
+  errorName: string;
   errorFix: string;
   imageUrl: string;
   youtubeUrl: string;
@@ -47,16 +47,19 @@ export async function POST(req: Request) {
 
     const firstRow = rows[0];
     const keys = Object.keys(firstRow);
+    
+    // Column Mapping
     const machineKey = keys.find(k => k.toLowerCase().includes("machine"));
-    const codeKey = keys.find(k => k.toLowerCase().includes("code"));
+    const codeKey = keys.find(k => k.toLowerCase().includes("code") && !k.toLowerCase().includes("machine"));
+    const nameKey = keys.find(k => k.toLowerCase().includes("name") || k.toLowerCase().includes("title"));
     const fixKey = keys.find(k => k.toLowerCase().includes("fix") || k.toLowerCase().includes("solution"));
     const imageKey = keys.find(k => k.toLowerCase().includes("image") || k.toLowerCase().includes("photo"));
     const videoKey = keys.find(k => k.toLowerCase().includes("youtube") || k.toLowerCase().includes("video"));
 
-    if (!machineKey || !codeKey || !fixKey) {
+    if (!machineKey || !codeKey) {
       return NextResponse.json({
         ok: false,
-        error: `Missing required columns. Found: ${keys.join(", ")}. Need: Machine Name, Error Code, Error Fix.`,
+        error: `Missing required columns. Found: ${keys.join(", ")}. Need: Machine Name, Error Code, Error Name.`,
       }, { status: 400 });
     }
 
@@ -64,22 +67,23 @@ export async function POST(req: Request) {
     for (const row of rows) {
       const machineName = String(row[machineKey] || "").trim();
       const errorCode = String(row[codeKey] || "").trim();
-      const errorFix = String(row[fixKey] || "").trim();
+      const errorName = nameKey ? String(row[nameKey] || "").trim() : errorCode; // Fallback to code if no name
+      const errorFix = fixKey ? String(row[fixKey] || "").trim() : "";
       const imageUrl = imageKey ? String(row[imageKey] || "").trim() : "";
       const youtubeUrl = videoKey ? String(row[videoKey] || "").trim() : "";
 
-      if (!machineName || !errorCode || !errorFix) {
-        results.push({ machineName, errorCode, errorFix, imageUrl, youtubeUrl, status: "invalid", error: "Missing required fields" });
+      if (!machineName || !errorCode) {
+        results.push({ machineName, errorCode, errorName, errorFix, imageUrl, youtubeUrl, status: "invalid", error: "Missing required fields" });
         continue;
       }
 
       const isDuplicateInFile = results.some(r => r.machineName === machineName && r.errorCode === errorCode && r.status !== "invalid");
       if (isDuplicateInFile) {
-        results.push({ machineName, errorCode, errorFix, imageUrl, youtubeUrl, status: "duplicate", error: "Duplicate in file" });
+        results.push({ machineName, errorCode, errorName, errorFix, imageUrl, youtubeUrl, status: "duplicate", error: "Duplicate in file" });
         continue;
       }
 
-      results.push({ machineName, errorCode, errorFix, imageUrl, youtubeUrl, status: "new" });
+      results.push({ machineName, errorCode, errorName, errorFix, imageUrl, youtubeUrl, status: "new" });
     }
 
     if (dryRun) {
@@ -112,11 +116,11 @@ export async function POST(req: Request) {
 
           if (existing) { skipped++; continue; }
 
-          // 3. Insert error code
+          // 3. Insert error code (with title from Error Name column)
           const [newError] = await tx.insert(errorCodes).values({
             machineId: machine.id,
             code: row.errorCode,
-            title: row.errorCode,
+            title: row.errorName || row.errorCode,
             status: "published",
           }).returning();
 
@@ -124,22 +128,22 @@ export async function POST(req: Request) {
           await tx.insert(errorContent).values({
             errorCodeId: newError.id,
             locale: "en",
-            solution: row.errorFix,
+            solution: row.errorFix || null,
           });
 
-          // 5. Insert Image if URL provided
+          // 5. Insert Image if provided
           if (row.imageUrl) {
             await tx.insert(media).values({
               ownerType: "error",
               ownerId: newError.id,
-              mime: "image/jpeg", // default assumption, or detect from URL
-              size: "0", // we don't know actual file size
-              storageKey: row.imageUrl, // We store the full URL as storageKey, but this might need handling
+              mime: "image/jpeg",
+              size: "0",
+              storageKey: row.imageUrl,
               status: "approved",
             });
           }
 
-          // 6. Insert Video if URL provided
+          // 6. Insert Video if provided
           if (row.youtubeUrl) {
             await tx.insert(mediaVideos).values({
               ownerType: "error",
@@ -149,6 +153,15 @@ export async function POST(req: Request) {
               displayOrder: "0",
             });
           }
+
+          // 7. Notification
+          await tx.insert(notifications).values({
+            userId: null,
+            type: "error_new",
+            title: "New Error Code Added",
+            message: `${row.errorCode} - ${row.errorName} (${row.machineName}) ကို အသစ်ထည့်သွင်းပြီးပါပြီ။`,
+            link: `/error/${newError.id}`,
+          });
 
           inserted++;
         } catch (e) {

@@ -1,13 +1,11 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Toast, ToastType } from "@/components/ui/Toast";
-import { Plus, Search, Filter } from "lucide-react";
-
+import { Plus, Search, Filter, Trash2, CheckSquare, Square } from "lucide-react";
 
 type ErrorCode = {
   id: string;
@@ -22,7 +20,11 @@ export default function ErrorListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMachine, setFilterMachine] = useState("all");
   
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Modal & Toast state
+  const [deleteTarget, setDeleteTarget] = useState<string | string[] | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const fetchErrors = async () => {
@@ -40,21 +42,49 @@ export default function ErrorListPage() {
 
   useEffect(() => { fetchErrors(); }, []);
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredErrors.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredErrors.map(e => e.id));
+    }
+  };
+
+  const handleDeleteSingle = (id: string) => {
+    setDeleteTarget(id);
+  };
+
+  const handleDeleteBulk = () => {
+    if (selectedIds.length === 0) return;
+    setDeleteTarget(selectedIds);
+  };
+
   const confirmDelete = async () => {
-    if (!deleteId) return;
-    const id = deleteId;
-    setDeleteId(null);
+    if (!deleteTarget) return;
+    const targets = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
+    setDeleteTarget(null);
 
     try {
-      const res = await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error);
+      // For single delete, use existing API. For bulk, loop through.
+      for (const id of targets) {
+        await fetch(`/api/admin/errors?id=${id}`, { method: "DELETE" });
+      }
       
-      setToast({ message: "Error deleted successfully", type: "success" });
+      setToast({ 
+        message: targets.length > 1 ? `${targets.length} errors deleted successfully` : "Error deleted successfully", 
+        type: "success" 
+      });
+      setSelectedIds([]);
       fetchErrors();
     } catch (err) {
       setToast({ 
-        message: err instanceof Error ? err.message : "Failed to delete error", 
+        message: err instanceof Error ? err.message : "Failed to delete", 
         type: "error" 
       });
     }
@@ -73,19 +103,34 @@ export default function ErrorListPage() {
   return (
     <AdminLayout title="Error List">
       <div className="max-w-6xl mx-auto">
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">All Error Codes</h1>
-            <p className="text-sm text-[var(--nx-text-muted-updated)]">Manage and view all reported errors.</p>
+            <p className="text-sm text-[var(--nx-text-muted-updated)]">
+              {selectedIds.length > 0 
+                ? `${selectedIds.length} selected` 
+                : `Manage and view all reported errors.`}
+            </p>
           </div>
           
           <div className="flex gap-2 flex-wrap">
-            <Link href="/admin/content/errors" className="px-4 py-2.5 bg-[var(--nx-accent)] text-black font-bold rounded-lg hover:opacity-90 transition flex items-center gap-2 text-sm">
-              <Plus size={18} /> Add New Error
-            </Link>
+            {selectedIds.length > 0 ? (
+              <button 
+                onClick={handleDeleteBulk} 
+                className="px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 font-bold rounded-lg hover:bg-red-500/30 transition flex items-center gap-2 text-sm"
+              >
+                <Trash2 size={18} /> Delete Selected ({selectedIds.length})
+              </button>
+            ) : (
+              <Link href="/admin/content/errors" className="px-4 py-2.5 bg-[var(--nx-accent)] text-black font-bold rounded-lg hover:opacity-90 transition flex items-center gap-2 text-sm">
+                <Plus size={18} /> Add New Error
+              </Link>
+            )}
           </div>
         </div>
 
+        {/* Search Bar */}
         <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--nx-text-muted-updated)]">
@@ -116,6 +161,17 @@ export default function ErrorListPage() {
           </div>
         </div>
 
+        {/* Select All Bar */}
+        {!loading && filteredErrors.length > 0 && (
+          <div className="flex items-center gap-3 mb-3 px-2">
+            <button onClick={toggleSelectAll} className="flex items-center gap-2 text-sm text-[var(--nx-text-muted-updated)] hover:text-white transition">
+              {selectedIds.length === filteredErrors.length ? <CheckSquare size={18} className="text-[var(--nx-accent)]"/> : <Square size={18} />}
+              Select All ({filteredErrors.length})
+            </button>
+          </div>
+        )}
+
+        {/* Error List */}
         {loading ? (
           <p className="text-center text-white py-10">Loading errors...</p>
         ) : filteredErrors.length === 0 ? (
@@ -125,32 +181,57 @@ export default function ErrorListPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredErrors.map(e => (
-              <div key={e.id} className="flex flex-col bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 hover:border-[var(--nx-accent)]/50 transition">
-                <div className="flex justify-between items-start mb-3">
-                  <span className="px-2.5 py-1 bg-[var(--nx-accent)]/10 text-[var(--nx-accent)] text-xs font-mono font-bold rounded-md">{e.code}</span>
-                  <span className="text-xs text-[var(--nx-text-muted-updated)] bg-[var(--nx-bg-base-deep)] px-2 py-1 rounded">{e.machineName}</span>
+            {filteredErrors.map(e => {
+              const isSelected = selectedIds.includes(e.id);
+              return (
+                <div 
+                  key={e.id} 
+                  className={`flex flex-col bg-[var(--nx-bg-card)] border rounded-xl p-4 transition cursor-pointer ${
+                    isSelected ? "border-[var(--nx-accent)] bg-[var(--nx-accent)]/5" : "border-[var(--nx-border-updated)] hover:border-[var(--nx-accent)]/50"
+                  }`}
+                  onClick={() => toggleSelect(e.id)}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      {isSelected ? <CheckSquare size={18} className="text-[var(--nx-accent)]"/> : <Square size={18} className="text-[var(--nx-text-muted-updated)]" />}
+                      <span className="px-2.5 py-1 bg-[var(--nx-accent)]/10 text-[var(--nx-accent)] text-xs font-mono font-bold rounded-md">{e.code}</span>
+                    </div>
+                    <span className="text-xs text-[var(--nx-text-muted-updated)] bg-[var(--nx-bg-base-deep)] px-2 py-1 rounded">{e.machineName}</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-white mb-4 line-clamp-2 pl-7">{e.title}</h3>
+                  <div className="mt-auto flex gap-2 pt-3 border-t border-[var(--nx-border-updated)]">
+                    <Link 
+                      href={`/admin/content/errors?id=${e.id}`} 
+                      onClick={(e) => e.stopPropagation()} 
+                      className="flex-1 text-center px-3 py-2 text-xs font-medium bg-[var(--nx-bg-surface-deep)] text-white rounded-lg hover:bg-[var(--nx-border-updated)] transition"
+                    >
+                      Edit
+                    </Link>
+                    <button 
+                      onClick={(evt) => { evt.stopPropagation(); handleDeleteSingle(e.id); }} 
+                      className="flex-1 px-3 py-2 text-xs font-medium bg-[var(--nx-error)]/10 text-[var(--nx-error)] border border-[var(--nx-error)]/30 rounded-lg hover:bg-[var(--nx-error)]/20 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <h3 className="text-base font-semibold text-white mb-4 line-clamp-2">{e.title}</h3>
-                <div className="mt-auto flex gap-2 pt-3 border-t border-[var(--nx-border-updated)]">
-                  <Link href={`/admin/content/errors?id=${e.id}`} className="flex-1 text-center px-3 py-2 text-xs font-medium bg-[var(--nx-bg-surface-deep)] text-white rounded-lg hover:bg-[var(--nx-border-updated)] transition">Edit</Link>
-                  <button onClick={() => setDeleteId(e.id)} className="flex-1 px-3 py-2 text-xs font-medium bg-[var(--nx-error)]/10 text-[var(--nx-error)] border border-[var(--nx-error)]/30 rounded-lg hover:bg-[var(--nx-error)]/20 transition">Delete</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       <ConfirmModal
-        isOpen={!!deleteId}
-        title="Delete Error Code?"
-        message="Are you sure you want to delete this error? This action cannot be undone and will also remove all related images and videos."
+        isOpen={!!deleteTarget}
+        title={Array.isArray(deleteTarget) ? `Delete ${deleteTarget.length} Errors?` : "Delete Error Code?"}
+        message={Array.isArray(deleteTarget) 
+          ? `Are you sure you want to delete these ${deleteTarget.length} errors? This action cannot be undone.` 
+          : "Are you sure you want to delete this error? This action cannot be undone and will also remove all related images and videos."}
         confirmText="Yes, Delete"
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={confirmDelete}
-        onCancel={() => setDeleteId(null)}
+        onCancel={() => setDeleteTarget(null)}
       />
 
       {toast && (
