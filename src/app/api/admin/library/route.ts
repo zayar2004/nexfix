@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { knowledgeArticles, articleContent, mediaVideos } from "@/db/schema";
+import { knowledgeArticles, articleContent, mediaVideos, notifications } from "@/db/schema";
 import { auth } from "@/auth";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 
-// YouTube URL validation regex
-// Accepts: watch?v=, youtu.be/, shorts/
 const YOUTUBE_REGEX =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)[\w-]{11}([&\?].*)?$/;
 
@@ -72,9 +70,6 @@ async function requireDeleteAdmin() {
   return session;
 }
 
-// ============================================
-// GET — list OR single article (with ?id=)
-// ============================================
 export async function GET(req: Request) {
   const session = await requireAdmin();
   if (!session) {
@@ -119,9 +114,6 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, data });
 }
 
-// ============================================
-// POST — create article
-// ============================================
 export async function POST(req: Request) {
   const session = await requireAdmin();
   if (!session) {
@@ -194,6 +186,15 @@ export async function POST(req: Request) {
       return article;
     });
 
+    // 🔔 Create Global Notification for New Article
+    await db.insert(notifications).values({
+      userId: null,
+      type: "article_new",
+      title: "New Article Added",
+      message: `Knowledge Library မှာ "${titleEn}" ဆိုတဲ့ Article အသစ်တစ်ခု ထည့်သွင်းပြီးပါပြီ။`,
+      link: `/library/${newArticle.slug}`,
+    });
+
     return NextResponse.json({ ok: true, data: newArticle });
   } catch (err) {
     console.error("POST /api/admin/library error:", err);
@@ -204,9 +205,6 @@ export async function POST(req: Request) {
   }
 }
 
-// ============================================
-// PATCH — update article (FIXED: and() instead of &&)
-// ============================================
 export async function PATCH(req: Request) {
   const session = await requireAdmin();
   if (!session) {
@@ -238,7 +236,6 @@ export async function PATCH(req: Request) {
 
   try {
     await db.transaction(async (tx) => {
-      // 1. Article metadata
       const articleUpdate: Record<string, unknown> = { updatedAt: new Date() };
       if (slug !== undefined) articleUpdate.slug = slug;
       if (category !== undefined) articleUpdate.category = category || null;
@@ -251,7 +248,6 @@ export async function PATCH(req: Request) {
         .set(articleUpdate)
         .where(eq(knowledgeArticles.id, id));
 
-      // 2. EN content — FIXED with and()
       if (titleEn !== undefined || bodyEn !== undefined || summaryEn !== undefined) {
         const enUpdate: Record<string, unknown> = {};
         if (titleEn !== undefined) enUpdate.title = titleEn;
@@ -280,7 +276,6 @@ export async function PATCH(req: Request) {
         }
       }
 
-      // 3. MY content — FIXED with and()
       if (titleMy !== undefined || bodyMy !== undefined || summaryMy !== undefined) {
         const myUpdate: Record<string, unknown> = {};
         if (titleMy !== undefined) myUpdate.title = titleMy;
@@ -309,7 +304,6 @@ export async function PATCH(req: Request) {
         }
       }
 
-      // 4. Videos — replace strategy (delete then insert)
       if (videos !== undefined) {
         await tx
           .delete(mediaVideos)
@@ -339,9 +333,6 @@ export async function PATCH(req: Request) {
   }
 }
 
-// ============================================
-// DELETE — article + cascade media_videos
-// ============================================
 export async function DELETE(req: Request) {
   const session = await requireDeleteAdmin();
   if (!session) {
@@ -356,12 +347,10 @@ export async function DELETE(req: Request) {
 
   try {
     await db.transaction(async (tx) => {
-      // Delete videos first (no FK cascade on polymorphic table)
       await tx
         .delete(mediaVideos)
         .where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
 
-      // Delete article (cascades to article_content via FK)
       await tx.delete(knowledgeArticles).where(eq(knowledgeArticles.id, id));
     });
 

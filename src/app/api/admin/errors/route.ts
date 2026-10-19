@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { errorCodes, errorContent, machines } from "@/db/schema";
+import { errorCodes, errorContent, machines, notifications } from "@/db/schema";
 import { auth } from "@/auth";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -17,7 +17,6 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-// GET - Fetch all errors with their content
 export async function GET() {
   const session = await auth();
   if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
@@ -45,7 +44,6 @@ export async function GET() {
   return NextResponse.json({ ok: true, data });
 }
 
-// POST - Create new error
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
@@ -75,10 +73,18 @@ export async function POST(req: Request) {
     notes: notes || null,
   });
 
+  // 🔔 Create Global Notification
+  await db.insert(notifications).values({
+    userId: null, // null = all users
+    type: "error_new",
+    title: "New Error Code Added",
+    message: `${errorData.code} - ${errorData.title} ကို အသစ်ထည့်သွင်းပြီးပါပြီ။`,
+    link: `/error/${newError.id}`,
+  });
+
   return NextResponse.json({ ok: true, data: newError });
 }
 
-// PATCH - Update error
 export async function PATCH(req: Request) {
   const session = await auth();
   if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
@@ -90,11 +96,9 @@ export async function PATCH(req: Request) {
 
   if (!id) return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
 
-  // Update error code (excluding id to prevent overwriting)
   const { id: _, ...cleanUpdateData } = updateData;
   await db.update(errorCodes).set(cleanUpdateData).where(eq(errorCodes.id, id));
 
-  // Update or insert error content
   const existing = await db.select().from(errorContent).where(eq(errorContent.errorCodeId, id)).limit(1);
   if (existing.length > 0) {
     await db.update(errorContent).set({
@@ -119,7 +123,6 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE - Delete error
 export async function DELETE(req: Request) {
   const session = await auth();
   if (!session?.user || !["senior_admin", "super_admin"].includes(session.user.role)) {

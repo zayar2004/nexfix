@@ -1,92 +1,376 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { knowledgeArticles, articleContent } from "@/db/schema";
+import { knowledgeArticles, articleContent, mediaVideos } from "@/db/schema";
 import { auth } from "@/auth";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-const schema = z.object({
-  slug: z.string().min(1),
-  titleEn: z.string().min(1),
-  titleMy: z.string().min(1),
-  bodyEn: z.string().min(1),
-  bodyMy: z.string().min(1),
+// YouTube URL validation regex
+// Accepts: watch?v=, youtu.be/, shorts/
+const YOUTUBE_REGEX =
+  /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)[\w-]{11}([&\?].*)?$/;
+
+const videoSchema = z.object({
+  url: z.string().regex(YOUTUBE_REGEX, "Invalid YouTube URL"),
+  title: z.string().max(200).optional().default(""),
+  order: z.number().int().min(0).optional().default(0),
 });
 
-export async function GET() {
+const createSchema = z.object({
+  slug: z.string().min(1).max(200),
+  titleEn: z.string().min(1).max(300),
+  titleMy: z.string().min(1).max(300),
+  bodyEn: z.string().min(1),
+  bodyMy: z.string().min(1),
+  summaryEn: z.string().optional(),
+  summaryMy: z.string().optional(),
+  category: z.string().max(100).optional(),
+  coverImageUrl: z.string().url().optional().or(z.literal("")),
+  videos: z.array(videoSchema).optional().default([]),
+});
+
+const patchSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string().min(1).max(200).optional(),
+  titleEn: z.string().min(1).max(300).optional(),
+  titleMy: z.string().min(1).max(300).optional(),
+  bodyEn: z.string().min(1).optional(),
+  bodyMy: z.string().min(1).optional(),
+  summaryEn: z.string().optional(),
+  summaryMy: z.string().optional(),
+  category: z.string().max(100).optional(),
+  coverImageUrl: z.string().url().optional().or(z.literal("")),
+  videos: z.array(videoSchema).optional(),
+});
+
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]{11})/
+  );
+  return match ? match[1] : null;
+}
+
+async function requireAdmin() {
   const session = await auth();
-  if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
+  if (
+    !session?.user ||
+    !["staff", "senior_admin", "super_admin"].includes(session.user.role as string)
+  ) {
+    return null;
+  }
+  return session;
+}
+
+async function requireDeleteAdmin() {
+  const session = await auth();
+  if (
+    !session?.user ||
+    !["senior_admin", "super_admin"].includes(session.user.role as string)
+  ) {
+    return null;
+  }
+  return session;
+}
+
+// ============================================
+// GET — list OR single article (with ?id=)
+// ============================================
+export async function GET(req: Request) {
+  const session = await requireAdmin();
+  if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
   }
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (id) {
+    const [article] = await db
+      .select()
+      .from(knowledgeArticles)
+      .where(eq(knowledgeArticles.id, id))
+      .limit(1);
+
+    if (!article) {
+      return NextResponse.json({ ok: false, error: "Article not found" }, { status: 404 });
+    }
+
+    const contents = await db
+      .select()
+      .from(articleContent)
+      .where(eq(articleContent.articleId, id));
+
+    const videos = await db
+      .select()
+      .from(mediaVideos)
+      .where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
+
+    const sortedVideos = videos.sort(
+      (a, b) => Number(a.displayOrder) - Number(b.displayOrder)
+    );
+
+    return NextResponse.json({
+      ok: true,
+      data: { article, contents, videos: sortedVideos },
+    });
+  }
+
   const data = await db.select().from(knowledgeArticles);
   return NextResponse.json({ ok: true, data });
 }
 
+// ============================================
+// POST — create article
+// ============================================
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
+  const session = await requireAdmin();
+  if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
   }
+
   const body = await req.json();
-  const result = schema.safeParse(body);
-  if (!result.success) return NextResponse.json({ ok: false, error: result.error.issues[0].message }, { status: 400 });
+  const result = createSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { ok: false, error: result.error.issues[0].message },
+      { status: 400 }
+    );
+  }
 
-  const { slug, titleEn, titleMy, bodyEn, bodyMy } = result.data;
+  const {
+    slug,
+    titleEn,
+    titleMy,
+    bodyEn,
+    bodyMy,
+    summaryEn,
+    summaryMy,
+    category,
+    coverImageUrl,
+    videos,
+  } = result.data;
 
-  const [newArticle] = await db.insert(knowledgeArticles).values({ slug, status: "published" }).returning();
+  try {
+    const newArticle = await db.transaction(async (tx) => {
+      const [article] = await tx
+        .insert(knowledgeArticles)
+        .values({
+          slug,
+          status: "published",
+          category: category || null,
+          coverImageUrl: coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null,
+        })
+        .returning();
 
-  await db.insert(articleContent).values([
-    { articleId: newArticle.id, locale: "en", title: titleEn, body: bodyEn },
-    { articleId: newArticle.id, locale: "my", title: titleMy, body: bodyMy },
-  ]);
+      await tx.insert(articleContent).values([
+        {
+          articleId: article.id,
+          locale: "en",
+          title: titleEn,
+          body: bodyEn,
+          summary: summaryEn || null,
+        },
+        {
+          articleId: article.id,
+          locale: "my",
+          title: titleMy,
+          body: bodyMy,
+          summary: summaryMy || null,
+        },
+      ]);
 
-  return NextResponse.json({ ok: true, data: newArticle });
+      if (videos && videos.length > 0) {
+        await tx.insert(mediaVideos).values(
+          videos.map((v, i) => ({
+            ownerType: "article",
+            ownerId: article.id,
+            youtubeUrl: v.url,
+            title: v.title || null,
+            displayOrder: String(v.order ?? i),
+          }))
+        );
+      }
+
+      return article;
+    });
+
+    return NextResponse.json({ ok: true, data: newArticle });
+  } catch (err) {
+    console.error("POST /api/admin/library error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Failed to create article" },
+      { status: 500 }
+    );
+  }
 }
 
+// ============================================
+// PATCH — update article (FIXED: and() instead of &&)
+// ============================================
 export async function PATCH(req: Request) {
-  const session = await auth();
-  if (!session?.user || !["staff", "senior_admin", "super_admin"].includes(session.user.role)) {
+  const session = await requireAdmin();
+  if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
   }
-  
+
   const body = await req.json();
-  const { id, ...updateData } = body;
-  if (!id) return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
-
-  const { slug, titleEn, titleMy, bodyEn, bodyMy } = updateData;
-
-  // 1. Update article slug
-  if (slug) {
-    await db.update(knowledgeArticles).set({ slug, updatedAt: new Date() }).where(eq(knowledgeArticles.id, id));
+  const result = patchSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { ok: false, error: result.error.issues[0].message },
+      { status: 400 }
+    );
   }
 
-  // 2. Update content (EN)
-  if (titleEn && bodyEn) {
-    await db.update(articleContent)
-      .set({ title: titleEn, body: bodyEn })
-      .where(eq(articleContent.articleId, id) && eq(articleContent.locale, "en"));
-  }
+  const {
+    id,
+    slug,
+    titleEn,
+    titleMy,
+    bodyEn,
+    bodyMy,
+    summaryEn,
+    summaryMy,
+    category,
+    coverImageUrl,
+    videos,
+  } = result.data;
 
-  // 3. Update content (MY)
-  if (titleMy && bodyMy) {
-    await db.update(articleContent)
-      .set({ title: titleMy, body: bodyMy })
-      .where(eq(articleContent.articleId, id) && eq(articleContent.locale, "my"));
-  }
+  try {
+    await db.transaction(async (tx) => {
+      // 1. Article metadata
+      const articleUpdate: Record<string, unknown> = { updatedAt: new Date() };
+      if (slug !== undefined) articleUpdate.slug = slug;
+      if (category !== undefined) articleUpdate.category = category || null;
+      if (coverImageUrl !== undefined) {
+        articleUpdate.coverImageUrl =
+          coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null;
+      }
+      await tx
+        .update(knowledgeArticles)
+        .set(articleUpdate)
+        .where(eq(knowledgeArticles.id, id));
 
-  return NextResponse.json({ ok: true });
+      // 2. EN content — FIXED with and()
+      if (titleEn !== undefined || bodyEn !== undefined || summaryEn !== undefined) {
+        const enUpdate: Record<string, unknown> = {};
+        if (titleEn !== undefined) enUpdate.title = titleEn;
+        if (bodyEn !== undefined) enUpdate.body = bodyEn;
+        if (summaryEn !== undefined) enUpdate.summary = summaryEn || null;
+
+        const existing = await tx
+          .select()
+          .from(articleContent)
+          .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en")))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await tx
+            .update(articleContent)
+            .set(enUpdate)
+            .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en")));
+        } else if (titleEn && bodyEn) {
+          await tx.insert(articleContent).values({
+            articleId: id,
+            locale: "en",
+            title: titleEn,
+            body: bodyEn,
+            summary: summaryEn || null,
+          });
+        }
+      }
+
+      // 3. MY content — FIXED with and()
+      if (titleMy !== undefined || bodyMy !== undefined || summaryMy !== undefined) {
+        const myUpdate: Record<string, unknown> = {};
+        if (titleMy !== undefined) myUpdate.title = titleMy;
+        if (bodyMy !== undefined) myUpdate.body = bodyMy;
+        if (summaryMy !== undefined) myUpdate.summary = summaryMy || null;
+
+        const existing = await tx
+          .select()
+          .from(articleContent)
+          .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "my")))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await tx
+            .update(articleContent)
+            .set(myUpdate)
+            .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "my")));
+        } else if (titleMy && bodyMy) {
+          await tx.insert(articleContent).values({
+            articleId: id,
+            locale: "my",
+            title: titleMy,
+            body: bodyMy,
+            summary: summaryMy || null,
+          });
+        }
+      }
+
+      // 4. Videos — replace strategy (delete then insert)
+      if (videos !== undefined) {
+        await tx
+          .delete(mediaVideos)
+          .where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
+
+        if (videos.length > 0) {
+          await tx.insert(mediaVideos).values(
+            videos.map((v, i) => ({
+              ownerType: "article",
+              ownerId: id,
+              youtubeUrl: v.url,
+              title: v.title || null,
+              displayOrder: String(v.order ?? i),
+            }))
+          );
+        }
+      }
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("PATCH /api/admin/library error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Failed to update article" },
+      { status: 500 }
+    );
+  }
 }
 
+// ============================================
+// DELETE — article + cascade media_videos
+// ============================================
 export async function DELETE(req: Request) {
-  const session = await auth();
-  if (!session?.user || !["senior_admin", "super_admin"].includes(session.user.role)) {
+  const session = await requireDeleteAdmin();
+  if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
   }
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ ok: false, error: "Missing ID" }, { status: 400 });
+  }
 
-  // Delete article (will cascade to article_content)
-  await db.delete(knowledgeArticles).where(eq(knowledgeArticles.id, id));
-  return NextResponse.json({ ok: true });
+  try {
+    await db.transaction(async (tx) => {
+      // Delete videos first (no FK cascade on polymorphic table)
+      await tx
+        .delete(mediaVideos)
+        .where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
+
+      // Delete article (cascades to article_content via FK)
+      await tx.delete(knowledgeArticles).where(eq(knowledgeArticles.id, id));
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/admin/library error:", err);
+    return NextResponse.json(
+      { ok: false, error: "Failed to delete article" },
+      { status: 500 }
+    );
+  }
 }

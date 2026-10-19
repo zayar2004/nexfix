@@ -178,3 +178,18 @@ export const chatMessages = pgTable("chat_messages", {
 }, (table) => ({
   createdIdx: index("chat_messages_created_idx").on(table.createdAt),
 }));
+
+// 15. Notifications Table
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }), // null = all users
+  type: varchar("type", { length: 50 }).notNull(), // 'error_new', 'article_new', 'system'
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("notifications_user_idx").on(table.userId),
+  readIdx: index("notifications_read_idx").on(table.isRead),
+}));
