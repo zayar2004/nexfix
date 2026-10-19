@@ -307,6 +307,7 @@ export default function ErrorDetailPage({ params }: { params: Promise<{ id: stri
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                 <Info size={16} className="text-[var(--nx-accent)]" /> Error Name
               </h3>
+              <p className="text-lg text-[var(--nx-text-primary)] font-semibold">{data.title}</p>
             </div>
 
             {content?.notes && (
