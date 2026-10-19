@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -7,7 +8,6 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Toast, ToastType } from "@/components/ui/Toast";
 import { Plus, Search, Filter } from "lucide-react";
 
-export const dynamic = "force-dynamic";
 
 type ErrorCode = {
   id: string;

@@ -7,7 +7,6 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
 
 // 🌟 ဒီ Page ကို Build လုပ်တဲ့အခါ Static မလုပ်ခိုင်းဘူး (Runtime မှာပဲ ခေါ်မယ်)
-export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const session = await auth();

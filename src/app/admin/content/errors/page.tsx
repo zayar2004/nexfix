@@ -1,11 +1,11 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Link from "next/link";
 import { List, Upload, Image as ImageIcon, Video, Plus } from "lucide-react";
 
-export const dynamic = "force-dynamic";
 
 type Machine = { id: string; name: string };
 
