@@ -1,5 +1,4 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -7,6 +6,8 @@ import Link from "next/link";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Toast, ToastType } from "@/components/ui/Toast";
 import { Plus, Search, Filter } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 type ErrorCode = {
   id: string;
@@ -85,7 +86,6 @@ export default function ErrorListPage() {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--nx-text-muted-updated)]">

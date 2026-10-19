@@ -1,11 +1,10 @@
-export const dynamic = "force-dynamic";
-
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminLang } from "@/lib/admin-lang-context";
+
+export const dynamic = "force-dynamic";
 
 type MediaItem = {
   id: string;
