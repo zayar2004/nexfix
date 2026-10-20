@@ -24,7 +24,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("dark");
   const [fontSize, setFontSizeState] = useState<FontSize>("normal");
 
-  // Load from localStorage ONCE on mount (no re-apply to DOM to prevent flash)
   useEffect(() => {
     const savedLocale = localStorage.getItem("nexfix-locale") as Locale | null;
     if (savedLocale) setLocaleState(savedLocale);
@@ -39,7 +38,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const setTheme = (t: Theme) => {
     setThemeState(t);
     localStorage.setItem("nexfix-theme", t);
-    // Apply immediately
+    // Also set cookie so server can read it on next request
+    document.cookie = `nexfix-theme=${t}; path=/; max-age=31536000; SameSite=Lax`;
+    
     const root = document.documentElement;
     root.classList.remove("nx-dark", "nx-light");
     root.classList.add(t === "light" ? "nx-light" : "nx-dark");
