@@ -130,6 +130,11 @@ export const translations = {
     "published": "Published",
     "existingArticles": "Existing Articles",
     "addMediaAfterSave": "Save the article first to add images and videos.",
+    // Search (Phase 2)
+    "searchArticlesErrors": "Search machines, errors, articles...",
+    "searchExcelPlaceholder": "Search your Excel data...",
+    "noResultsFound": "No results found.",
+    "noExcelMatches": "No matching codes found in your Excel.",
     "signInNotes": "Please sign in to view your notes.",
     
     // Chat
@@ -270,6 +275,11 @@ export const translations = {
     "published": "ထုတ်ဝေပြီး",
     "existingArticles": "ရှိပြီးသား ဆောင်းပါးများ",
     "addMediaAfterSave": "ပုံနှင့် ဗီဒီယို ထည့်ရန် ဆောင်းပါးကို အရင် သိမ်းပါ။",
+    // Search (Phase 2)
+    "searchArticlesErrors": "စက်၊ အမှား၊ ဆောင်းပါးများ ရှာပါ...",
+    "searchExcelPlaceholder": "သင့် Excel ဒေတာ ရှာပါ...",
+    "noResultsFound": "ရလဒ် မတွေ့ပါ။",
+    "noExcelMatches": "သင့် Excel ထဲ ကိုက်ညီသော ကုဒ် မတွေ့ပါ။",
     "signInNotes": "မှတ်စုများ ကြည့်ရန် ဝင်ရောက်ပါ။",
     
     // Chat
