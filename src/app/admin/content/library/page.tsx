@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { MediaManager } from "@/components/admin/MediaManager";
 import { VideoManager } from "@/components/admin/VideoManager";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { Plus, Edit, Trash2, Eye, Save, X, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 
 type Article = {
@@ -234,25 +235,14 @@ function AdminLibraryContent() {
               />
             </div>
 
-            <input
-              type="url"
-              placeholder="Cover Image URL (optional)"
+            <ImageUploadField
+              label="Cover Image"
               value={form.coverImageUrl}
-              onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
-              className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
+              onChange={(url) => setForm({ ...form, coverImageUrl: url })}
+              ownerType="article"
+              ownerId={editId || undefined}
+              aspectRatio="video"
             />
-
-            {form.coverImageUrl && (
-              <div className="flex items-center gap-2 text-xs text-[var(--nx-text-muted-updated)]">
-                <img
-                  src={form.coverImageUrl}
-                  alt="Cover preview"
-                  className="w-20 h-20 object-cover rounded border border-[var(--nx-border-updated)]"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-                <span>Cover preview</span>
-              </div>
-            )}
 
             {/* Media — Edit mode only */}
             {editId ? (
