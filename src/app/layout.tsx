@@ -41,7 +41,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="my" className="nx-dark">
+    <html lang="my" className="nx-dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('nexfix-theme') || 'dark';
+                  const fontSize = localStorage.getItem('nexfix-fontsize') || 'md';
+                  const lang = localStorage.getItem('nexfix-locale') || 'my';
+                  
+                  document.documentElement.className = theme === 'dark' ? 'nx-dark' : '';
+                  document.documentElement.setAttribute('data-font-size', fontSize);
+                  document.documentElement.setAttribute('lang', lang);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <SessionProvider refetchOnWindowFocus={false}>
           <NetworkProvider>

@@ -25,52 +25,31 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [fontSize, setFontSizeState] = useState<FontSize>("normal");
 
   useEffect(() => {
-    const savedLocale = localStorage.getItem("nexfix_locale") as Locale | null;
+    const savedLocale = localStorage.getItem("nexfix-locale") as Locale | null;
     if (savedLocale) setLocaleState(savedLocale);
 
-    const savedTheme = localStorage.getItem("nexfix_theme") as Theme | null;
+    const savedTheme = localStorage.getItem("nexfix-theme") as Theme | null;
     if (savedTheme) setThemeState(savedTheme);
 
-    const savedFont = localStorage.getItem("nexfix_fontsize") as FontSize | null;
+    const savedFont = localStorage.getItem("nexfix-fontsize") as FontSize | null;
     if (savedFont) setFontSizeState(savedFont);
   }, []);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.add("nx-light");
-      root.classList.remove("nx-dark");
-    } else {
-      root.classList.add("nx-dark");
-      root.classList.remove("nx-light");
-    }
-  }, [theme]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (fontSize === "large") {
-      root.classList.add("nx-text-large");
-    } else {
-      root.classList.remove("nx-text-large");
-    }
-  }, [fontSize]);
+  const setTheme = (t: Theme) => {
+    setThemeState(t);
+    localStorage.setItem("nexfix-theme", t);
+  };
 
   const setLocale = (l: Locale) => {
     setLocaleState(l);
-    localStorage.setItem("nexfix_locale", l);
-  };
-
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    localStorage.setItem("nexfix_theme", t);
+    localStorage.setItem("nexfix-locale", l);
   };
 
   const setFontSize = (f: FontSize) => {
     setFontSizeState(f);
-    localStorage.setItem("nexfix_fontsize", f);
+    localStorage.setItem("nexfix-fontsize", f);
   };
 
-  // 🌟 Translation Function
   const t = (key: TranslationKey): string => {
     return translations[locale][key] || translations.en[key] || key;
   };
@@ -84,8 +63,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
 export function useSettings() {
   const context = useContext(SettingsContext);
-  if (context === undefined) {
-    throw new Error("useSettings must be used within a SettingsProvider");
-  }
+  if (!context) throw new Error("useSettings must be used within SettingsProvider");
   return context;
 }

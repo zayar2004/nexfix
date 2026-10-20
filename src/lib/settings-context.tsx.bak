@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { translations, TranslationKey } from "./translations";
 
 type Locale = "my" | "en";
 type Theme = "dark" | "light";
@@ -13,6 +14,7 @@ interface SettingsContextType {
   setLocale: (l: Locale) => void;
   setTheme: (t: Theme) => void;
   setFontSize: (f: FontSize) => void;
+  t: (key: TranslationKey) => string;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -22,7 +24,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("dark");
   const [fontSize, setFontSizeState] = useState<FontSize>("normal");
 
-  // App စဝင်တာနဲ့ LocalStorage ကနေ ယူမယ်
   useEffect(() => {
     const savedLocale = localStorage.getItem("nexfix_locale") as Locale | null;
     if (savedLocale) setLocaleState(savedLocale);
@@ -34,7 +35,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (savedFont) setFontSizeState(savedFont);
   }, []);
 
-  // Theme ပြောင်းတိုင်း HTML Tag မှာ ချိတ်မယ်
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "light") {
@@ -46,7 +46,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  // Font Size ပြောင်းတိုင်း HTML Tag မှာ ချိတ်မယ်
   useEffect(() => {
     const root = document.documentElement;
     if (fontSize === "large") {
@@ -71,8 +70,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("nexfix_fontsize", f);
   };
 
+  // 🌟 Translation Function
+  const t = (key: TranslationKey): string => {
+    return translations[locale][key] || translations.en[key] || key;
+  };
+
   return (
-    <SettingsContext.Provider value={{ locale, theme, fontSize, setLocale, setTheme, setFontSize }}>
+    <SettingsContext.Provider value={{ locale, theme, fontSize, setLocale, setTheme, setFontSize, t }}>
       {children}
     </SettingsContext.Provider>
   );
