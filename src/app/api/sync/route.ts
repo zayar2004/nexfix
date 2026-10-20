@@ -34,10 +34,16 @@ export async function GET() {
       url: `${S3_URL}/${m.storageKey}`,
     }));
 
-    // 🌟 Homepage ကို Locale အလိုက် ခွဲမယ်
     const homepageMy = allHomepage.find(h => h.locale === "my");
     const homepageEn = allHomepage.find(h => h.locale === "en");
     const homepage = homepageEn || homepageMy || null;
+
+    // Stats for Quick Stats
+    const stats = {
+      totalErrors: allErrorCodes.length,
+      totalMachines: allMachines.length,
+      totalArticles: allArticles.length,
+    };
 
     return NextResponse.json({
       ok: true,
@@ -50,6 +56,7 @@ export async function GET() {
         media: mediaWithUrls,
         mediaVideos: allVideos,
         homepage,
+        stats,
         lastSyncedAt: Date.now(),
       },
     });

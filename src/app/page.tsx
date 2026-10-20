@@ -18,6 +18,7 @@ export default function HomePage() {
   const [recentSearches, setRecentSearches] = useState<RecentItem[]>([]);
   const [recentArticles, setRecentArticles] = useState<ArticleItem[]>([]);
   const [homeSettings, setHomeSettings] = useState<any>(null);
+  const [stats, setStats] = useState<{ totalErrors: number; totalMachines: number; totalArticles: number }>({ totalErrors: 0, totalMachines: 0, totalArticles: 0 });
 
   useEffect(() => {
     const loadData = async () => {
@@ -55,6 +56,18 @@ export default function HomePage() {
           imageUrl: h.heroImageUrl || "/images/arcade-hero.jpg",
           imageUrls,
           config,
+        });
+      }
+
+      // Stats
+      if (localData && localData.stats) {
+        setStats(localData.stats as any);
+      } else if (localData) {
+        // Fallback: count from local data
+        setStats({
+          totalErrors: (localData.errorCodes || []).length,
+          totalMachines: (localData.machines || []).length,
+          totalArticles: (localData.articles || []).length,
         });
       }
 
@@ -117,15 +130,15 @@ export default function HomePage() {
           {homeSettings?.showQuickStats && (
             <div className="mt-6 grid grid-cols-3 gap-3">
               <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-3 text-center">
-                <p className="text-2xl font-bold text-[var(--nx-accent)]">—</p>
+                <p className="text-2xl font-bold text-[var(--nx-accent)]">{stats.totalErrors}</p>
                 <p className="text-xs text-[var(--nx-text-muted-updated)]">Errors</p>
               </div>
               <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-3 text-center">
-                <p className="text-2xl font-bold text-[var(--nx-accent)]">—</p>
+                <p className="text-2xl font-bold text-[var(--nx-accent)]">{stats.totalMachines}</p>
                 <p className="text-xs text-[var(--nx-text-muted-updated)]">Machines</p>
               </div>
               <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-3 text-center">
-                <p className="text-2xl font-bold text-[var(--nx-accent)]">—</p>
+                <p className="text-2xl font-bold text-[var(--nx-accent)]">{stats.totalArticles}</p>
                 <p className="text-xs text-[var(--nx-text-muted-updated)]">Articles</p>
               </div>
             </div>

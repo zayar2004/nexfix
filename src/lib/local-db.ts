@@ -11,6 +11,7 @@ export type SyncData = {
   lastSyncedAt: number | null;
   lastUpdated?: number;
   homepage?: Record<string, unknown>;
+  stats?: { totalErrors: number; totalMachines: number; totalArticles: number };
 };
 
 const DB_NAME = "nexfix-local-v2";

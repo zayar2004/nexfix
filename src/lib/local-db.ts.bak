@@ -9,6 +9,7 @@ export type SyncData = {
   media?: Record<string, unknown>[];
   mediaVideos?: Record<string, unknown>[];
   lastSyncedAt: number | null;
+  lastUpdated?: number;
   homepage?: Record<string, unknown>;
 };
 
@@ -57,7 +58,7 @@ export async function getCachedLocalData(): Promise<SyncData | null> {
   if (cachedData) return cachedData;
   const data = await getLocalData();
   cachedData = data;
-  return data;
+  return cachedData;
 }
 
 export type LocalSearchResult = {
@@ -70,74 +71,109 @@ export type LocalSearchResult = {
   isFromExcel?: boolean;
 };
 
-// 🌟 App Data နဲ့ Excel Data ကို ရောပြီး ရှာမယ့် Function
 export async function searchLocalData(
   query: string,
   errorCode: string = ""
 ): Promise<LocalSearchResult[]> {
   const data = await getCachedLocalData();
-  const userData = await getPrivateExcelData(); // Excel Data ကိုပါ ယူမယ်
+  if (!data) return [];
+
+  // 🌟 ရှာတဲ့စာသားကို သန့်ရှင်းအောင် လုပ်မယ်
+  const cleanQuery = query.trim().toLowerCase();
+  const cleanCode = errorCode.trim().toLowerCase();
   
-  let appResults: LocalSearchResult[] = [];
-  let excelResults: LocalSearchResult[] = [];
+  // 🌟 စာသားကို စကားလုံးတွေအဖြစ် ခွဲမယ် (Multiple Keywords အတွက်)
+  const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 0);
+  const codeWords = cleanCode.split(/\s+/).filter(w => w.length > 0);
 
-  const lowerQuery = query.toLowerCase();
-
-  // ၁။ App ရဲ့ Default Data ကို ရှာမယ်
-  if (data && query) {
-    let matchedErrors = data.errorCodes;
-    matchedErrors = matchedErrors.filter((e) => {
-      const machine = data.machines.find((m) => m.id === e.machineId);
-      const mName = String(machine?.name || "").toLowerCase();
-      const eCode = String(e.code || "").toLowerCase();
-      const eTitle = String(e.title || "").toLowerCase();
-      return mName.includes(lowerQuery) || eCode.includes(lowerQuery) || eTitle.includes(lowerQuery);
+  // 🌟 Machine ID တွေကို ရှာမယ်
+  let matchedMachineIds: string[] = [];
+  
+  if (queryWords.length > 0) {
+    const exactMatch = data.machines.filter((m) => {
+      const mName = String(m.name).toLowerCase();
+      return queryWords.every(word => mName.includes(word));
     });
-
-    appResults = matchedErrors.map((e) => {
-      const machine = data.machines.find((m) => m.id === e.machineId);
-      const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
-      const myContent = contents.find((c) => c.locale === "my");
-      const enContent = contents.find((c) => c.locale === "en");
-      const content = myContent || enContent || null;
-
-      return {
-        id: String(e.id),
-        code: String(e.code),
-        title: String(e.title),
-        machineName: String(machine?.name || "Unknown"),
-        machineCode: String(machine?.code || "Unknown"),
-        solution: content ? String(content.solution) : null,
-        isFromExcel: false,
-      };
-    });
+    
+    if (exactMatch.length > 0) {
+      matchedMachineIds = exactMatch.map(m => String(m.id));
+    } else {
+      matchedMachineIds = data.machines
+        .filter((m) => {
+          const mName = String(m.name).toLowerCase();
+          return queryWords.some(word => mName.includes(word));
+        })
+        .map(m => String(m.id));
+    }
+  } else {
+    matchedMachineIds = data.machines.map(m => String(m.id));
   }
 
-  // ၂။ Excel Data ကို ရှာမယ်
-  if (userData && query) {
-    excelResults = userData
-      .filter(row => 
-        row.machineName.toLowerCase().includes(lowerQuery)
-      )
-      .map((row, idx) => ({
-        id: `excel-${idx}`,
-        code: row.errorCode, 
-        title: row.errorFix, 
-        machineName: row.machineName, 
-        machineCode: row.machineName,
-        solution: row.errorFix,
-        isFromExcel: true,
-      }));
-  }
+  // 🌟 Error Code တွေကို ရှာမယ်
+  let matchedErrors = data.errorCodes.filter((e) => {
+    if (queryWords.length > 0 && matchedMachineIds.length > 0) {
+      if (!matchedMachineIds.includes(String(e.machineId))) return false;
+    }
+    
+    if (codeWords.length > 0) {
+      const eCode = String(e.code).toLowerCase();
+      return codeWords.every(word => eCode.includes(word));
+    }
+    
+    if (queryWords.length > 0) {
+      const eTitle = String(e.title).toLowerCase();
+      return queryWords.some(word => eTitle.includes(word));
+    }
+    
+    return true;
+  });
 
-  // Exact Match ကို အပေါ်ဆုံးထားမယ်
-  const allResults = [...appResults, ...excelResults];
-  const exactMatches = allResults.filter(r => r.machineName.toLowerCase() === lowerQuery || r.code.toLowerCase() === lowerQuery);
-  const otherMatches = allResults.filter(r => r.machineName.toLowerCase() !== lowerQuery && r.code.toLowerCase() !== lowerQuery);
+  // 🌟 Ranking လုပ်မယ်
+  const rankedResults = matchedErrors.map((e) => {
+    const eCode = String(e.code).toLowerCase();
+    const eTitle = String(e.title).toLowerCase();
+    const machine = data.machines.find((m) => m.id === e.machineId);
+    const mName = String(machine?.name || "").toLowerCase();
+    
+    let score = 0;
+    
+    if (cleanCode && eCode === cleanCode) score += 100;
+    if (cleanQuery && eCode === cleanQuery) score += 100;
+    if (cleanCode && eCode.startsWith(cleanCode)) score += 50;
+    if (cleanQuery && eCode.startsWith(cleanQuery)) score += 50;
+    if (cleanQuery && eTitle === cleanQuery) score += 80;
+    if (cleanQuery && eTitle.startsWith(cleanQuery)) score += 40;
+    if (cleanQuery && mName === cleanQuery) score += 70;
+    if (cleanQuery && mName.startsWith(cleanQuery)) score += 30;
+    if (queryWords.length > 0 && queryWords.every(w => eTitle.includes(w))) score += 20;
+    if (queryWords.length > 0 && queryWords.every(w => mName.includes(w))) score += 20;
+    score -= eCode.length * 0.1;
+    
+    return { error: e, score };
+  });
 
-  return [...exactMatches, ...otherMatches];
+  rankedResults.sort((a, b) => b.score - a.score);
+
+  return rankedResults.map(({ error: e }) => {
+    const machine = data.machines.find((m) => m.id === e.machineId);
+    const contents = data.errorContents.filter((c) => c.errorCodeId === e.id);
+    const myContent = contents.find((c) => c.locale === "my");
+    const enContent = contents.find((c) => c.locale === "en");
+    const content = myContent || enContent || null;
+
+    return {
+      id: String(e.id),
+      code: String(e.code),
+      title: String(e.title),
+      machineName: String(machine?.name || "Unknown"),
+      machineCode: String(machine?.code || "Unknown"),
+      solution: content ? String(content.solution) : null,
+    };
+  });
+
 }
 
+// 🌟 Image Caching ကို ပြင်မယ်
 export async function cacheImage(url: string): Promise<void> {
   if (!url) return;
   try {
@@ -147,20 +183,21 @@ export async function cacheImage(url: string): Promise<void> {
     const response = await fetch(url);
     if (!response.ok) return;
     await cache.put(url, response);
-  } catch {}
+  } catch {
+    console.warn("Failed to cache image:", url);
+  }
 }
 
 export async function getCachedImageUrl(url: string): Promise<string> {
   if (!url) return "";
-  try {
-    const cache = await caches.open("nexfix-images");
-    const response = await cache.match(url);
-    if (response) {
-      const blob = await response.blob();
-      return URL.createObjectURL(blob);
-    }
+  // 🌟 URL က http နဲ့ စရင် တိုက်ရိုက် ပြန်ပေးမယ်
+  if (url.startsWith("http")) {
     return url;
-  } catch { return url; }
+  }
+  // 🌟 မဟုတ်ရင် S3 URL နဲ့ ချိတ်မယ်
+  const s3Url = process.env.NEXT_PUBLIC_S3_URL || "";
+  if (s3Url) return `${s3Url}/${url}`;
+  return url;
 }
 
 export async function clearLocalData(): Promise<void> {
@@ -196,9 +233,9 @@ function getPrivateDB(): Promise<IDBDatabase> {
 }
 
 export type UserExcelRow = {
-  machineName: string; // Machine Code
-  errorCode: string;   // Arrival Date
-  errorFix: string;    // Location
+  machineName: string;
+  errorCode: string;
+  errorFix: string;
 };
 
 export async function savePrivateExcelData(rows: UserExcelRow[]): Promise<void> {
@@ -231,5 +268,23 @@ export async function clearPrivateExcelData(): Promise<void> {
     const request = store.delete("excel-data");
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+  });
+}
+
+// ----------------------------------------
+// SEARCH PRIVATE EXCEL DATA
+// ----------------------------------------
+export async function searchPrivateExcelData(query: string): Promise<UserExcelRow[]> {
+  if (!query.trim()) return [];
+  const data = await getPrivateExcelData();
+  if (!data) return [];
+
+  const lowerQuery = query.toLowerCase();
+  
+  // Filter rows where any field matches the query
+  return data.filter((row) => {
+    return Object.values(row).some((value) => 
+      String(value).toLowerCase().includes(lowerQuery)
+    );
   });
 }
