@@ -26,12 +26,22 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { locale, ...data } = body;
 
-  const existing = await db.select().from(homepageConfig).where(eq(homepageConfig.locale, locale)).limit(1);
+  // ✅ Convert heroImages Array to JSON String for Database
+  if (Array.isArray(data.heroImages)) {
+    data.heroImages = JSON.stringify(data.heroImages);
+  }
 
-  // Replace empty strings with null to avoid showing default values
+  // ✅ Convert heroConfig Object to JSON String
+  if (typeof data.heroConfig === "object" && data.heroConfig !== null) {
+    data.heroConfig = JSON.stringify(data.heroConfig);
+  }
+
+  // Replace empty strings with null
   Object.keys(data).forEach(key => {
     if (data[key] === "") data[key] = null;
   });
+
+  const existing = await db.select().from(homepageConfig).where(eq(homepageConfig.locale, locale)).limit(1);
 
   if (existing.length > 0) {
     await db.update(homepageConfig).set(data).where(eq(homepageConfig.locale, locale));

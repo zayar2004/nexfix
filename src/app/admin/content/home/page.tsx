@@ -97,9 +97,6 @@ export default function HomeConfigPage() {
             announcementPosition: data.config.announcementPosition || "top",
             showArcadeLabel: data.config.showArcadeLabel ?? true,
             showHeroText: data.config.showHeroText ?? true,
-            announcementPosition: data.config.announcementPosition || "top",
-            showArcadeLabel: data.config.showArcadeLabel ?? true,
-            showHeroText: data.config.showHeroText ?? true,
             ctaText: data.config.ctaText || "Get Started",
             ctaLink: data.config.ctaLink || "/search",
             ctaEnabled: data.config.ctaEnabled ?? false,
@@ -134,9 +131,6 @@ export default function HomeConfigPage() {
           announcementFontSize: form.announcementFontSize,
           announcementTextColor: form.announcementTextColor,
           announcementBgColor: form.announcementBgColor,
-          announcementPosition: form.announcementPosition,
-          showArcadeLabel: form.showArcadeLabel,
-          showHeroText: form.showHeroText,
           announcementPosition: form.announcementPosition,
           showArcadeLabel: form.showArcadeLabel,
           showHeroText: form.showHeroText,
@@ -321,15 +315,6 @@ export default function HomeConfigPage() {
             </div>
 
             <div className="mt-4">
-              <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">ကြော်ငြာ ပြသမည့်နေရာ (Position)</label>
-              <select value={form.announcementPosition} onChange={(e) => setForm({ ...form, announcementPosition: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
-                <option value="top">ထိပ်ဆုံး (Top - Above Hero)</option>
-                <option value="middle">အလယ် (Middle - Below Hero)</option>
-                <option value="bottom">အောက်ဆုံး (Bottom - Above Bottom Nav)</option>
-              </select>
-              <HelpText>ကြော်ငြာကို ဘယ်နေရာမှာ ပြသမလဲ ရွေးပါ။</HelpText>
-            </div>
-          </div>
 
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
             <h3 className="text-base font-bold text-white mb-1">Section Visibility (ပြသမှု ထိန်းချုပ်ခြင်း)</h3>
