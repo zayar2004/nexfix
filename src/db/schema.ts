@@ -94,7 +94,7 @@ export const media = pgTable("media", {
   statusIdx: index("media_status_idx").on(table.status),
 }));
 
-// 8. Homepage Config Table
+// 8. Homepage Config Table (UPDATED with new fields)
 export const homepageConfig = pgTable("homepage_config", {
   id: uuid("id").primaryKey().defaultRandom(),
   locale: varchar("locale", { length: 5 }).notNull(),
@@ -104,6 +104,16 @@ export const homepageConfig = pgTable("homepage_config", {
   heroImages: text("hero_images"),
   heroConfig: text("hero_config"),
   isPublished: varchar("is_published", { length: 10 }).default("draft").notNull(),
+  // NEW FIELDS
+  showRecentDiagnostics: boolean("show_recent_diagnostics").default(true).notNull(),
+  showRecentArticles: boolean("show_recent_articles").default(true).notNull(),
+  showQuickStats: boolean("show_quick_stats").default(true).notNull(),
+  announcementText: text("announcement_text"),
+  announcementLink: text("announcement_link"),
+  announcementEnabled: boolean("announcement_enabled").default(false).notNull(),
+  ctaText: varchar("cta_text", { length: 100 }),
+  ctaLink: text("cta_link"),
+  ctaEnabled: boolean("cta_enabled").default(false).notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   localeUnique: unique("homepage_config_locale_unique").on(table.locale),
@@ -120,7 +130,7 @@ export const knowledgeArticles = pgTable("knowledge_articles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// 10. Article Content Table (Unique constraint REMOVED to avoid data loss warning)
+// 10. Article Content Table
 export const articleContent = pgTable("article_content", {
   id: uuid("id").primaryKey().defaultRandom(),
   articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
@@ -128,34 +138,11 @@ export const articleContent = pgTable("article_content", {
   title: varchar("title", { length: 300 }).notNull(),
   summary: text("summary"),
   body: text("body").notNull(),
-});
-
-// 11. Presence Table
-export const presence = pgTable("presence", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  lastHeartbeat: timestamp("last_heartbeat").defaultNow().notNull(),
 }, (table) => ({
-  userIdUnique: unique("presence_user_id_unique").on(table.userId),
+  articleLocaleUnique: unique("article_content_article_locale_unique").on(table.articleId, table.locale),
 }));
 
-// 12. Notes Table
-export const notes = pgTable("notes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  body: text("body"),
-  reminderAt: timestamp("reminder_at"),
-  recurrence: varchar("recurrence", { length: 20 }).default("none").notNull(),
-  isCompleted: boolean("is_completed").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  userIdx: index("notes_user_idx").on(table.userId),
-  reminderIdx: index("notes_reminder_idx").on(table.reminderAt),
-}));
-
-// 13. Media Videos Table (YouTube Links)
+// 11. Media Videos Table
 export const mediaVideos = pgTable("media_videos", {
   id: uuid("id").primaryKey().defaultRandom(),
   ownerType: varchar("owner_type", { length: 20 }).notNull(),
@@ -168,6 +155,25 @@ export const mediaVideos = pgTable("media_videos", {
   ownerIdx: index("media_videos_owner_idx").on(table.ownerType, table.ownerId),
 }));
 
+// 12. Presence Table
+export const presence = pgTable("presence", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow().notNull(),
+});
+
+// 13. Notes Table
+export const notes = pgTable("notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body"),
+  reminderAt: timestamp("reminder_at"),
+  recurrence: varchar("recurrence", { length: 20 }),
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 // 14. Chat Messages Table
 export const chatMessages = pgTable("chat_messages", {
@@ -175,15 +181,13 @@ export const chatMessages = pgTable("chat_messages", {
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-  createdIdx: index("chat_messages_created_idx").on(table.createdAt),
-}));
+});
 
 // 15. Notifications Table
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }), // null = all users
-  type: varchar("type", { length: 50 }).notNull(), // 'error_new', 'article_new', 'system'
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   message: text("message").notNull(),
   link: text("link"),

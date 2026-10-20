@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 
 type HeroConfig = {
-  align?: "left" | "center";
-  fontSize?: "sm" | "md" | "lg" | "xl";
+  align?: "left" | "center" | "right";
+  fontSize?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   verticalPos?: "top" | "middle" | "bottom";
+  textColor?: string;
 };
 
 type HeroData = {
@@ -18,15 +19,17 @@ type HeroData = {
 
 function getFontSize(size?: string) {
   switch (size) {
+    case "xs": return "text-xl md:text-2xl";
     case "sm": return "text-2xl md:text-3xl";
     case "lg": return "text-4xl md:text-5xl";
     case "xl": return "text-5xl md:text-6xl";
-    default: return "text-3xl md:text-4xl";
+    case "2xl": return "text-6xl md:text-7xl";
+    default: return "text-3xl md:text-4xl"; // md
   }
 }
 
 function getAlignment(align?: string) {
-  return align === "center" ? "items-center text-center" : align === "left" ? "items-start text-left" : "items-start text-left";
+  return align === "center" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left";
 }
 
 function getVerticalPos(pos?: string) {
@@ -49,7 +52,6 @@ export function HeroSection({ data }: { data: HeroData }) {
       ? [data.imageUrl]
       : [];
 
-  // ✅ useEffect MUST be called before any conditional return
   useEffect(() => {
     if (!data || images.length <= 1) return;
     intervalRef.current = setInterval(() => {
@@ -82,7 +84,6 @@ export function HeroSection({ data }: { data: HeroData }) {
     setTouchEnd(null);
   };
 
-  // 🔒 Show Loading Skeleton if data is not ready yet (AFTER useEffect)
   if (!data) {
     return (
       <div className="relative w-full h-[420px] bg-[var(--nx-bg-surface-deep)] overflow-hidden">
@@ -103,6 +104,7 @@ export function HeroSection({ data }: { data: HeroData }) {
   const fontClass = getFontSize(config.fontSize);
   const alignClass = getAlignment(config.align);
   const vPosClass = getVerticalPos(config.verticalPos);
+  const textColor = config.textColor || "#FFFFFF";
 
   return (
     <div
@@ -111,7 +113,6 @@ export function HeroSection({ data }: { data: HeroData }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Image Carousel */}
       {images.map((img, idx) => (
         <div
           key={idx}
@@ -119,38 +120,27 @@ export function HeroSection({ data }: { data: HeroData }) {
             idx === currentIndex ? "opacity-100" : "opacity-0"
           }`}
         >
-          <img
-            src={img}
-            alt="Arcade Hero"
-            className="w-full h-full object-cover"
-          />
+          <img src={img} alt="Arcade Hero" className="w-full h-full object-cover" />
         </div>
       ))}
 
-      {/* Dark Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-midnight)]/95 via-[var(--nx-midnight)]/70 to-transparent" />
 
-      {/* Content */}
       <div className={`absolute inset-0 flex flex-col px-6 ${alignClass} ${vPosClass} z-10`}>
         <div className="max-w-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
-            <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">
-              ARCADE DIAGNOSTICS
-            </span>
+            <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
           </div>
-
-          <h1 className={`font-black text-white leading-tight mb-3 ${fontClass}`}>
+          <h1 className={`font-black leading-tight mb-3 ${fontClass}`} style={{ color: textColor }}>
             {data.heading}
           </h1>
-
-          <p className="text-[var(--nx-text-secondary-updated)] text-sm md:text-base mb-6 max-w-md">
+          <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
             {data.description}
           </p>
         </div>
       </div>
 
-      {/* Dots Indicator */}
       {images.length > 1 && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
           {images.map((_, idx) => (

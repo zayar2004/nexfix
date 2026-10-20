@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { homepageConfig } from "@/db/schema";
 import { auth } from "@/auth";
 
-// GET: Fetch current config
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -27,7 +26,6 @@ export async function GET(req: Request) {
   }
 }
 
-// POST: Save or Update config
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -36,18 +34,18 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { locale, heroHeading, heroDescription, heroImageUrl, heroImages, isPublished } = body;
+    const { locale, heroHeading, heroDescription, heroImageUrl, heroImages, heroConfig, isPublished } = body;
 
     if (!locale || !heroHeading || !heroDescription) {
       return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    // 🌟 heroImages ကို JSON String အဖြစ် သိမ်းမယ်
     const heroImagesJson = Array.isArray(heroImages) && heroImages.length > 0
       ? JSON.stringify(heroImages)
       : null;
 
-    // 🌟 heroImageUrl ကို ပထမဆုံးပုံ (သို့မဟုတ်) ကွက်လပ်ထားမယ်
+    const heroConfigJson = heroConfig ? JSON.stringify(heroConfig) : null;
+
     const mainImageUrl = heroImageUrl || (Array.isArray(heroImages) && heroImages.length > 0 ? heroImages[0] : null);
 
     const existing = await db
@@ -64,6 +62,7 @@ export async function POST(req: Request) {
           heroDescription,
           heroImageUrl: mainImageUrl,
           heroImages: heroImagesJson,
+          heroConfig: heroConfigJson,
           isPublished,
           updatedAt: new Date(),
         })
@@ -75,6 +74,7 @@ export async function POST(req: Request) {
         heroDescription,
         heroImageUrl: mainImageUrl,
         heroImages: heroImagesJson,
+        heroConfig: heroConfigJson,
         isPublished,
       });
     }

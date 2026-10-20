@@ -5,7 +5,13 @@ import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 
 type MediaItem = { id: string; storageKey: string; mime: string; };
-type HeroConfig = { fontSize: "sm" | "md" | "lg" | "xl"; alignment: "left" | "center" | "right"; position: "top" | "middle" | "bottom"; };
+
+type HeroConfig = {
+  fontSize: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+  alignment: "left" | "center" | "right";
+  position: "top" | "middle" | "bottom";
+  textColor?: string;
+};
 
 export default function HomeConfigPage() {
   const [locale, setLocale] = useState<"my" | "en">("en");
@@ -18,9 +24,23 @@ export default function HomeConfigPage() {
     heroDescription: "Error codes, troubleshooting, and more for arcade technicians.",
     heroImages: [] as string[],
     isPublished: "draft",
+    showRecentDiagnostics: true,
+    showRecentArticles: true,
+    showQuickStats: true,
+    announcementText: "",
+    announcementLink: "",
+    announcementEnabled: false,
+    ctaText: "Get Started",
+    ctaLink: "/search",
+    ctaEnabled: false,
   });
 
-  const [heroConfig, setHeroConfig] = useState<HeroConfig>({ fontSize: "md", alignment: "left", position: "bottom" });
+  const [heroConfig, setHeroConfig] = useState<HeroConfig>({
+    fontSize: "md",
+    alignment: "left",
+    position: "bottom",
+    textColor: "#FFFFFF",
+  });
 
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -45,7 +65,7 @@ export default function HomeConfigPage() {
             heroImages = [data.config.heroImageUrl];
           }
 
-          let config: HeroConfig = { fontSize: "md", alignment: "left", position: "bottom" };
+          let config: HeroConfig = { fontSize: "md", alignment: "left", position: "bottom", textColor: "#FFFFFF" };
           if (data.config.heroConfig) {
             try { config = { ...config, ...JSON.parse(data.config.heroConfig) }; } catch {}
           }
@@ -55,12 +75,57 @@ export default function HomeConfigPage() {
             heroDescription: data.config.heroDescription || "Error codes, troubleshooting, and more for arcade technicians.",
             heroImages,
             isPublished: data.config.isPublished || "draft",
+            showRecentDiagnostics: data.config.showRecentDiagnostics ?? true,
+            showRecentArticles: data.config.showRecentArticles ?? true,
+            showQuickStats: data.config.showQuickStats ?? true,
+            announcementText: data.config.announcementText || "",
+            announcementLink: data.config.announcementLink || "",
+            announcementEnabled: data.config.announcementEnabled ?? false,
+            ctaText: data.config.ctaText || "Get Started",
+            ctaLink: data.config.ctaLink || "/search",
+            ctaEnabled: data.config.ctaEnabled ?? false,
           });
           setHeroConfig(config);
         }
       })
       .finally(() => setLoading(false));
   }, [locale]);
+
+  const handleSave = async (publish: boolean) => {
+    setSaving(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/home", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locale,
+          heroHeading: form.heroHeading,
+          heroDescription: form.heroDescription,
+          heroImageUrl: form.heroImages[0] || "",
+          heroImages: form.heroImages,
+          heroConfig,
+          isPublished: publish ? "published" : "draft",
+          showRecentDiagnostics: form.showRecentDiagnostics,
+          showRecentArticles: form.showRecentArticles,
+          showQuickStats: form.showQuickStats,
+          announcementText: form.announcementText,
+          announcementLink: form.announcementLink,
+          announcementEnabled: form.announcementEnabled,
+          ctaText: form.ctaText,
+          ctaLink: form.ctaLink,
+          ctaEnabled: form.ctaEnabled,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      setMessage(publish ? "✅ Published successfully!" : "💾 Saved as Draft");
+    } catch (err) {
+      setMessage("❌ Error: " + (err instanceof Error ? err.message : "Unknown"));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const openMediaPicker = async () => {
     setShowMediaPicker(true);
@@ -99,34 +164,14 @@ export default function HomeConfigPage() {
     setForm({ ...form, heroImages: newImages });
   };
 
-  const handleSave = async (publish: boolean) => {
-    setSaving(true); setMessage("");
-    try {
-      const res = await fetch("/api/admin/home", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locale, heroHeading: form.heroHeading, heroDescription: form.heroDescription,
-          heroImageUrl: form.heroImages[0] || "", heroImages: form.heroImages,
-          heroConfig, isPublished: publish ? "published" : "draft",
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error);
-      setMessage(publish ? "✅ Published successfully!" : "💾 Saved as Draft");
-    } catch (err) {
-      setMessage("❌ Error: " + (err instanceof Error ? err.message : "Unknown"));
-    } finally { setSaving(false); }
-  };
-
   if (loading) return <AdminLayout title="Home Page Editor"><div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div></div></AdminLayout>;
 
   return (
     <AdminLayout title="Home Page Editor">
       <div className="max-w-3xl mx-auto">
         <div className="flex gap-2 mb-4">
-          <button onClick={() => setLocale("en")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "en" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>🇬🇧 English</button>
-          <button onClick={() => setLocale("my")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "my" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>🇲🇲 မြန်မာ</button>
+          <button onClick={() => setLocale("en")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "en" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>English</button>
+          <button onClick={() => setLocale("my")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "my" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>မြန်မာ</button>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -141,155 +186,109 @@ export default function HomeConfigPage() {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-[var(--nx-bg-base-deep)] via-[var(--nx-bg-base-deep)]/60 to-transparent"></div>
               <div className={`absolute inset-0 p-4 flex flex-col gap-2 ${
-                heroConfig.position === "top" ? "justify-start pt-6" : 
+                heroConfig.position === "top" ? "justify-start pt-6" :
                 heroConfig.position === "middle" ? "justify-center" : "justify-end pb-6"
               } ${
-                heroConfig.alignment === "center" ? "items-center text-center" : 
+                heroConfig.alignment === "center" ? "items-center text-center" :
                 heroConfig.alignment === "right" ? "items-end text-right" : "items-start text-left"
               }`}>
                 <span className="text-[10px] font-bold text-[#20E3FF] uppercase tracking-widest">ARCADE DIAGNOSTICS</span>
-                <h2 className={`font-black text-white leading-tight ${
-                  heroConfig.fontSize === "sm" ? "text-lg" : heroConfig.fontSize === "lg" ? "text-3xl" : heroConfig.fontSize === "xl" ? "text-4xl" : "text-2xl"
-                }`}>
-                  {form.heroHeading.split("\n").map((line, i) => <span key={i} className="block">{line}</span>)}
-                </h2>
-                <p className={`text-[var(--nx-text-secondary-updated)] max-w-[280px] ${
-                  heroConfig.fontSize === "sm" ? "text-[10px]" : heroConfig.fontSize === "lg" ? "text-sm" : "text-xs"
-                }`}>{form.heroDescription}</p>
+                <h1 className={`font-black leading-tight whitespace-pre-line ${
+                  heroConfig.fontSize === "xs" ? "text-lg" :
+                  heroConfig.fontSize === "sm" ? "text-xl" :
+                  heroConfig.fontSize === "lg" ? "text-3xl" :
+                  heroConfig.fontSize === "xl" ? "text-4xl" :
+                  heroConfig.fontSize === "2xl" ? "text-5xl" : "text-2xl"
+                }`} style={{ color: heroConfig.textColor || "#FFFFFF" }}>
+                  {form.heroHeading}
+                </h1>
+                <p className="text-xs" style={{ color: heroConfig.textColor || "#FFFFFF", opacity: 0.8 }}>
+                  {form.heroDescription}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Content */}
+          {/* Announcement Banner */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-4">Content</h3>
-            <label className="flex flex-col gap-1.5 mb-4">
-              <span className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase">Heading</span>
-              <textarea value={form.heroHeading} onChange={(e) => setForm({ ...form, heroHeading: e.target.value })} rows={2} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:outline-none focus:border-[var(--nx-accent)]" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase">Description</span>
-              <textarea value={form.heroDescription} onChange={(e) => setForm({ ...form, heroDescription: e.target.value })} rows={2} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:outline-none focus:border-[var(--nx-accent)]" />
-            </label>
+            <h3 className="text-base font-bold text-white mb-3">Announcement Banner</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <input type="checkbox" checked={form.announcementEnabled} onChange={(e) => setForm({ ...form, announcementEnabled: e.target.checked })} className="w-4 h-4" />
+              <label className="text-sm text-white">Enable Announcement Banner</label>
+            </div>
+            <input type="text" placeholder="Announcement text (e.g., New features available!)" value={form.announcementText} onChange={(e) => setForm({ ...form, announcementText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mb-2" />
+            <input type="text" placeholder="Announcement link (optional)" value={form.announcementLink} onChange={(e) => setForm({ ...form, announcementLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
           </div>
 
-          {/* Layout */}
+          {/* Section Visibility */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-4">Layout & Style</h3>
-            <div className="mb-4">
-              <label className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase block mb-2">Font Size</label>
-              <div className="grid grid-cols-4 gap-2">
-                {(["sm", "md", "lg", "xl"] as const).map((size) => (
-                  <button key={size} onClick={() => setHeroConfig({ ...heroConfig, fontSize: size })} className={`py-2 text-xs font-bold rounded-lg ${heroConfig.fontSize === size ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)]"}`}>
-                    {size === "sm" ? "Small" : size === "md" ? "Med" : size === "lg" ? "Large" : "XL"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mb-4">
-              <label className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase block mb-2">Alignment</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["left", "center", "right"] as const).map((align) => (
-                  <button key={align} onClick={() => setHeroConfig({ ...heroConfig, alignment: align })} className={`py-2 text-xs font-bold rounded-lg ${heroConfig.alignment === align ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)]"}`}>
-                    {align === "left" ? "← Left" : align === "center" ? "↑ Center" : "Right →"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase block mb-2">Vertical Position</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["top", "middle", "bottom"] as const).map((pos) => (
-                  <button key={pos} onClick={() => setHeroConfig({ ...heroConfig, position: pos })} className={`py-2 text-xs font-bold rounded-lg ${heroConfig.position === pos ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)]"}`}>
-                    {pos === "top" ? "↑ Top" : pos === "middle" ? "↕ Middle" : "↓ Bottom"}
-                  </button>
-                ))}
-              </div>
+            <h3 className="text-base font-bold text-white mb-3">Section Visibility</h3>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-white">
+                <input type="checkbox" checked={form.showQuickStats} onChange={(e) => setForm({ ...form, showQuickStats: e.target.checked })} />
+                Show Quick Stats
+              </label>
+              <label className="flex items-center gap-2 text-sm text-white">
+                <input type="checkbox" checked={form.showRecentDiagnostics} onChange={(e) => setForm({ ...form, showRecentDiagnostics: e.target.checked })} />
+                Show Recent Diagnostics
+              </label>
+              <label className="flex items-center gap-2 text-sm text-white">
+                <input type="checkbox" checked={form.showRecentArticles} onChange={(e) => setForm({ ...form, showRecentArticles: e.target.checked })} />
+                Show Recent Articles
+              </label>
             </div>
           </div>
 
-          {/* Images */}
+          {/* CTA Button */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-white mb-3">Call-to-Action Button</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <input type="checkbox" checked={form.ctaEnabled} onChange={(e) => setForm({ ...form, ctaEnabled: e.target.checked })} className="w-4 h-4" />
+              <label className="text-sm text-white">Enable CTA Button</label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input type="text" placeholder="Button text (e.g., Get Started)" value={form.ctaText} onChange={(e) => setForm({ ...form, ctaText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+              <input type="text" placeholder="Button link (e.g., /search)" value={form.ctaLink} onChange={(e) => setForm({ ...form, ctaLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+            </div>
+          </div>
+
+          {/* Text Style */}
+          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
+            <h3 className="text-base font-bold text-white mb-3">Text Style</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-base font-bold text-white">Hero Images</h3>
-                <p className="text-xs text-[var(--nx-text-muted-updated)] mt-0.5">{form.heroImages.length} image{form.heroImages.length !== 1 ? 's' : ''} · 10s auto-slide</p>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Font Size</label>
+                <select value={heroConfig.fontSize} onChange={(e) => setHeroConfig({ ...heroConfig, fontSize: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="xs">Extra Small (XS)</option>
+                  <option value="sm">Small (SM)</option>
+                  <option value="md">Medium (MD)</option>
+                  <option value="lg">Large (LG)</option>
+                  <option value="xl">Extra Large (XL)</option>
+                  <option value="2xl">2X Large (2XL)</option>
+                </select>
               </div>
-              <button onClick={openMediaPicker} className="px-3 py-2 bg-[var(--nx-accent)] text-black text-xs font-bold rounded-lg hover:brightness-110">+ Add Image</button>
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Text Color</label>
+                <div className="flex gap-2 items-center">
+                  <input type="color" value={heroConfig.textColor || "#FFFFFF"} onChange={(e) => setHeroConfig({ ...heroConfig, textColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
+                  <span className="text-xs text-[var(--nx-text-muted-updated)]">{heroConfig.textColor || "#FFFFFF"}</span>
+                </div>
+              </div>
             </div>
-            {form.heroImages.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-[var(--nx-border-updated)] rounded-xl"><p className="text-sm text-[var(--nx-text-muted-updated)]">No images yet</p></div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {form.heroImages.map((url, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-lg">
-                    <div className="w-16 h-10 rounded bg-[var(--nx-bg-surface-deep)] overflow-hidden flex-shrink-0">
-                      <img src={url} alt={`Hero ${idx + 1}`} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white">Image {idx + 1}</p>
-                      <p className="text-[10px] text-[var(--nx-text-muted-updated)] truncate">{url}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => handleMoveImage(idx, "up")} disabled={idx === 0} className="p-1.5 text-[var(--nx-text-muted-updated)] hover:text-white disabled:opacity-30"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
-                      <button onClick={() => handleMoveImage(idx, "down")} disabled={idx === form.heroImages.length - 1} className="p-1.5 text-[var(--nx-text-muted-updated)] hover:text-white disabled:opacity-30"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-                      <button onClick={() => handleRemoveImage(idx)} className="p-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error)]/10 rounded"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Save Buttons */}
-          <div className="flex gap-3">
-            <button onClick={() => handleSave(false)} disabled={saving} className="flex-1 py-3 bg-[var(--nx-bg-card)] text-white font-semibold rounded-xl border border-[var(--nx-border-updated)]">{saving ? "..." : "Save Draft"}</button>
-            <button onClick={() => handleSave(true)} disabled={saving} className="flex-1 py-3 bg-[var(--nx-accent)] text-black font-bold rounded-xl">{saving ? "Publishing..." : "Publish"}</button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <button onClick={() => handleSave(false)} disabled={saving} className="flex-1 py-3 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-bold rounded-lg disabled:opacity-50">
+              {saving ? "Saving..." : "💾 Save as Draft"}
+            </button>
+            <button onClick={() => handleSave(true)} disabled={saving} className="flex-1 py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg disabled:opacity-50">
+              {saving ? "Saving..." : "🚀 Publish"}
+            </button>
           </div>
-          {message && <p className={`text-center text-sm font-semibold ${message.startsWith("✅") ? "text-[var(--nx-success)]" : message.startsWith("💾") ? "text-[var(--nx-accent)]" : "text-[var(--nx-error)]"}`}>{message}</p>}
+          {message && <p className="text-center text-sm p-2 rounded bg-[var(--nx-bg-surface-deep)]">{message}</p>}
         </div>
       </div>
-
-      {/* Media Picker Modal */}
-      {showMediaPicker && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setShowMediaPicker(false)}>
-          <div className="w-full max-w-2xl max-h-[85vh] bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-[var(--nx-border-updated)] flex items-center justify-between">
-              <div><h3 className="text-lg font-bold text-white">Add Image</h3><p className="text-xs text-[var(--nx-text-muted-updated)]">{form.heroImages.length} selected</p></div>
-              <button onClick={() => setShowMediaPicker(false)} className="p-1 text-white hover:text-[var(--nx-error)]"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-            </div>
-            <div className="p-4 border-b border-[var(--nx-border-updated)]">
-              <label className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase block mb-2">Or Paste Image URL</label>
-              <div className="flex gap-2">
-                <input type="text" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddCustomUrl()} placeholder="https://example.com/image.jpg" className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-[var(--nx-accent)]" />
-                <button onClick={handleAddCustomUrl} disabled={!customUrl.trim()} className="px-4 py-2 bg-[var(--nx-accent)] text-black text-sm font-bold rounded-lg disabled:opacity-50">Add</button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-[var(--nx-text-muted-updated)] uppercase">From Media Library</p>
-                <a href="/admin/media" className="text-xs text-[var(--nx-accent)] hover:underline font-semibold">+ Upload New</a>
-              </div>
-              {loadingMedia ? <p className="text-white text-center py-10">Loading...</p> : mediaItems.length === 0 ? (
-                <div className="text-center py-10 text-[var(--nx-text-muted-updated)]"><p className="text-sm">No images</p><a href="/admin/media" className="inline-block mt-3 px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg text-sm">Go to Media Library</a></div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {mediaItems.map((m) => {
-                    const url = `${S3_URL}/${m.storageKey}`;
-                    const isSelected = form.heroImages.includes(url);
-                    return (
-                      <button key={m.id} onClick={() => !isSelected && handleAddImage(m.storageKey)} disabled={isSelected} className={`relative aspect-video bg-[var(--nx-bg-base-deep)] rounded-lg overflow-hidden border-2 transition-all ${isSelected ? "border-[var(--nx-success)] cursor-not-allowed" : "border-transparent hover:border-[var(--nx-accent)]"}`}>
-                        <img src={url} alt={m.storageKey} className="w-full h-full object-cover" />
-                        {isSelected && <div className="absolute inset-0 bg-[var(--nx-success)]/30 backdrop-blur-[1px] flex items-center justify-center"><div className="bg-[var(--nx-success)] text-black px-2 py-1 rounded text-[10px] font-bold">✓ Added</div></div>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
 }
