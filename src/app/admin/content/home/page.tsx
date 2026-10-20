@@ -191,7 +191,16 @@ export default function HomeConfigPage() {
   return (
     <AdminLayout title="Home Page Editor">
       <div className="max-w-3xl mx-auto">
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4 items-center flex-wrap">
+          <a 
+            href="/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-semibold rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2 text-sm"
+          >
+            👁️ View User Home Page
+          </a>
+          <div className="w-px h-6 bg-[var(--nx-border-updated)] mx-1"></div>
           <button onClick={() => setLocale("en")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "en" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>English</button>
           <button onClick={() => setLocale("my")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "my" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>မြန်မာ</button>
         </div>
@@ -313,6 +322,52 @@ export default function HomeConfigPage() {
                 <input type="checkbox" checked={form.showRecentArticles} onChange={(e) => setForm({ ...form, showRecentArticles: e.target.checked })} />
                 Recent Articles
               </label>
+            </div>
+          </div>
+
+          {/* Text Style */}
+          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
+            <h3 className="text-base font-bold text-white mb-1">Text Style (စာသား ပုံစံ)</h3>
+            <HelpText>ခေါင်းစဉ်၏ အရွယ်အစား၊ အရောင်နှင့် နေရာချထားမှုကို ရွေးချယ်ပါ။</HelpText>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Font Size</label>
+                <select value={heroConfig.fontSize} onChange={(e) => setHeroConfig({ ...heroConfig, fontSize: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="xs">အလွန်သေး (XS)</option>
+                  <option value="sm">သေး (SM)</option>
+                  <option value="md">အလယ်အလတ် (MD)</option>
+                  <option value="lg">ကြီး (LG)</option>
+                  <option value="xl">အလွန်ကြီး (XL)</option>
+                  <option value="2xl">အလွန်ကြီး+ (2XL)</option>
+                </select>
+                <HelpText>ခေါင်းစဉ်၏ စာလုံးအရွယ်အစား။</HelpText>
+              </div>
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Alignment</label>
+                <select value={heroConfig.alignment} onChange={(e) => setHeroConfig({ ...heroConfig, alignment: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="left">ဘယ်ဘက်</option>
+                  <option value="center">အလယ်</option>
+                  <option value="right">ညာဘက်</option>
+                </select>
+                <HelpText>စာသားကို ဘယ်/ညာ/အလယ် ဘယ်လိုချထားမလဲ။</HelpText>
+              </div>
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Vertical Position</label>
+                <select value={heroConfig.position} onChange={(e) => setHeroConfig({ ...heroConfig, position: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="top">အပေါ်</option>
+                  <option value="middle">အလယ်</option>
+                  <option value="bottom">အောက်</option>
+                </select>
+                <HelpText>စာသားကို အပေါ်/အောက် ဘယ်လိုချထားမလဲ။</HelpText>
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Text Color</label>
+              <div className="flex gap-2 items-center">
+                <input type="color" value={heroConfig.textColor || "#FFFFFF"} onChange={(e) => setHeroConfig({ ...heroConfig, textColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
+                <span className="text-xs text-[var(--nx-text-muted-updated)]">{heroConfig.textColor || "#FFFFFF"}</span>
+              </div>
+              <HelpText>ခေါင်းစဉ်၏ စာသားအရောင်။ နောက်ခံမှောင်ရင် အဖြူရောင် သုံးပါ။</HelpText>
             </div>
           </div>
 
