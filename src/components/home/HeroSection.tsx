@@ -18,6 +18,7 @@ type HeroData = {
   imageUrls?: string[];
   config?: HeroConfig;
   showArcadeLabel?: boolean;
+  showHeroText?: boolean;
 } | null;
 
 function getFontSize(size?: string) {
@@ -115,8 +116,9 @@ export function HeroSection({ data }: { data: HeroData }) {
 
   const hasHeading = data.heading && data.heading.trim() !== "";
   const hasDescription = data.description && data.description.trim() !== "";
-  // ✅ Show ARCADE DIAGNOSTICS label only if admin enabled it
   const showArcadeLabel = data.showArcadeLabel !== false;
+  // ✅ Master toggle for all hero text
+  const showHeroText = data.showHeroText !== false;
 
   return (
     <div
@@ -138,26 +140,29 @@ export function HeroSection({ data }: { data: HeroData }) {
 
       <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-midnight)]/95 via-[var(--nx-midnight)]/70 to-transparent z-20 pointer-events-none" />
 
-      <div className={`absolute inset-0 flex flex-col px-6 ${alignClass} ${vPosClass} z-30 pointer-events-none`}>
-        <div className="max-w-lg">
-          {showArcadeLabel && (
-            <div className={`flex items-center gap-2 mb-3 ${alignClass.includes('center') ? 'justify-center' : alignClass.includes('right') ? 'justify-end' : 'justify-start'}`}>
-              <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
-              <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
-            </div>
-          )}
-          {hasHeading && (
-            <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
-              {data.heading}
-            </h1>
-          )}
-          {hasDescription && (
-            <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
-              {data.description}
-            </p>
-          )}
+      {/* All hero text wrapped in showHeroText check */}
+      {showHeroText && (
+        <div className={`absolute inset-0 flex flex-col px-6 ${alignClass} ${vPosClass} z-30 pointer-events-none`}>
+          <div className="max-w-lg">
+            {showArcadeLabel && (
+              <div className={`flex items-center gap-2 mb-3 ${alignClass.includes('center') ? 'justify-center' : alignClass.includes('right') ? 'justify-end' : 'justify-start'}`}>
+                <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
+                <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
+              </div>
+            )}
+            {hasHeading && (
+              <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
+                {data.heading}
+              </h1>
+            )}
+            {hasDescription && (
+              <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
+                {data.description}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {images.length > 1 && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-30">

@@ -91,6 +91,7 @@ export default function HomePage() {
           imageUrls,
           config,
           showArcadeLabel: h.showArcadeLabel !== false,
+          showHeroText: h.showHeroText !== false,
         });
       }
 

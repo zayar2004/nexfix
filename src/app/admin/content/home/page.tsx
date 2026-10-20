@@ -39,6 +39,7 @@ export default function HomeConfigPage() {
     announcementBgColor: "#20E3FF",
     announcementPosition: "top",
     showArcadeLabel: true,
+    showHeroText: true,
     ctaText: "Get Started",
     ctaLink: "/search",
     ctaEnabled: false,
@@ -95,8 +96,10 @@ export default function HomeConfigPage() {
             announcementBgColor: data.config.announcementBgColor || "#20E3FF",
             announcementPosition: data.config.announcementPosition || "top",
             showArcadeLabel: data.config.showArcadeLabel ?? true,
+            showHeroText: data.config.showHeroText ?? true,
             announcementPosition: data.config.announcementPosition || "top",
             showArcadeLabel: data.config.showArcadeLabel ?? true,
+            showHeroText: data.config.showHeroText ?? true,
             ctaText: data.config.ctaText || "Get Started",
             ctaLink: data.config.ctaLink || "/search",
             ctaEnabled: data.config.ctaEnabled ?? false,
@@ -133,8 +136,10 @@ export default function HomeConfigPage() {
           announcementBgColor: form.announcementBgColor,
           announcementPosition: form.announcementPosition,
           showArcadeLabel: form.showArcadeLabel,
+          showHeroText: form.showHeroText,
           announcementPosition: form.announcementPosition,
           showArcadeLabel: form.showArcadeLabel,
+          showHeroText: form.showHeroText,
           ctaText: form.ctaText,
           ctaLink: form.ctaLink,
           ctaEnabled: form.ctaEnabled,
@@ -370,6 +375,18 @@ export default function HomeConfigPage() {
                 <input type="text" placeholder="ခလုတ် လင့်ခ်" value={form.ctaLink} onChange={(e) => setForm({ ...form, ctaLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
                 <HelpText>ခလုတ်နှိပ်လိုက်ရင် သွားမည့် နေရာ။</HelpText>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
+            <h3 className="text-base font-bold text-white mb-1">Hero Text Visibility</h3>
+            <HelpText>Hero ပုံပေါ်ရှိ စာသားအားလုံးကို ဖွင့်/ပိတ် လုပ်နိုင်သည်။</HelpText>
+            <div className="flex flex-col gap-3 mt-3">
+              <label className="flex items-center gap-2 text-sm text-white">
+                <input type="checkbox" checked={form.showHeroText} onChange={(e) => setForm({ ...form, showHeroText: e.target.checked })} />
+                Hero စာသားအားလုံးကို ပြမည် (Show All Hero Text)
+              </label>
+              <HelpText>ပိတ်ထားရင် ARCADE DIAGNOSTICS, ခေါင်းစဉ် နှင့် ဖော်ပြချက်အားလုံး မပေါ်ပါ။</HelpText>
             </div>
           </div>
 
