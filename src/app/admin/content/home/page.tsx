@@ -34,6 +34,10 @@ export default function HomeConfigPage() {
     announcementText: "",
     announcementLink: "",
     announcementEnabled: false,
+    announcementFontSize: "sm",
+    announcementTextColor: "#000000",
+    announcementBgColor: "#20E3FF",
+    announcementPosition: "top",
     ctaText: "Get Started",
     ctaLink: "/search",
     ctaEnabled: false,
@@ -85,6 +89,10 @@ export default function HomeConfigPage() {
             announcementText: data.config.announcementText || "",
             announcementLink: data.config.announcementLink || "",
             announcementEnabled: data.config.announcementEnabled ?? false,
+            announcementFontSize: data.config.announcementFontSize || "sm",
+            announcementTextColor: data.config.announcementTextColor || "#000000",
+            announcementBgColor: data.config.announcementBgColor || "#20E3FF",
+            announcementPosition: data.config.announcementPosition || "top",
             ctaText: data.config.ctaText || "Get Started",
             ctaLink: data.config.ctaLink || "/search",
             ctaEnabled: data.config.ctaEnabled ?? false,
@@ -116,6 +124,10 @@ export default function HomeConfigPage() {
           announcementText: form.announcementText,
           announcementLink: form.announcementLink,
           announcementEnabled: form.announcementEnabled,
+          announcementFontSize: form.announcementFontSize,
+          announcementTextColor: form.announcementTextColor,
+          announcementBgColor: form.announcementBgColor,
+          announcementPosition: form.announcementPosition,
           ctaText: form.ctaText,
           ctaLink: form.ctaLink,
           ctaEnabled: form.ctaEnabled,
@@ -255,6 +267,46 @@ export default function HomeConfigPage() {
             <HelpText>ဘန်နာတွင် ပြသမည့် စာသား။</HelpText>
             <input type="text" placeholder="ကြေညာချက် လင့်ခ် (မဖြစ်မနေ မဟုတ်)" value={form.announcementLink} onChange={(e) => setForm({ ...form, announcementLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mt-2" />
             <HelpText>ဘန်နာကို နှိပ်လိုက်ရင် သွားမည့် လင့်ခ် (မဖြစ်မနေ မဟုတ်)။</HelpText>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Font Size (အရွယ်အစား)</label>
+                <select value={form.announcementFontSize} onChange={(e) => setForm({ ...form, announcementFontSize: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="xs">အလွန်သေး (XS)</option>
+                  <option value="sm">သေး (SM)</option>
+                  <option value="md">အလယ်အလတ် (MD)</option>
+                  <option value="lg">ကြီး (LG)</option>
+                  <option value="xl">အလွန်ကြီး (XL)</option>
+                </select>
+                <HelpText>စာသားအရွယ်အစား။</HelpText>
+              </div>
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Text Color (စာသားအရောင်)</label>
+                <div className="flex gap-2 items-center">
+                  <input type="color" value={form.announcementTextColor || "#000000"} onChange={(e) => setForm({ ...form, announcementTextColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
+                  <span className="text-xs text-[var(--nx-text-muted-updated)]">{form.announcementTextColor || "#000000"}</span>
+                </div>
+                <HelpText>စာသားအရောင်။</HelpText>
+              </div>
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Background Color (နောက်ခံအရောင်)</label>
+                <div className="flex gap-2 items-center">
+                  <input type="color" value={form.announcementBgColor || "#20E3FF"} onChange={(e) => setForm({ ...form, announcementBgColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
+                  <span className="text-xs text-[var(--nx-text-muted-updated)]">{form.announcementBgColor || "#20E3FF"}</span>
+                </div>
+                <HelpText>နောက်ခံအရောင်။</HelpText>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">ကြော်ငြာ ပြသမည့်နေရာ (Position)</label>
+              <select value={form.announcementPosition} onChange={(e) => setForm({ ...form, announcementPosition: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                <option value="top">ထိပ်ဆုံး (Top - Above Hero)</option>
+                <option value="middle">အလယ် (Middle - Below Hero)</option>
+                <option value="bottom">အောက်ဆုံး (Bottom - Above Bottom Nav)</option>
+              </select>
+              <HelpText>ကြော်ငြာကို ဘယ်နေရာမှာ ပြသမလဲ ရွေးပါ။</HelpText>
+            </div>
           </div>
 
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">

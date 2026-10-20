@@ -12,6 +12,40 @@ import { useSettings } from "@/lib/settings-context";
 type RecentItem = { id: string; machineName: string; code: string; title: string; };
 type ArticleItem = { id: string; slug: string; title: string; summary: string | null; category: string | null; };
 
+function getAnnouncementFontSize(size?: string) {
+  switch (size) {
+    case "xs": return "text-[10px]";
+    case "sm": return "text-xs";
+    case "lg": return "text-base";
+    case "xl": return "text-lg";
+    default: return "text-sm";
+  }
+}
+
+function AnnouncementBanner({ settings }: { settings: any }) {
+  if (!settings?.announcementEnabled || !settings?.announcementText) return null;
+  
+  const content = settings.announcementLink ? (
+    <a href={settings.announcementLink} className="hover:underline block w-full">
+      {settings.announcementText}
+    </a>
+  ) : (
+    settings.announcementText
+  );
+
+  return (
+    <div 
+      className={`px-4 py-2 text-center font-semibold ${getAnnouncementFontSize(settings.announcementFontSize)}`}
+      style={{
+        backgroundColor: settings.announcementBgColor || "#20E3FF",
+        color: settings.announcementTextColor || "#000000",
+      }}
+    >
+      {content}
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { t, locale } = useSettings();
   const [heroData, setHeroData] = useState<any>(null);
@@ -51,19 +85,17 @@ export default function HomePage() {
         }
 
         setHeroData({
-          heading: String(h.heroHeading || "Find Solutions\nKeep Machines Running"),
-          description: String(h.heroDescription || "Error codes, troubleshooting, and more for arcade technicians."),
-          imageUrl: h.heroImageUrl || "/images/arcade-hero.jpg",
+          heading: h.heroHeading || "",
+          description: h.heroDescription || "",
+          imageUrl: h.heroImageUrl || "",
           imageUrls,
           config,
         });
       }
 
-      // Stats
       if (localData && localData.stats) {
         setStats(localData.stats as any);
       } else if (localData) {
-        // Fallback: count from local data
         setStats({
           totalErrors: (localData.errorCodes || []).length,
           totalMachines: (localData.machines || []).length,
@@ -94,27 +126,21 @@ export default function HomePage() {
     loadData();
   }, [t]);
 
+  const announcementPosition = homeSettings?.announcementPosition || "top";
+
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       <TopNav />
 
-      {/* Announcement Banner */}
-      {homeSettings?.announcementEnabled && homeSettings?.announcementText && (
-        <div className="bg-[var(--nx-accent)] text-black px-4 py-2 text-center text-sm font-semibold">
-          {homeSettings.announcementLink ? (
-            <a href={homeSettings.announcementLink} className="hover:underline">
-              {homeSettings.announcementText}
-            </a>
-          ) : (
-            homeSettings.announcementText
-          )}
-        </div>
-      )}
+      {/* Announcement at Top */}
+      {announcementPosition === "top" && <AnnouncementBanner settings={homeSettings} />}
 
       <main className="max-w-3xl mx-auto">
         <HeroSection data={heroData} />
 
-        {/* CTA Button */}
+        {/* Announcement at Middle (Below Hero) */}
+        {announcementPosition === "middle" && <AnnouncementBanner settings={homeSettings} />}
+
         {homeSettings?.ctaEnabled && (
           <div className="px-4 py-3">
             <Link href={homeSettings.ctaLink || "/search"} className="block w-full py-3 bg-[var(--nx-accent)] text-black font-bold text-center rounded-lg hover:opacity-90 transition">
@@ -126,7 +152,6 @@ export default function HomePage() {
         <div className="px-4 py-5">
           <HomeSearchClient locale={locale} />
 
-          {/* Quick Stats */}
           {homeSettings?.showQuickStats && (
             <div className="mt-6 grid grid-cols-3 gap-3">
               <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-3 text-center">
@@ -144,7 +169,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Recent Diagnostics */}
           {homeSettings?.showRecentDiagnostics !== false && (
             <div className="mt-8 flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -177,7 +201,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Recent Articles */}
           {homeSettings?.showRecentArticles !== false && recentArticles.length > 0 && (
             <div className="mt-8 flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -204,6 +227,9 @@ export default function HomePage() {
           )}
         </div>
       </main>
+
+      {/* Announcement at Bottom */}
+      {announcementPosition === "bottom" && <AnnouncementBanner settings={homeSettings} />}
 
       <BottomNav />
     </div>

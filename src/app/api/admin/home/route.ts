@@ -28,6 +28,11 @@ export async function POST(req: Request) {
 
   const existing = await db.select().from(homepageConfig).where(eq(homepageConfig.locale, locale)).limit(1);
 
+  // Replace empty strings with null to avoid showing default values
+  Object.keys(data).forEach(key => {
+    if (data[key] === "") data[key] = null;
+  });
+
   if (existing.length > 0) {
     await db.update(homepageConfig).set(data).where(eq(homepageConfig.locale, locale));
   } else {

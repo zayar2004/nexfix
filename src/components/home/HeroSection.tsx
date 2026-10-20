@@ -91,12 +91,6 @@ export function HeroSection({ data }: { data: HeroData }) {
       <div className="relative w-full h-[420px] bg-[var(--nx-bg-surface-deep)] overflow-hidden">
         <div className="absolute inset-0 animate-pulse">
           <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-bg-surface-deep)] via-[var(--nx-bg-card)] to-[var(--nx-bg-surface-deep)]" />
-          <div className="absolute inset-0 flex flex-col justify-center px-6 gap-3">
-            <div className="h-3 w-24 bg-[var(--nx-border-updated)] rounded" />
-            <div className="h-8 w-3/4 bg-[var(--nx-border-updated)] rounded" />
-            <div className="h-8 w-1/2 bg-[var(--nx-border-updated)] rounded" />
-            <div className="h-3 w-2/3 bg-[var(--nx-border-updated)] rounded mt-2" />
-          </div>
         </div>
       </div>
     );
@@ -107,6 +101,10 @@ export function HeroSection({ data }: { data: HeroData }) {
   const alignClass = getAlignment(config.alignment || config.align);
   const vPosClass = getVerticalPos(config.position || config.verticalPos);
   const textColor = config.textColor || "#FFFFFF";
+  
+  // ✅ ကွက်လပ် စာသားတွေ မပြအောင် စစ်ဆေးမယ်
+  const hasHeading = data.heading && data.heading.trim() !== "";
+  const hasDescription = data.description && data.description.trim() !== "";
 
   return (
     <div
@@ -134,12 +132,16 @@ export function HeroSection({ data }: { data: HeroData }) {
             <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
             <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
           </div>
-          <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
-            {data.heading}
-          </h1>
-          <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
-            {data.description}
-          </p>
+          {hasHeading && (
+            <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
+              {data.heading}
+            </h1>
+          )}
+          {hasDescription && (
+            <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
+              {data.description}
+            </p>
+          )}
         </div>
       </div>
 
