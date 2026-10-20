@@ -17,7 +17,6 @@ export async function GET() {
   
   const data = await db.select().from(media).orderBy(desc(media.createdAt));
   
-  // Add full URL to each media item
   const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
   const dataWithUrls = data.map(m => ({
     ...m,
@@ -37,10 +36,16 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const ownerType = formData.get("ownerType") as string | null;
-    const ownerId = formData.get("ownerId") as string | null;
+    let ownerId = formData.get("ownerId") as string | null;
 
     if (!file) return NextResponse.json({ ok: false, error: "No file" }, { status: 400 });
-    if (!ownerType || !ownerId) return NextResponse.json({ ok: false, error: "Missing ownerType or ownerId" }, { status: 400 });
+    if (!ownerType) return NextResponse.json({ ok: false, error: "Missing ownerType" }, { status: 400 });
+
+    // If ownerId is not a valid UUID (e.g., "admin"), use the current user's ID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!ownerId || !uuidRegex.test(ownerId)) {
+      ownerId = session.user.id!;
+    }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json({ ok: false, error: "Invalid file type. Only JPG, PNG, WebP, GIF allowed." }, { status: 400 });
