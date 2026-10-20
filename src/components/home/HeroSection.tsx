@@ -41,7 +41,7 @@ export function HeroSection({ data }: { data: HeroData }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const images = data?.imageUrls && data.imageUrls.length > 0
     ? data.imageUrls
@@ -62,10 +62,10 @@ export function HeroSection({ data }: { data: HeroData }) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
-    setTouchStart(e.target.touches ? e.targetTouches[0].clientX : null);
+    setTouchStart(e.touches[0].clientX);
   };
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    setTouchEnd(e.touches[0].clientX);
   };
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
