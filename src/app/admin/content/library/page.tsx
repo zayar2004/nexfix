@@ -7,6 +7,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { MediaManager } from "@/components/admin/MediaManager";
 import { VideoManager } from "@/components/admin/VideoManager";
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { GalleryUploadField } from "@/components/admin/GalleryUploadField";
+import { generateSlug, validateSlug } from "@/lib/slug";
 import { Plus, Edit, Trash2, Eye, Save, X, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 
 type Article = {
@@ -15,6 +17,7 @@ type Article = {
   status: string;
   category?: string | null;
   coverImageUrl?: string | null;
+  galleryImages?: string | null;
 };
 
 type ArticleDetail = Article & {
@@ -24,6 +27,7 @@ type ArticleDetail = Article & {
 const emptyForm = {
   slug: "", titleEn: "", titleMy: "", summaryEn: "", summaryMy: "",
   bodyEn: "", bodyMy: "", category: "", coverImageUrl: "",
+  galleryImages: [] as string[],
 };
 
 function AdminLibraryContent() {
@@ -35,6 +39,8 @@ function AdminLibraryContent() {
   const [loading, setLoading] = useState(true);
   const [fetchingEdit, setFetchingEdit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
 
@@ -71,6 +77,13 @@ function AdminLibraryContent() {
         };
         const en = contents.find((c) => c.locale === "en");
         const my = contents.find((c) => c.locale === "my");
+        let loadedGallery: string[] = [];
+        if (article.galleryImages) {
+          try {
+            const parsed = JSON.parse(String(article.galleryImages));
+            if (Array.isArray(parsed)) loadedGallery = parsed;
+          } catch {}
+        }
         setForm({
           slug: article.slug || "",
           titleEn: en?.title || "",
@@ -81,14 +94,41 @@ function AdminLibraryContent() {
           bodyMy: my?.body || "",
           category: article.category || "",
           coverImageUrl: article.coverImageUrl || "",
+          galleryImages: loadedGallery,
         });
       })
       .catch((err) => setMessage({ text: err.message, type: "error" }))
       .finally(() => setFetchingEdit(false));
   }, [editId]);
 
+  const handleTitleEnChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      titleEn: value,
+      slug: slugManuallyEdited ? prev.slug : generateSlug(value),
+    }));
+  };
+
+  const handleSlugChange = (value: string) => {
+    setSlugManuallyEdited(true);
+    setForm({ ...form, slug: value });
+    setSlugError(validateSlug(value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate: at least one language must have title + body
+    const hasEn = form.titleEn.trim() && form.bodyEn.trim();
+    const hasMy = form.titleMy.trim() && form.bodyMy.trim();
+    if (!hasEn && !hasMy) {
+      setMessage({
+        text: "❌ အနည်းဆုံး ဘာသာစကားတစ်ခုအတွက် Title နှင့် Body ဖြည့်ပါ။",
+        type: "error",
+      });
+      return;
+    }
+
     setSubmitting(true);
     setMessage(null);
     try {
@@ -163,14 +203,20 @@ function AdminLibraryContent() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                type="text"
-                placeholder="Slug (URL name)"
-                value={form.slug}
-                onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
-                required
-              />
+              <div className="flex flex-col gap-1">
+                <input
+                  type="text"
+                  placeholder="Slug (URL name)"
+                  value={form.slug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
+                  required
+                />
+                <p className="text-[10px] text-[var(--nx-text-muted-updated)]">
+                  URL အတွက် အင်္ဂလိပ်စာလုံးသေး သုံးပါ (ဥပမာ: test-article)
+                </p>
+                {slugError && <p className="text-[10px] text-red-400">{slugError}</p>}
+              </div>
               <input
                 type="text"
                 placeholder="Category"
@@ -185,64 +231,70 @@ function AdminLibraryContent() {
                 type="text"
                 placeholder="Title (English)"
                 value={form.titleEn}
-                onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+                onChange={(e) => handleTitleEnChange(e.target.value)}
                 className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
                 required
               />
+              <p className="text-[10px] text-[var(--nx-text-muted-updated)]">
+                အင်္ဂလိပ်ခေါင်းစဉ် (Slug အလိုအလျောက် ထွက်ပါမည်)
+              </p>
               <input
                 type="text"
-                placeholder="Title (Myanmar)"
+                placeholder="Title (Myanmar) — optional"
                 value={form.titleMy}
                 onChange={(e) => setForm({ ...form, titleMy: e.target.value })}
                 className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
-                required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
               <textarea
-                placeholder="Summary (English)"
-                value={form.summaryEn}
-                onChange={(e) => setForm({ ...form, summaryEn: e.target.value })}
-                rows={2}
-                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
-              />
-              <textarea
-                placeholder="Summary (Myanmar)"
-                value={form.summaryMy}
-                onChange={(e) => setForm({ ...form, summaryMy: e.target.value })}
-                rows={2}
-                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <textarea
-                placeholder="Body (English) — HTML allowed"
+                placeholder="Body (English) — optional, HTML allowed"
                 value={form.bodyEn}
                 onChange={(e) => setForm({ ...form, bodyEn: e.target.value })}
                 rows={6}
                 className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
-                required
               />
               <textarea
-                placeholder="Body (Myanmar) — HTML allowed"
+                placeholder="Body (Myanmar) — optional, HTML allowed"
                 value={form.bodyMy}
                 onChange={(e) => setForm({ ...form, bodyMy: e.target.value })}
                 rows={6}
                 className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 focus:border-[var(--nx-accent)] outline-none"
-                required
               />
+              <p className="text-[10px] text-[var(--nx-text-muted-updated)]">
+                HTML tag များ သုံးနိုင်ပါသည် (ဥပမာ: &lt;p&gt;စာသား&lt;/p&gt;)
+              </p>
+              </div>
             </div>
 
-            <ImageUploadField
-              label="Cover Image"
-              value={form.coverImageUrl}
-              onChange={(url) => setForm({ ...form, coverImageUrl: url })}
-              ownerType="article"
-              ownerId={editId || undefined}
-              aspectRatio="video"
-            />
+            <div className="flex flex-col gap-1">
+              <ImageUploadField
+                label="Cover Image"
+                value={form.coverImageUrl}
+                onChange={(url) => setForm({ ...form, coverImageUrl: url })}
+                ownerType="article"
+                ownerId={editId || undefined}
+                aspectRatio="video"
+              />
+              <p className="text-[10px] text-[var(--nx-text-muted-updated)]">
+                ပုံကို Upload လုပ်ပါ (သို့) URL ထည့်ပါ
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <GalleryUploadField
+                label="Additional Images (Gallery)"
+                value={form.galleryImages || []}
+                onChange={(urls) => setForm({ ...form, galleryImages: urls })}
+                ownerType="article"
+                ownerId={editId || undefined}
+              />
+              <p className="text-[10px] text-[var(--nx-text-muted-updated)]">
+                ပုံများစွာ ထည့်နိုင်ပါသည် (အများဆုံး မရှိ)
+              </p>
+            </div>
 
             {/* Media — Edit mode only */}
             {editId ? (

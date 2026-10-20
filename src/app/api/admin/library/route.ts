@@ -4,6 +4,7 @@ import { knowledgeArticles, articleContent, mediaVideos, notifications } from "@
 import { auth } from "@/auth";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
+import { validateSlug } from "@/lib/slug";
 
 const YOUTUBE_REGEX =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)[\w-]{11}([&\?].*)?$/;
@@ -24,6 +25,7 @@ const createSchema = z.object({
   summaryMy: z.string().optional(),
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
+  galleryImages: z.array(z.string().url()).optional().default([]),
   videos: z.array(videoSchema).optional().default([]),
 });
 
@@ -38,6 +40,7 @@ const patchSchema = z.object({
   summaryMy: z.string().optional(),
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
+  galleryImages: z.array(z.string().url()).optional(),
   videos: z.array(videoSchema).optional(),
 });
 
@@ -129,6 +132,12 @@ export async function POST(req: Request) {
     );
   }
 
+  // Validate slug format
+  const slugError = validateSlug(result.data.slug);
+  if (slugError) {
+    return NextResponse.json({ ok: false, error: slugError }, { status: 400 });
+  }
+
   const {
     slug,
     titleEn,
@@ -139,6 +148,7 @@ export async function POST(req: Request) {
     summaryMy,
     category,
     coverImageUrl,
+    galleryImages,
     videos,
   } = result.data;
 
@@ -151,6 +161,7 @@ export async function POST(req: Request) {
           status: "published",
           category: category || null,
           coverImageUrl: coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null,
+          galleryImages: galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null,
         })
         .returning();
 
@@ -220,6 +231,14 @@ export async function PATCH(req: Request) {
     );
   }
 
+  // Validate slug format if provided
+  if (result.data.slug) {
+    const slugError = validateSlug(result.data.slug);
+    if (slugError) {
+      return NextResponse.json({ ok: false, error: slugError }, { status: 400 });
+    }
+  }
+
   const {
     id,
     slug,
@@ -231,6 +250,7 @@ export async function PATCH(req: Request) {
     summaryMy,
     category,
     coverImageUrl,
+    galleryImages,
     videos,
   } = result.data;
 
@@ -242,6 +262,10 @@ export async function PATCH(req: Request) {
       if (coverImageUrl !== undefined) {
         articleUpdate.coverImageUrl =
           coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null;
+      }
+      if (galleryImages !== undefined) {
+        articleUpdate.galleryImages =
+          galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null;
       }
       await tx
         .update(knowledgeArticles)
