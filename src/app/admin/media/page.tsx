@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Toast, ToastType } from "@/components/ui/Toast";
 import { Copy, Trash2, Upload } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 
 type MediaItem = {
   id: string;
@@ -72,9 +73,13 @@ export default function MediaLibraryPage() {
     }
   };
 
-  const copyUrl = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setToast({ message: "URL copied to clipboard", type: "success" });
+  const copyUrl = async (url: string) => {
+    const ok = await copyToClipboard(url);
+    if (ok) {
+      setToast({ message: "URL copied to clipboard", type: "success" });
+    } else {
+      setToast({ message: "Failed to copy URL", type: "error" });
+    }
   };
 
   return (

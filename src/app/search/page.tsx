@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ArrowLeft, Copy, Check, Database, BookOpen } from "lucide-react";
 import { searchPrivateExcelData, UserExcelRow } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
+import { copyToClipboard } from "@/lib/clipboard";
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -56,10 +57,12 @@ function SearchContent() {
     }
   }, [query, mode, searchParams]);
 
-  const handleCopy = (text: string, fieldId: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldId);
-    setTimeout(() => setCopiedField(null), 2000);
+  const handleCopy = async (text: string, fieldId: string) => {
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      setCopiedField(fieldId);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
   };
 
   return (
