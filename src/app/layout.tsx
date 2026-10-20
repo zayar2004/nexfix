@@ -41,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="my" className="nx-dark" suppressHydrationWarning>
+    <html lang="my" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -52,9 +52,24 @@ export default function RootLayout({
                   var fontSize = localStorage.getItem('nexfix-fontsize') || 'normal';
                   var locale = localStorage.getItem('nexfix-locale') || 'en';
                   
-                  document.documentElement.className = theme === 'dark' ? 'nx-dark' : 'nx-light';
-                  document.documentElement.setAttribute('data-font-size', fontSize);
-                  document.documentElement.setAttribute('lang', locale === 'my' ? 'my' : 'en');
+                  // Apply theme classes to html element IMMEDIATELY
+                  var root = document.documentElement;
+                  
+                  // Remove all theme classes first
+                  root.classList.remove('nx-dark', 'nx-light');
+                  
+                  // Add the correct theme
+                  if (theme === 'light') {
+                    root.classList.add('nx-light');
+                  } else {
+                    root.classList.add('nx-dark');
+                  }
+                  
+                  // Set font size
+                  root.setAttribute('data-font-size', fontSize);
+                  
+                  // Set language
+                  root.setAttribute('lang', locale === 'my' ? 'my' : 'en');
                 } catch (e) {}
               })();
             `,
