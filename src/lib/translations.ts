@@ -119,6 +119,17 @@ export const translations = {
     "monthly": "Monthly",
     "yearly": "Yearly",
     "delete": "Delete",
+    // Library Admin (Phase 1)
+    "newArticle": "New Article",
+    "editArticle": "Edit Article",
+    "saveArticle": "Save Article",
+    "updateArticle": "Update Article",
+    "cancelEdit": "Cancel Edit",
+    "deleteArticle": "Delete this article?",
+    "status": "Status",
+    "published": "Published",
+    "existingArticles": "Existing Articles",
+    "addMediaAfterSave": "Save the article first to add images and videos.",
     "signInNotes": "Please sign in to view your notes.",
     
     // Chat
@@ -248,6 +259,17 @@ export const translations = {
     "monthly": "လစဉ်",
     "yearly": "နှစ်စဉ်",
     "delete": "ဖျက်မယ်",
+    // Library Admin (Phase 1)
+    "newArticle": "ဆောင်းပါး အသစ်",
+    "editArticle": "ဆောင်းပါး ပြင်ဆင်",
+    "saveArticle": "ဆောင်းပါး သိမ်း",
+    "updateArticle": "ဆောင်းပါး ပြင်မည်",
+    "cancelEdit": "ပြင်ဆင်မှု ပယ်ဖျက်",
+    "deleteArticle": "ဤဆောင်းပါးကို ဖျက်မလား?",
+    "status": "အခြေအနေ",
+    "published": "ထုတ်ဝေပြီး",
+    "existingArticles": "ရှိပြီးသား ဆောင်းပါးများ",
+    "addMediaAfterSave": "ပုံနှင့် ဗီဒီယို ထည့်ရန် ဆောင်းပါးကို အရင် သိမ်းပါ။",
     "signInNotes": "မှတ်စုများ ကြည့်ရန် ဝင်ရောက်ပါ။",
     
     // Chat
