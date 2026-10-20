@@ -5,6 +5,7 @@ import { NetworkProvider } from "@/lib/network-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { SessionProvider } from "next-auth/react";
 import { UserBackButton } from "@/components/layout/UserBackButton";
+import { cookies } from "next/headers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -35,15 +36,19 @@ export const viewport: Viewport = {
   themeColor: "#0B1020",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read theme from cookie set by client
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get("nexfix-theme")?.value || "dark";
+  const initialClass = themeCookie === "light" ? "nx-light" : "nx-dark";
+
   return (
-    <html lang="my" suppressHydrationWarning>
+    <html lang="my" className={initialClass} suppressHydrationWarning>
       <head>
-        {/* This script runs BEFORE the page renders to apply theme from localStorage */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -51,24 +56,8 @@ export default function RootLayout({
                 try {
                   var theme = localStorage.getItem('nexfix-theme') || 'dark';
                   var root = document.documentElement;
-                  
-                  // Remove all theme classes
                   root.classList.remove('nx-dark', 'nx-light');
-                  
-                  // Apply theme immediately
-                  if (theme === 'light') {
-                    root.classList.add('nx-light');
-                  } else {
-                    root.classList.add('nx-dark');
-                  }
-                  
-                  // Also set font size
-                  var fontSize = localStorage.getItem('nexfix-fontsize') || 'normal';
-                  root.setAttribute('data-font-size', fontSize);
-                  
-                  // Set language
-                  var locale = localStorage.getItem('nexfix-locale') || 'en';
-                  root.setAttribute('lang', locale === 'my' ? 'my' : 'en');
+                  root.classList.add(theme === 'light' ? 'nx-light' : 'nx-dark');
                 } catch (e) {}
               })();
             `,
