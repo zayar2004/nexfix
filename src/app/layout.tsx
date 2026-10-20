@@ -48,13 +48,13 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  const theme = localStorage.getItem('nexfix-theme') || 'dark';
-                  const fontSize = localStorage.getItem('nexfix-fontsize') || 'md';
-                  const lang = localStorage.getItem('nexfix-locale') || 'my';
+                  var theme = localStorage.getItem('nexfix-theme') || 'dark';
+                  var fontSize = localStorage.getItem('nexfix-fontsize') || 'normal';
+                  var locale = localStorage.getItem('nexfix-locale') || 'en';
                   
-                  document.documentElement.className = theme === 'dark' ? 'nx-dark' : '';
+                  document.documentElement.className = theme === 'dark' ? 'nx-dark' : 'nx-light';
                   document.documentElement.setAttribute('data-font-size', fontSize);
-                  document.documentElement.setAttribute('lang', lang);
+                  document.documentElement.setAttribute('lang', locale === 'my' ? 'my' : 'en');
                 } catch (e) {}
               })();
             `,
