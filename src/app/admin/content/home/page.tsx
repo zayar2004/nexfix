@@ -14,7 +14,7 @@ type HeroConfig = {
 };
 
 function HelpText({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] text-[var(--nx-text-muted-updated)] mt-1 leading-relaxed">{children}</p>;
+  return <p className="text-[11px] text-[var(--nx-text-muted-updated)] mt-1 leading-relaxed border-l-2 border-[var(--nx-accent)]/30 pl-2">{children}</p>;
 }
 
 export default function HomeConfigPage() {
@@ -123,7 +123,7 @@ export default function HomeConfigPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      setMessage(publish ? "✅ Published successfully!" : "💾 Saved as Draft");
+      setMessage(publish ? "✅ ထုတ်ဝေပြီးပါပြီ!" : "💾 မူကြမ်းအဖြစ် သိမ်းပြီးပါပြီ!");
     } catch (err) {
       setMessage("❌ Error: " + (err instanceof Error ? err.message : "Unknown"));
     } finally {
@@ -179,10 +179,9 @@ export default function HomeConfigPage() {
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* Live Preview */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-3">Live Preview</h3>
-            <HelpText>Changes you make below will appear here in real-time. This is how your home page hero will look.</HelpText>
+            <h3 className="text-base font-bold text-white mb-1">Live Preview</h3>
+            <HelpText>ဒီဇိုင်း ဘယ်လိုပေါ်မလဲဆိုတာကို ဤနေရာတွင် ကြိုတင်ကြည့်ရှုနိုင်ပါသည်။ အောက်တွင် ပြောင်းလဲမှုများ ပြုလုပ်တိုင်း ဤနေရာတွင် ချက်ချင်း ပေါ်လာပါမည်။</HelpText>
             <div className="relative w-full h-[240px] rounded-xl overflow-hidden bg-[var(--nx-bg-base-deep)] mt-3">
               {form.heroImages[0] ? (
                 <img src={form.heroImages[0]} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
@@ -214,12 +213,11 @@ export default function HomeConfigPage() {
             </div>
           </div>
 
-          {/* Hero Images (RESTORED) */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
             <h3 className="text-base font-bold text-white mb-1">Hero Images (Carousel)</h3>
-            <HelpText>Add multiple images. They will auto-slide every 10 seconds on the home page. You can swipe left/right on mobile.</HelpText>
+            <HelpText>ပုံများကို အများအပြား ထည့်သွင်းနိုင်ပါသည်။ Home Page တွင် ၁၀ စက္ကန့်တစ်ခါ အလိုအလျောက် ပြောင်းလဲသွားပါမည်။ ဖုန်းပေါ်တွင် ဘယ်ညာ ပွတ်ဆွဲပြီးလည်း ပြောင်းနိုင်ပါသည်။</HelpText>
             <div className="flex flex-col gap-2 mt-3 mb-3">
-              {form.heroImages.length === 0 && <p className="text-xs text-[var(--nx-text-muted-updated)] italic">No images added yet.</p>}
+              {form.heroImages.length === 0 && <p className="text-xs text-[var(--nx-text-muted-updated)] italic">ပုံများ မထည့်ရသေးပါ။</p>}
               {form.heroImages.map((url, idx) => (
                 <div key={idx} className="flex items-center gap-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-lg p-2">
                   <img src={url} alt="" className="w-12 h-12 rounded object-cover" />
@@ -231,113 +229,114 @@ export default function HomeConfigPage() {
               ))}
             </div>
             <button onClick={openMediaPicker} className="w-full py-2 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white text-sm font-medium rounded-lg hover:bg-[var(--nx-border-updated)]">
-              + Add Image from Media Library
+              + Media Library မှ ပုံထည့်ရန်
             </button>
           </div>
 
-          {/* Hero Text */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-1">Hero Text</h3>
-            <HelpText>The main heading and subtitle shown on top of the hero image.</HelpText>
+            <h3 className="text-base font-bold text-white mb-1">Hero Text (ပင်မစာသား)</h3>
+            <HelpText>Hero ပုံပေါ်တွင် ပြသမည့် ခေါင်းစဉ်နှင့် ဖော်ပြချက်။ Enter နှိပ်ပြီး စာကြောင်းအသစ် စတင်နိုင်ပါသည်။</HelpText>
             <div className="flex flex-col gap-2 mt-3">
-              <label className="text-xs text-[var(--nx-text-muted-updated)]">Heading (use Enter for new line)</label>
+              <label className="text-xs text-[var(--nx-text-muted-updated)]">Heading (ခေါင်းစဉ်)</label>
               <textarea value={form.heroHeading} onChange={(e) => setForm({ ...form, heroHeading: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" rows={2} />
-              <label className="text-xs text-[var(--nx-text-muted-updated)]">Description</label>
+              <label className="text-xs text-[var(--nx-text-muted-updated)]">Description (ဖော်ပြချက်)</label>
               <textarea value={form.heroDescription} onChange={(e) => setForm({ ...form, heroDescription: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" rows={2} />
             </div>
           </div>
 
-          {/* Announcement Banner */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-1">Announcement Banner</h3>
-            <HelpText>Show a thin colored banner at the very top of the home page (e.g., "New feature available!" or "Maintenance Sunday").</HelpText>
+            <h3 className="text-base font-bold text-white mb-1">Announcement Banner (ကြေညာချက်)</h3>
+            <HelpText>Home Page အပေါ်ဆုံးတွင် အရောင်ခြယ်ထားသော ကြေညာချက် ဘန်နာကို ပြသမည်။ (ဥပမာ - "New features available!" သို့ "Maintenance Sunday")</HelpText>
             <div className="flex items-center gap-2 mb-3 mt-3">
               <input type="checkbox" checked={form.announcementEnabled} onChange={(e) => setForm({ ...form, announcementEnabled: e.target.checked })} className="w-4 h-4" />
-              <label className="text-sm text-white">Enable Announcement Banner</label>
+              <label className="text-sm text-white">ကြေညာချက် ဘန်နာ ဖွင့်မည်</label>
             </div>
-            <input type="text" placeholder="Announcement text (e.g., New features available!)" value={form.announcementText} onChange={(e) => setForm({ ...form, announcementText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mb-2" />
-            <HelpText>Short message shown in the banner.</HelpText>
-            <input type="text" placeholder="Announcement link (optional)" value={form.announcementLink} onChange={(e) => setForm({ ...form, announcementLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mt-2" />
-            <HelpText>Optional URL to open when the banner is clicked.</HelpText>
+            <input type="text" placeholder="ကြေညာချက် စာသား" value={form.announcementText} onChange={(e) => setForm({ ...form, announcementText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mb-2" />
+            <HelpText>ဘန်နာတွင် ပြသမည့် စာသား။</HelpText>
+            <input type="text" placeholder="ကြေညာချက် လင့်ခ် (မဖြစ်မနေ မဟုတ်)" value={form.announcementLink} onChange={(e) => setForm({ ...form, announcementLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mt-2" />
+            <HelpText>ဘန်နာကို နှိပ်လိုက်ရင် သွားမည့် လင့်ခ် (မဖြစ်မနေ မဟုတ်)။</HelpText>
           </div>
 
-          {/* Section Visibility */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-1">Section Visibility</h3>
-            <HelpText>Toggle which sections are shown on the home page below the hero.</HelpText>
-            <div className="flex flex-col gap-2 mt-3">
-              <label className="flex items-center gap-2 text-sm text-white">
-                <input type="checkbox" checked={form.showQuickStats} onChange={(e) => setForm({ ...form, showQuickStats: e.target.checked })} />
-                Show Quick Stats
-              </label>
-              <HelpText>Counts of Errors, Machines, and Articles.</HelpText>
-              <label className="flex items-center gap-2 text-sm text-white mt-2">
-                <input type="checkbox" checked={form.showRecentDiagnostics} onChange={(e) => setForm({ ...form, showRecentDiagnostics: e.target.checked })} />
-                Show Recent Diagnostics
-              </label>
-              <HelpText>Last 5 errors the user searched for.</HelpText>
-              <label className="flex items-center gap-2 text-sm text-white mt-2">
-                <input type="checkbox" checked={form.showRecentArticles} onChange={(e) => setForm({ ...form, showRecentArticles: e.target.checked })} />
-                Show Recent Articles
-              </label>
-              <HelpText>Latest 3 knowledge articles.</HelpText>
+            <h3 className="text-base font-bold text-white mb-1">Section Visibility (ပြသမှု ထိန်းချုပ်ခြင်း)</h3>
+            <HelpText>Home Page တွင် ဘယ်အပိုင်းတွေ ပြသမလဲဆိုတာကို ရွေးချယ်ပါ။</HelpText>
+            <div className="flex flex-col gap-3 mt-3">
+              <div>
+                <label className="flex items-center gap-2 text-sm text-white">
+                  <input type="checkbox" checked={form.showQuickStats} onChange={(e) => setForm({ ...form, showQuickStats: e.target.checked })} />
+                  Quick Stats ပြမည်
+                </label>
+                <HelpText>Errors, Machines, Articles အရေအတွက်များကို ပြသမည်။</HelpText>
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-sm text-white">
+                  <input type="checkbox" checked={form.showRecentDiagnostics} onChange={(e) => setForm({ ...form, showRecentDiagnostics: e.target.checked })} />
+                  Recent Diagnostics ပြမည်
+                </label>
+                <HelpText>အသုံးပြုသူ နောက်ဆုံးရှာဖွေခဲ့သော Error ၅ ခုကို ပြသမည်။</HelpText>
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-sm text-white">
+                  <input type="checkbox" checked={form.showRecentArticles} onChange={(e) => setForm({ ...form, showRecentArticles: e.target.checked })} />
+                  Recent Articles ပြမည်
+                </label>
+                <HelpText>နောက်ဆုံး ဗဟုသုတ ဆောင်းပါး ၃ ခုကို ပြသမည်။</HelpText>
+              </div>
             </div>
           </div>
 
-          {/* CTA Button */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-1">Call-to-Action Button</h3>
-            <HelpText>A large button shown below the hero (e.g., "Get Started" → /search).</HelpText>
+            <h3 className="text-base font-bold text-white mb-1">Call-to-Action Button (ခလုတ်)</h3>
+            <HelpText>Hero အောက်တွင် ပြသမည့် ခလုတ်ကြီး။</HelpText>
             <div className="flex items-center gap-2 mb-3 mt-3">
               <input type="checkbox" checked={form.ctaEnabled} onChange={(e) => setForm({ ...form, ctaEnabled: e.target.checked })} className="w-4 h-4" />
-              <label className="text-sm text-white">Enable CTA Button</label>
+              <label className="text-sm text-white">CTA ခလုတ် ဖွင့်မည်</label>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <input type="text" placeholder="Button text (e.g., Get Started)" value={form.ctaText} onChange={(e) => setForm({ ...form, ctaText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
-                <HelpText>Text shown on the button.</HelpText>
+                <input type="text" placeholder="ခလုတ် စာသား" value={form.ctaText} onChange={(e) => setForm({ ...form, ctaText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+                <HelpText>ခလုတ်ပေါ်တွင် ပြသမည့် စာသား။</HelpText>
               </div>
               <div>
-                <input type="text" placeholder="Button link (e.g., /search)" value={form.ctaLink} onChange={(e) => setForm({ ...form, ctaLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
-                <HelpText>Where the button goes.</HelpText>
+                <input type="text" placeholder="ခလုတ် လင့်ခ်" value={form.ctaLink} onChange={(e) => setForm({ ...form, ctaLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+                <HelpText>ခလုတ်နှိပ်လိုက်ရင် သွားမည့် နေရာ။</HelpText>
               </div>
             </div>
           </div>
 
-          {/* Text Style */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-1">Text Style</h3>
-            <HelpText>Choose the size, color, and alignment of the hero heading.</HelpText>
+            <h3 className="text-base font-bold text-white mb-1">Text Style (စာသား ပုံစံ)</h3>
+            <HelpText>ခေါင်းစဉ်၏ အရွယ်အစား၊ အရောင်နှင့် နေရာချထားမှုကို ရွေးချယ်ပါ။</HelpText>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
               <div>
                 <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Font Size</label>
                 <select value={heroConfig.fontSize} onChange={(e) => setHeroConfig({ ...heroConfig, fontSize: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
-                  <option value="xs">Extra Small (XS)</option>
-                  <option value="sm">Small (SM)</option>
-                  <option value="md">Medium (MD)</option>
-                  <option value="lg">Large (LG)</option>
-                  <option value="xl">Extra Large (XL)</option>
-                  <option value="2xl">2X Large (2XL)</option>
+                  <option value="xs">အလွန်သေး (XS)</option>
+                  <option value="sm">သေး (SM)</option>
+                  <option value="md">အလယ်အလတ် (MD)</option>
+                  <option value="lg">ကြီး (LG)</option>
+                  <option value="xl">အလွန်ကြီး (XL)</option>
+                  <option value="2xl">အလွန်ကြီး+ (2XL)</option>
                 </select>
-                <HelpText>Text size of the heading.</HelpText>
+                <HelpText>ခေါင်းစဉ်၏ စာလုံးအရွယ်အစား။</HelpText>
               </div>
               <div>
                 <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Alignment</label>
                 <select value={heroConfig.alignment} onChange={(e) => setHeroConfig({ ...heroConfig, alignment: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
+                  <option value="left">ဘယ်ဘက်</option>
+                  <option value="center">အလယ်</option>
+                  <option value="right">ညာဘက်</option>
                 </select>
-                <HelpText>Horizontal alignment of text.</HelpText>
+                <HelpText>စာသားကို ဘယ်/ညာ/အလယ် ဘယ်လိုချထားမလဲ။</HelpText>
               </div>
               <div>
                 <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Vertical Position</label>
                 <select value={heroConfig.position} onChange={(e) => setHeroConfig({ ...heroConfig, position: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
-                  <option value="top">Top</option>
-                  <option value="middle">Middle</option>
-                  <option value="bottom">Bottom</option>
+                  <option value="top">အပေါ်</option>
+                  <option value="middle">အလယ်</option>
+                  <option value="bottom">အောက်</option>
                 </select>
-                <HelpText>Where the text sits vertically.</HelpText>
+                <HelpText>စာသားကို အပေါ်/အောက် ဘယ်လိုချထားမလဲ။</HelpText>
               </div>
             </div>
             <div className="mt-3">
@@ -346,41 +345,39 @@ export default function HomeConfigPage() {
                 <input type="color" value={heroConfig.textColor || "#FFFFFF"} onChange={(e) => setHeroConfig({ ...heroConfig, textColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
                 <span className="text-xs text-[var(--nx-text-muted-updated)]">{heroConfig.textColor || "#FFFFFF"}</span>
               </div>
-              <HelpText>Color of the heading text. Use white for dark backgrounds.</HelpText>
+              <HelpText>ခေါင်းစဉ်၏ စာသားအရောင်။ နောက်ခံမှောင်ရင် အဖြူရောင် သုံးပါ။</HelpText>
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-2">
             <button onClick={() => handleSave(false)} disabled={saving} className="flex-1 py-3 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-bold rounded-lg disabled:opacity-50">
-              {saving ? "Saving..." : "💾 Save as Draft"}
+              {saving ? "သိမ်းဆည်းနေသည်..." : "💾 မူကြမ်းအဖြစ် သိမ်းရန်"}
             </button>
             <button onClick={() => handleSave(true)} disabled={saving} className="flex-1 py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg disabled:opacity-50">
-              {saving ? "Saving..." : "🚀 Publish"}
+              {saving ? "သိမ်းဆည်းနေသည်..." : "🚀 ထုတ်ဝေရန် (Publish)"}
             </button>
           </div>
           {message && <p className="text-center text-sm p-2 rounded bg-[var(--nx-bg-surface-deep)]">{message}</p>}
         </div>
       </div>
 
-      {/* Media Picker Modal */}
       {showMediaPicker && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-[var(--nx-bg-card)] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-[var(--nx-border-updated)] flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white">Select Image</h3>
+              <h3 className="text-lg font-bold text-white">ပုံ ရွေးချယ်ပါ</h3>
               <button onClick={() => setShowMediaPicker(false)} className="text-white/60 hover:text-white text-2xl">✕</button>
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               <div className="mb-4">
-                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Or paste a custom URL:</label>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">သို့မဟုတ် ကိုယ်ပိုင် URL ထည့်ပါ:</label>
                 <div className="flex gap-2">
                   <input type="text" placeholder="https://..." value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
-                  <button onClick={handleAddCustomUrl} className="px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg text-sm">Add</button>
+                  <button onClick={handleAddCustomUrl} className="px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg text-sm">ထည့်ရန်</button>
                 </div>
               </div>
               {loadingMedia ? (
-                <p className="text-white text-center py-8">Loading...</p>
+                <p className="text-white text-center py-8">ဖွင့်နေသည်...</p>
               ) : (
                 <div className="grid grid-cols-3 gap-3">
                   {mediaItems.map(m => (
