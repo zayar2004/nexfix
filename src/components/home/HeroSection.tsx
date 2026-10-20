@@ -17,6 +17,7 @@ type HeroData = {
   imageUrl: string;
   imageUrls?: string[];
   config?: HeroConfig;
+  showArcadeLabel?: boolean;
 } | null;
 
 function getFontSize(size?: string) {
@@ -31,13 +32,16 @@ function getFontSize(size?: string) {
 }
 
 function getAlignment(align?: string) {
-  return align === "center" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left";
+  if (align === "center") return "items-center text-center";
+  if (align === "right") return "items-end text-right";
+  return "items-start text-left";
 }
 
 function getVerticalPos(pos?: string) {
   switch (pos) {
-    case "top": return "justify-start pt-10";
-    case "bottom": return "justify-end pb-10";
+    case "top": return "justify-start pt-20";
+    case "middle": return "justify-center";
+    case "bottom": return "justify-end pb-20";
     default: return "justify-center";
   }
 }
@@ -55,6 +59,10 @@ export function HeroSection({ data }: { data: HeroData }) {
       : [];
 
   useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     if (!data || images.length <= 1) return;
     intervalRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
@@ -69,17 +77,20 @@ export function HeroSection({ data }: { data: HeroData }) {
     setTouchStart(e.touches[0].clientX);
   };
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
     setTouchEnd(e.touches[0].clientX);
   };
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    if (touchStart === null || touchEnd === null) {
+      setTouchStart(null);
+      setTouchEnd(null);
+      return;
+    }
     const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-    if (isLeftSwipe && images.length > 1) {
+    if (distance > 50 && images.length > 1) {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }
-    if (isRightSwipe && images.length > 1) {
+    if (distance < -50 && images.length > 1) {
       setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
     }
     setTouchStart(null);
@@ -101,14 +112,15 @@ export function HeroSection({ data }: { data: HeroData }) {
   const alignClass = getAlignment(config.alignment || config.align);
   const vPosClass = getVerticalPos(config.position || config.verticalPos);
   const textColor = config.textColor || "#FFFFFF";
-  
-  // ✅ ကွက်လပ် စာသားတွေ မပြအောင် စစ်ဆေးမယ်
+
   const hasHeading = data.heading && data.heading.trim() !== "";
   const hasDescription = data.description && data.description.trim() !== "";
+  // ✅ Show ARCADE DIAGNOSTICS label only if admin enabled it
+  const showArcadeLabel = data.showArcadeLabel !== false;
 
   return (
     <div
-      className="relative w-full h-[420px] overflow-hidden bg-[var(--nx-midnight)]"
+      className="relative w-full h-[420px] overflow-hidden bg-[var(--nx-midnight)] touch-pan-y"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -117,21 +129,23 @@ export function HeroSection({ data }: { data: HeroData }) {
         <div
           key={idx}
           className={`absolute inset-0 transition-opacity duration-1000 ${
-            idx === currentIndex ? "opacity-100" : "opacity-0"
+            idx === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0"
           }`}
         >
-          <img src={img} alt="Arcade Hero" className="w-full h-full object-cover" />
+          <img src={img} alt="Arcade Hero" className="w-full h-full object-cover" draggable={false} />
         </div>
       ))}
 
-      <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-midnight)]/95 via-[var(--nx-midnight)]/70 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-midnight)]/95 via-[var(--nx-midnight)]/70 to-transparent z-20 pointer-events-none" />
 
-      <div className={`absolute inset-0 flex flex-col px-6 ${alignClass} ${vPosClass} z-10`}>
+      <div className={`absolute inset-0 flex flex-col px-6 ${alignClass} ${vPosClass} z-30 pointer-events-none`}>
         <div className="max-w-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
-            <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
-          </div>
+          {showArcadeLabel && (
+            <div className={`flex items-center gap-2 mb-3 ${alignClass.includes('center') ? 'justify-center' : alignClass.includes('right') ? 'justify-end' : 'justify-start'}`}>
+              <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
+              <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
+            </div>
+          )}
           {hasHeading && (
             <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
               {data.heading}
@@ -146,7 +160,7 @@ export function HeroSection({ data }: { data: HeroData }) {
       </div>
 
       {images.length > 1 && (
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-30">
           {images.map((_, idx) => (
             <button
               key={idx}

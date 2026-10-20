@@ -1,0 +1,175 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+
+type HeroConfig = {
+  align?: "left" | "center" | "right";
+  alignment?: "left" | "center" | "right";
+  fontSize?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+  verticalPos?: "top" | "middle" | "bottom";
+  position?: "top" | "middle" | "bottom";
+  textColor?: string;
+};
+
+type HeroData = {
+  heading: string;
+  description: string;
+  imageUrl: string;
+  imageUrls?: string[];
+  config?: HeroConfig;
+} | null;
+
+function getFontSize(size?: string) {
+  switch (size) {
+    case "xs": return "text-xl md:text-2xl";
+    case "sm": return "text-2xl md:text-3xl";
+    case "lg": return "text-4xl md:text-5xl";
+    case "xl": return "text-5xl md:text-6xl";
+    case "2xl": return "text-6xl md:text-7xl";
+    default: return "text-3xl md:text-4xl";
+  }
+}
+
+function getAlignment(align?: string) {
+  if (align === "center") return "items-center text-center";
+  if (align === "right") return "items-end text-right";
+  return "items-start text-left"; // default: left
+}
+
+function getVerticalPos(pos?: string) {
+  switch (pos) {
+    case "top": return "justify-start pt-20";
+    case "middle": return "justify-center";
+    case "bottom": return "justify-end pb-20";
+    default: return "justify-center"; // default: middle
+  }
+}
+
+export function HeroSection({ data }: { data: HeroData }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const images = data?.imageUrls && data.imageUrls.length > 0
+    ? data.imageUrls
+    : data?.imageUrl
+      ? [data.imageUrl]
+      : [];
+
+  // Auto-slide
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (!data || images.length <= 1) return;
+    intervalRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 10000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [data, images.length]);
+
+  // Swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.touches[0].clientX);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    setTouchEnd(e.touches[0].clientX);
+  };
+  const handleTouchEnd = () => {
+    if (touchStart === null || touchEnd === null) {
+      setTouchStart(null);
+      setTouchEnd(null);
+      return;
+    }
+    const distance = touchStart - touchEnd;
+    if (distance > 50 && images.length > 1) {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }
+    if (distance < -50 && images.length > 1) {
+      setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  if (!data) {
+    return (
+      <div className="relative w-full h-[420px] bg-[var(--nx-bg-surface-deep)] overflow-hidden">
+        <div className="absolute inset-0 animate-pulse">
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-bg-surface-deep)] via-[var(--nx-bg-card)] to-[var(--nx-bg-surface-deep)]" />
+        </div>
+      </div>
+    );
+  }
+
+  const config = data.config || {};
+  const fontClass = getFontSize(config.fontSize);
+  const alignClass = getAlignment(config.alignment || config.align);
+  const vPosClass = getVerticalPos(config.position || config.verticalPos);
+  const textColor = config.textColor || "#FFFFFF";
+
+  const hasHeading = data.heading && data.heading.trim() !== "";
+  const hasDescription = data.description && data.description.trim() !== "";
+
+  return (
+    <div
+      className="relative w-full h-[420px] overflow-hidden bg-[var(--nx-midnight)] touch-pan-y"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {images.map((img, idx) => (
+        <div
+          key={idx}
+          className={`absolute inset-0 transition-opacity duration-1000 ${
+            idx === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+          }`}
+        >
+          <img src={img} alt="Arcade Hero" className="w-full h-full object-cover" draggable={false} />
+        </div>
+      ))}
+
+      <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-midnight)]/95 via-[var(--nx-midnight)]/70 to-transparent z-20 pointer-events-none" />
+
+      {/* Text Overlay - Positioned by Admin Settings */}
+      <div className={`absolute inset-0 flex flex-col px-6 ${alignClass} ${vPosClass} z-30 pointer-events-none`}>
+        <div className="max-w-lg">
+          <div className={`flex items-center gap-2 mb-3 ${alignClass.includes('center') ? 'justify-center' : alignClass.includes('right') ? 'justify-end' : 'justify-start'}`}>
+            <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
+            <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
+          </div>
+          {hasHeading && (
+            <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
+              {data.heading}
+            </h1>
+          )}
+          {hasDescription && (
+            <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
+              {data.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-30">
+          {images.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 rounded-full transition-all ${
+                idx === currentIndex ? "w-6 bg-[var(--nx-cyan)]" : "w-1.5 bg-white/40"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -90,6 +90,7 @@ export default function HomePage() {
           imageUrl: h.heroImageUrl || "",
           imageUrls,
           config,
+          showArcadeLabel: h.showArcadeLabel !== false,
         });
       }
 

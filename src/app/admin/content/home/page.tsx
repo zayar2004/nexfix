@@ -38,6 +38,7 @@ export default function HomeConfigPage() {
     announcementTextColor: "#000000",
     announcementBgColor: "#20E3FF",
     announcementPosition: "top",
+    showArcadeLabel: true,
     ctaText: "Get Started",
     ctaLink: "/search",
     ctaEnabled: false,
@@ -93,6 +94,9 @@ export default function HomeConfigPage() {
             announcementTextColor: data.config.announcementTextColor || "#000000",
             announcementBgColor: data.config.announcementBgColor || "#20E3FF",
             announcementPosition: data.config.announcementPosition || "top",
+            showArcadeLabel: data.config.showArcadeLabel ?? true,
+            announcementPosition: data.config.announcementPosition || "top",
+            showArcadeLabel: data.config.showArcadeLabel ?? true,
             ctaText: data.config.ctaText || "Get Started",
             ctaLink: data.config.ctaLink || "/search",
             ctaEnabled: data.config.ctaEnabled ?? false,
@@ -128,6 +132,9 @@ export default function HomeConfigPage() {
           announcementTextColor: form.announcementTextColor,
           announcementBgColor: form.announcementBgColor,
           announcementPosition: form.announcementPosition,
+          showArcadeLabel: form.showArcadeLabel,
+          announcementPosition: form.announcementPosition,
+          showArcadeLabel: form.showArcadeLabel,
           ctaText: form.ctaText,
           ctaLink: form.ctaLink,
           ctaEnabled: form.ctaEnabled,
@@ -301,6 +308,16 @@ export default function HomeConfigPage() {
             <div className="mt-4">
               <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">ကြော်ငြာ ပြသမည့်နေရာ (Position)</label>
               <select value={form.announcementPosition} onChange={(e) => setForm({ ...form, announcementPosition: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                <option value="top">ထိပ်ဆုံး (Top)</option>
+                <option value="middle">အလယ် (Below Hero)</option>
+                <option value="bottom">အောက်ဆုံး (Above Bottom Nav)</option>
+              </select>
+              <HelpText>ကြော်ငြာကို ဘယ်နေရာမှာ ပြသမလဲ ရွေးပါ။</HelpText>
+            </div>
+
+            <div className="mt-4">
+              <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">ကြော်ငြာ ပြသမည့်နေရာ (Position)</label>
+              <select value={form.announcementPosition} onChange={(e) => setForm({ ...form, announcementPosition: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
                 <option value="top">ထိပ်ဆုံး (Top - Above Hero)</option>
                 <option value="middle">အလယ် (Middle - Below Hero)</option>
                 <option value="bottom">အောက်ဆုံး (Bottom - Above Bottom Nav)</option>
@@ -391,6 +408,14 @@ export default function HomeConfigPage() {
                 <HelpText>စာသားကို အပေါ်/အောက် ဘယ်လိုချထားမလဲ။</HelpText>
               </div>
             </div>
+            <div className="mt-3">
+              <label className="flex items-center gap-2 text-sm text-white mb-3">
+                <input type="checkbox" checked={form.showArcadeLabel} onChange={(e) => setForm({ ...form, showArcadeLabel: e.target.checked })} />
+                "ARCADE DIAGNOSTICS" စာတန်ကို ပြမည်
+              </label>
+              <HelpText>ဒီစာတန်ကို ဖွင့်ထားမှ User Home Page မှာ ပေါ်မည်။ ပိတ်ထားရင် မပေါ်ပါ။</HelpText>
+            </div>
+
             <div className="mt-3">
               <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Text Color</label>
               <div className="flex gap-2 items-center">
