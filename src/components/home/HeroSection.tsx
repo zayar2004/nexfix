@@ -49,37 +49,20 @@ export function HeroSection({ data }: { data: HeroData }) {
       ? [data.imageUrl]
       : [];
 
-  // 🔒 Show Loading Skeleton if data is not ready yet
-  if (!data) {
-    return (
-      <div className="relative w-full h-[420px] bg-[var(--nx-bg-surface-deep)] overflow-hidden">
-        <div className="absolute inset-0 animate-pulse">
-          <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-bg-surface-deep)] via-[var(--nx-bg-card)] to-[var(--nx-bg-surface-deep)]" />
-          <div className="absolute inset-0 flex flex-col justify-center px-6 gap-3">
-            <div className="h-3 w-24 bg-[var(--nx-border-updated)] rounded" />
-            <div className="h-8 w-3/4 bg-[var(--nx-border-updated)] rounded" />
-            <div className="h-8 w-1/2 bg-[var(--nx-border-updated)] rounded" />
-            <div className="h-3 w-2/3 bg-[var(--nx-border-updated)] rounded mt-2" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 🎯 Auto-slide every 10 seconds
+  // ✅ useEffect MUST be called before any conditional return
   useEffect(() => {
-    if (images.length <= 1) return;
+    if (!data || images.length <= 1) return;
     intervalRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }, 10000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [images.length]);
+  }, [data, images.length]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    setTouchStart(e.target.touches ? e.targetTouches[0].clientX : null);
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
@@ -98,6 +81,23 @@ export function HeroSection({ data }: { data: HeroData }) {
     setTouchStart(null);
     setTouchEnd(null);
   };
+
+  // 🔒 Show Loading Skeleton if data is not ready yet (AFTER useEffect)
+  if (!data) {
+    return (
+      <div className="relative w-full h-[420px] bg-[var(--nx-bg-surface-deep)] overflow-hidden">
+        <div className="absolute inset-0 animate-pulse">
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--nx-bg-surface-deep)] via-[var(--nx-bg-card)] to-[var(--nx-bg-surface-deep)]" />
+          <div className="absolute inset-0 flex flex-col justify-center px-6 gap-3">
+            <div className="h-3 w-24 bg-[var(--nx-border-updated)] rounded" />
+            <div className="h-8 w-3/4 bg-[var(--nx-border-updated)] rounded" />
+            <div className="h-8 w-1/2 bg-[var(--nx-border-updated)] rounded" />
+            <div className="h-3 w-2/3 bg-[var(--nx-border-updated)] rounded mt-2" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const config = data.config || {};
   const fontClass = getFontSize(config.fontSize);
