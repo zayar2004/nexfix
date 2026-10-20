@@ -115,6 +115,8 @@ export const homepageConfig = pgTable("homepage_config", {
   announcementTextColor: varchar("announcement_text_color", { length: 10 }).default("#000000").notNull(),
   announcementBgColor: varchar("announcement_bg_color", { length: 10 }).default("#20E3FF").notNull(),
   announcementPosition: varchar("announcement_position", { length: 20 }).default("top").notNull(),
+  showArcadeLabel: boolean("show_arcade_label").default(true).notNull(),
+  showHeroText: boolean("show_hero_text").default(true).notNull(),
   ctaText: varchar("cta_text", { length: 100 }),
   ctaLink: text("cta_link"),
   ctaEnabled: boolean("cta_enabled").default(false).notNull(),
