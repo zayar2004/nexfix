@@ -4,8 +4,10 @@ import { useEffect, useState, useRef } from "react";
 
 type HeroConfig = {
   align?: "left" | "center" | "right";
+  alignment?: "left" | "center" | "right";
   fontSize?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   verticalPos?: "top" | "middle" | "bottom";
+  position?: "top" | "middle" | "bottom";
   textColor?: string;
 };
 
@@ -24,7 +26,7 @@ function getFontSize(size?: string) {
     case "lg": return "text-4xl md:text-5xl";
     case "xl": return "text-5xl md:text-6xl";
     case "2xl": return "text-6xl md:text-7xl";
-    default: return "text-3xl md:text-4xl"; // md
+    default: return "text-3xl md:text-4xl";
   }
 }
 
@@ -102,8 +104,8 @@ export function HeroSection({ data }: { data: HeroData }) {
 
   const config = data.config || {};
   const fontClass = getFontSize(config.fontSize);
-  const alignClass = getAlignment(config.align);
-  const vPosClass = getVerticalPos(config.verticalPos);
+  const alignClass = getAlignment(config.alignment || config.align);
+  const vPosClass = getVerticalPos(config.position || config.verticalPos);
   const textColor = config.textColor || "#FFFFFF";
 
   return (
@@ -132,7 +134,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             <div className="w-8 h-[2px] bg-[var(--nx-cyan)]" />
             <span className="text-[var(--nx-cyan)] text-xs font-bold tracking-widest">ARCADE DIAGNOSTICS</span>
           </div>
-          <h1 className={`font-black leading-tight mb-3 ${fontClass}`} style={{ color: textColor }}>
+          <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
             {data.heading}
           </h1>
           <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>

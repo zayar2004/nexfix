@@ -13,6 +13,10 @@ type HeroConfig = {
   textColor?: string;
 };
 
+function HelpText({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] text-[var(--nx-text-muted-updated)] mt-1 leading-relaxed">{children}</p>;
+}
+
 export default function HomeConfigPage() {
   const [locale, setLocale] = useState<"my" | "en">("en");
   const [loading, setLoading] = useState(true);
@@ -178,7 +182,8 @@ export default function HomeConfigPage() {
           {/* Live Preview */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
             <h3 className="text-base font-bold text-white mb-3">Live Preview</h3>
-            <div className="relative w-full h-[240px] rounded-xl overflow-hidden bg-[var(--nx-bg-base-deep)]">
+            <HelpText>Changes you make below will appear here in real-time. This is how your home page hero will look.</HelpText>
+            <div className="relative w-full h-[240px] rounded-xl overflow-hidden bg-[var(--nx-bg-base-deep)] mt-3">
               {form.heroImages[0] ? (
                 <img src={form.heroImages[0]} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
               ) : (
@@ -209,53 +214,101 @@ export default function HomeConfigPage() {
             </div>
           </div>
 
+          {/* Hero Images (RESTORED) */}
+          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
+            <h3 className="text-base font-bold text-white mb-1">Hero Images (Carousel)</h3>
+            <HelpText>Add multiple images. They will auto-slide every 10 seconds on the home page. You can swipe left/right on mobile.</HelpText>
+            <div className="flex flex-col gap-2 mt-3 mb-3">
+              {form.heroImages.length === 0 && <p className="text-xs text-[var(--nx-text-muted-updated)] italic">No images added yet.</p>}
+              {form.heroImages.map((url, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-lg p-2">
+                  <img src={url} alt="" className="w-12 h-12 rounded object-cover" />
+                  <span className="flex-1 text-xs text-white truncate">{url}</span>
+                  <button onClick={() => handleMoveImage(idx, "up")} disabled={idx === 0} className="text-xs px-2 py-1 bg-[var(--nx-bg-surface-deep)] text-white rounded disabled:opacity-30">↑</button>
+                  <button onClick={() => handleMoveImage(idx, "down")} disabled={idx === form.heroImages.length - 1} className="text-xs px-2 py-1 bg-[var(--nx-bg-surface-deep)] text-white rounded disabled:opacity-30">↓</button>
+                  <button onClick={() => handleRemoveImage(idx)} className="text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded">✕</button>
+                </div>
+              ))}
+            </div>
+            <button onClick={openMediaPicker} className="w-full py-2 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white text-sm font-medium rounded-lg hover:bg-[var(--nx-border-updated)]">
+              + Add Image from Media Library
+            </button>
+          </div>
+
+          {/* Hero Text */}
+          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
+            <h3 className="text-base font-bold text-white mb-1">Hero Text</h3>
+            <HelpText>The main heading and subtitle shown on top of the hero image.</HelpText>
+            <div className="flex flex-col gap-2 mt-3">
+              <label className="text-xs text-[var(--nx-text-muted-updated)]">Heading (use Enter for new line)</label>
+              <textarea value={form.heroHeading} onChange={(e) => setForm({ ...form, heroHeading: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" rows={2} />
+              <label className="text-xs text-[var(--nx-text-muted-updated)]">Description</label>
+              <textarea value={form.heroDescription} onChange={(e) => setForm({ ...form, heroDescription: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" rows={2} />
+            </div>
+          </div>
+
           {/* Announcement Banner */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-3">Announcement Banner</h3>
-            <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-base font-bold text-white mb-1">Announcement Banner</h3>
+            <HelpText>Show a thin colored banner at the very top of the home page (e.g., "New feature available!" or "Maintenance Sunday").</HelpText>
+            <div className="flex items-center gap-2 mb-3 mt-3">
               <input type="checkbox" checked={form.announcementEnabled} onChange={(e) => setForm({ ...form, announcementEnabled: e.target.checked })} className="w-4 h-4" />
               <label className="text-sm text-white">Enable Announcement Banner</label>
             </div>
             <input type="text" placeholder="Announcement text (e.g., New features available!)" value={form.announcementText} onChange={(e) => setForm({ ...form, announcementText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mb-2" />
-            <input type="text" placeholder="Announcement link (optional)" value={form.announcementLink} onChange={(e) => setForm({ ...form, announcementLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+            <HelpText>Short message shown in the banner.</HelpText>
+            <input type="text" placeholder="Announcement link (optional)" value={form.announcementLink} onChange={(e) => setForm({ ...form, announcementLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm mt-2" />
+            <HelpText>Optional URL to open when the banner is clicked.</HelpText>
           </div>
 
           {/* Section Visibility */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-3">Section Visibility</h3>
-            <div className="flex flex-col gap-2">
+            <h3 className="text-base font-bold text-white mb-1">Section Visibility</h3>
+            <HelpText>Toggle which sections are shown on the home page below the hero.</HelpText>
+            <div className="flex flex-col gap-2 mt-3">
               <label className="flex items-center gap-2 text-sm text-white">
                 <input type="checkbox" checked={form.showQuickStats} onChange={(e) => setForm({ ...form, showQuickStats: e.target.checked })} />
                 Show Quick Stats
               </label>
-              <label className="flex items-center gap-2 text-sm text-white">
+              <HelpText>Counts of Errors, Machines, and Articles.</HelpText>
+              <label className="flex items-center gap-2 text-sm text-white mt-2">
                 <input type="checkbox" checked={form.showRecentDiagnostics} onChange={(e) => setForm({ ...form, showRecentDiagnostics: e.target.checked })} />
                 Show Recent Diagnostics
               </label>
-              <label className="flex items-center gap-2 text-sm text-white">
+              <HelpText>Last 5 errors the user searched for.</HelpText>
+              <label className="flex items-center gap-2 text-sm text-white mt-2">
                 <input type="checkbox" checked={form.showRecentArticles} onChange={(e) => setForm({ ...form, showRecentArticles: e.target.checked })} />
                 Show Recent Articles
               </label>
+              <HelpText>Latest 3 knowledge articles.</HelpText>
             </div>
           </div>
 
           {/* CTA Button */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-3">Call-to-Action Button</h3>
-            <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-base font-bold text-white mb-1">Call-to-Action Button</h3>
+            <HelpText>A large button shown below the hero (e.g., "Get Started" → /search).</HelpText>
+            <div className="flex items-center gap-2 mb-3 mt-3">
               <input type="checkbox" checked={form.ctaEnabled} onChange={(e) => setForm({ ...form, ctaEnabled: e.target.checked })} className="w-4 h-4" />
               <label className="text-sm text-white">Enable CTA Button</label>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Button text (e.g., Get Started)" value={form.ctaText} onChange={(e) => setForm({ ...form, ctaText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
-              <input type="text" placeholder="Button link (e.g., /search)" value={form.ctaLink} onChange={(e) => setForm({ ...form, ctaLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+              <div>
+                <input type="text" placeholder="Button text (e.g., Get Started)" value={form.ctaText} onChange={(e) => setForm({ ...form, ctaText: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+                <HelpText>Text shown on the button.</HelpText>
+              </div>
+              <div>
+                <input type="text" placeholder="Button link (e.g., /search)" value={form.ctaLink} onChange={(e) => setForm({ ...form, ctaLink: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+                <HelpText>Where the button goes.</HelpText>
+              </div>
             </div>
           </div>
 
           {/* Text Style */}
           <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5">
-            <h3 className="text-base font-bold text-white mb-3">Text Style</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="text-base font-bold text-white mb-1">Text Style</h3>
+            <HelpText>Choose the size, color, and alignment of the hero heading.</HelpText>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
               <div>
                 <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Font Size</label>
                 <select value={heroConfig.fontSize} onChange={(e) => setHeroConfig({ ...heroConfig, fontSize: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
@@ -266,14 +319,34 @@ export default function HomeConfigPage() {
                   <option value="xl">Extra Large (XL)</option>
                   <option value="2xl">2X Large (2XL)</option>
                 </select>
+                <HelpText>Text size of the heading.</HelpText>
               </div>
               <div>
-                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Text Color</label>
-                <div className="flex gap-2 items-center">
-                  <input type="color" value={heroConfig.textColor || "#FFFFFF"} onChange={(e) => setHeroConfig({ ...heroConfig, textColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
-                  <span className="text-xs text-[var(--nx-text-muted-updated)]">{heroConfig.textColor || "#FFFFFF"}</span>
-                </div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Alignment</label>
+                <select value={heroConfig.alignment} onChange={(e) => setHeroConfig({ ...heroConfig, alignment: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+                <HelpText>Horizontal alignment of text.</HelpText>
               </div>
+              <div>
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Vertical Position</label>
+                <select value={heroConfig.position} onChange={(e) => setHeroConfig({ ...heroConfig, position: e.target.value as any })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm">
+                  <option value="top">Top</option>
+                  <option value="middle">Middle</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+                <HelpText>Where the text sits vertically.</HelpText>
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Text Color</label>
+              <div className="flex gap-2 items-center">
+                <input type="color" value={heroConfig.textColor || "#FFFFFF"} onChange={(e) => setHeroConfig({ ...heroConfig, textColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer" />
+                <span className="text-xs text-[var(--nx-text-muted-updated)]">{heroConfig.textColor || "#FFFFFF"}</span>
+              </div>
+              <HelpText>Color of the heading text. Use white for dark backgrounds.</HelpText>
             </div>
           </div>
 
@@ -289,6 +362,38 @@ export default function HomeConfigPage() {
           {message && <p className="text-center text-sm p-2 rounded bg-[var(--nx-bg-surface-deep)]">{message}</p>}
         </div>
       </div>
+
+      {/* Media Picker Modal */}
+      {showMediaPicker && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nx-bg-card)] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-[var(--nx-border-updated)] flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white">Select Image</h3>
+              <button onClick={() => setShowMediaPicker(false)} className="text-white/60 hover:text-white text-2xl">✕</button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              <div className="mb-4">
+                <label className="text-xs text-[var(--nx-text-muted-updated)] block mb-1">Or paste a custom URL:</label>
+                <div className="flex gap-2">
+                  <input type="text" placeholder="https://..." value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm" />
+                  <button onClick={handleAddCustomUrl} className="px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg text-sm">Add</button>
+                </div>
+              </div>
+              {loadingMedia ? (
+                <p className="text-white text-center py-8">Loading...</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {mediaItems.map(m => (
+                    <button key={m.id} onClick={() => handleAddImage(m.storageKey)} className="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-[var(--nx-accent)] transition">
+                      <img src={`${S3_URL}/${m.storageKey}`} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
