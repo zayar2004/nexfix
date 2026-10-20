@@ -5,7 +5,6 @@ import { NetworkProvider } from "@/lib/network-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { SessionProvider } from "next-auth/react";
 import { UserBackButton } from "@/components/layout/UserBackButton";
-import { cookies } from "next/headers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,19 +35,15 @@ export const viewport: Viewport = {
   themeColor: "#0B1020",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Read theme from cookie (set by client on change)
-  const cookieStore = await cookies();
-  const themeCookie = cookieStore.get("nexfix-theme")?.value || "dark";
-  const initialTheme = themeCookie === "light" ? "nx-light" : "nx-dark";
-
   return (
-    <html lang="my" className={initialTheme} suppressHydrationWarning>
+    <html lang="my" suppressHydrationWarning>
       <head>
+        {/* This script runs BEFORE the page renders to apply theme from localStorage */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -56,8 +51,24 @@ export default async function RootLayout({
                 try {
                   var theme = localStorage.getItem('nexfix-theme') || 'dark';
                   var root = document.documentElement;
+                  
+                  // Remove all theme classes
                   root.classList.remove('nx-dark', 'nx-light');
-                  root.classList.add(theme === 'light' ? 'nx-light' : 'nx-dark');
+                  
+                  // Apply theme immediately
+                  if (theme === 'light') {
+                    root.classList.add('nx-light');
+                  } else {
+                    root.classList.add('nx-dark');
+                  }
+                  
+                  // Also set font size
+                  var fontSize = localStorage.getItem('nexfix-fontsize') || 'normal';
+                  root.setAttribute('data-font-size', fontSize);
+                  
+                  // Set language
+                  var locale = localStorage.getItem('nexfix-locale') || 'en';
+                  root.setAttribute('lang', locale === 'my' ? 'my' : 'en');
                 } catch (e) {}
               })();
             `,
