@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Edit, Trash2, Eye, CheckSquare, Square, Plus, Search, BookOpen, AlertTriangle, Video, Wrench, Monitor } from "lucide-react";
+import { Edit, Trash2, Eye, CheckSquare, Square, Plus, Search, BookOpen, AlertTriangle, Video, Wrench, Monitor, FileText, Filter } from "lucide-react";
 
 type Article = {
   id: string;
@@ -105,6 +105,7 @@ export default function LibraryListPage() {
     if (t.includes("maintenance") || t.includes("repair")) return <Wrench size={16} />;
     if (t.includes("video")) return <Video size={16} />;
     if (t.includes("machine")) return <Monitor size={16} />;
+    if (t.includes("manual")) return <FileText size={16} />;
     return <BookOpen size={16} />;
   };
 
