@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { AlertCircle, CheckCircle, X } from "lucide-react";
+import { AlertCircle, CheckCircle, X , FileText, Download} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
@@ -22,6 +22,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
   const [article, setArticle] = useState<ArticleState | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
+  const [pdfs, setPdfs] = useState<any[]>([]);
   const [reportReason, setReportReason] = useState("");
   const [reportDesc, setReportDesc] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -73,6 +74,18 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
       setLoading(false);
     });
   }, [slug]);
+
+  // PDFs ကို API ကနေ ယူမယ် (article id ရပြီးတာနဲ့)
+  useEffect(() => {
+    if (article?.id) {
+      fetch(`/api/pdfs?articleId=${article.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.ok) setPdfs(data.data || []);
+        })
+        .catch(() => {});
+    }
+  }, [article?.id]);
 
   // Recently Viewed ကို LocalStorage ထဲ သိမ်းမယ်
   useEffect(() => {
@@ -170,6 +183,31 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                     className="w-full h-32 object-cover hover:scale-105 transition-transform duration-200" 
                   />
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* PDF Manuals */}
+        {pdfs.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-lg font-bold text-[var(--nx-text-primary)] mb-3">📄 PDF Manuals</h2>
+            <div className="flex flex-col gap-2">
+              {pdfs.map((pdf) => (
+                <a 
+                  key={pdf.id}
+                  href={pdf.url || `${process.env.NEXT_PUBLIC_S3_URL}/${pdf.storageKey}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg hover:border-[var(--nx-cyan)] transition"
+                >
+                  <FileText size={20} className="text-[var(--nx-cyan)] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[var(--nx-text-primary)] text-sm truncate">{pdf.title}</p>
+                    <p className="text-xs text-[var(--nx-text-muted-updated)]">{pdf.size || ""}</p>
+                  </div>
+                  <Download size={16} className="text-[var(--nx-text-muted-updated)]" />
+                </a>
               ))}
             </div>
           </section>
