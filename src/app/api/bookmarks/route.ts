@@ -18,12 +18,24 @@ export async function GET() {
       slug: knowledgeArticles.slug,
       category: knowledgeArticles.category,
       coverImageUrl: knowledgeArticles.coverImageUrl,
+      title: articleContent.title,
     })
     .from(libraryBookmarks)
     .innerJoin(knowledgeArticles, eq(knowledgeArticles.id, libraryBookmarks.articleId))
+    .leftJoin(articleContent, eq(articleContent.articleId, libraryBookmarks.articleId))
     .where(eq(libraryBookmarks.userId, session.user.id));
 
-  return NextResponse.json({ ok: true, data: bookmarks });
+  // Article တစ်ခုတည်းအတွက် content နှစ်ခုရှိရင် (en/my) ပထမတစ်ခုကိုပဲ ယူမယ်
+  const uniqueBookmarks = [];
+  const seen = new Set();
+  for (const b of bookmarks) {
+    if (!seen.has(b.articleId)) {
+      seen.add(b.articleId);
+      uniqueBookmarks.push(b);
+    }
+  }
+
+  return NextResponse.json({ ok: true, data: uniqueBookmarks });
 }
 
 // POST: Bookmark အသစ် ထည့်/ဖျက်
@@ -36,7 +48,6 @@ export async function POST(req: Request) {
   const { articleId } = await req.json();
   if (!articleId) return NextResponse.json({ ok: false, error: "Missing articleId" }, { status: 400 });
 
-  // ရှိပြီးသားလား စစ်
   const existing = await db
     .select()
     .from(libraryBookmarks)
@@ -44,11 +55,9 @@ export async function POST(req: Request) {
     .limit(1);
 
   if (existing.length > 0) {
-    // ရှိရင် ဖျက်
     await db.delete(libraryBookmarks).where(eq(libraryBookmarks.id, existing[0].id));
     return NextResponse.json({ ok: true, action: "removed" });
   } else {
-    // မရှိရင် ထည့်
     await db.insert(libraryBookmarks).values({ userId: session.user.id, articleId });
     return NextResponse.json({ ok: true, action: "added" });
   }
