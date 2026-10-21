@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { AlertCircle, CheckCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
 
 type VideoItem = { youtubeUrl: string; title: string | null; displayOrder: string };
-type ArticleState = { title: string; body: string; summary: string | null; category: string | null; coverImageUrl: string | null; videos: VideoItem[]; galleryImages: string[]; };
+type ArticleState = { id: string; title: string; body: string; summary: string | null; category: string | null; coverImageUrl: string | null; videos: VideoItem[]; galleryImages: string[]; };
 
 function extractYouTubeId(url: string): string {
   const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]{11})/);
@@ -57,6 +58,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
             const allImages = Array.from(new Set([...parsedImages, ...mediaImages]));
 
             setArticle({
+              id: String(found.id),
               title: String(content.title),
               body: String(content.body),
               summary: content.summary ? String(content.summary) : null,
