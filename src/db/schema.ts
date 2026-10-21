@@ -205,3 +205,14 @@ export const notifications = pgTable("notifications", {
   userIdx: index("notifications_user_idx").on(table.userId),
   readIdx: index("notifications_read_idx").on(table.isRead),
 }));
+
+// 13. Library Bookmarks Table
+export const libraryBookmarks = pgTable("library_bookmarks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userArticleUnique: unique("library_bookmarks_user_article_unique").on(table.userId, table.articleId),
+  userIdx: index("library_bookmarks_user_idx").on(table.userId),
+}));

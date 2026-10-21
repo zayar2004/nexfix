@@ -7,7 +7,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
-import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Clock, Cpu, History } from "lucide-react";
+import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Bookmark, BookmarkCheck } from "lucide-react";
 
 type Article = {
   id: string;
@@ -16,7 +16,6 @@ type Article = {
   summary: string | null;
   category: string | null;
   coverImageUrl: string | null;
-  updatedAt?: string | null;
 };
 
 type Machine = {
@@ -31,15 +30,15 @@ export default function LibraryPage() {
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [recentlyViewed, setRecentlyViewed] = useState<Article[]>([]);
 
   useEffect(() => {
+    // 1. Local Data (Articles + Machines) ကို ယူမယ်
     getLocalData().then((data) => {
       if (data) {
-        // 1. Articles ကို ဆွဲထုတ်မယ်
         if (data.articles && data.articleContents) {
           const contents = data.articleContents as Record<string, unknown>[];
           const items: Article[] = (data.articles as Record<string, unknown>[]).map((a) => {
@@ -52,13 +51,10 @@ export default function LibraryPage() {
               summary: content?.summary ? String(content.summary) : null,
               category: a.category ? String(a.category) : null,
               coverImageUrl: a.coverImageUrl ? String(a.coverImageUrl) : null,
-              updatedAt: a.updatedAt ? String(a.updatedAt) : null,
             };
           });
           setArticles(items);
         }
-
-        // 2. Machines ကို ဆွဲထုတ်မယ်
         if (data.machines) {
           const machs: Machine[] = (data.machines as Record<string, unknown>[]).map((m) => ({
             id: String(m.id),
@@ -69,18 +65,18 @@ export default function LibraryPage() {
           setMachines(machs);
         }
       }
-
-      // 3. Recently Viewed ကို Local Storage ကနေ ယူမယ်
-      const stored = localStorage.getItem("nexfix-recent-articles");
-      if (stored) {
-        try {
-          const ids = JSON.parse(stored) as string[];
-          // (ဒီနေရာမှာ Article list နဲ့ ချိတ်ဆက်ဖို့ လိုပါတယ်၊ ဒါပေမယ့် ရိုးရှင်းအောင် ခဏထားလိုက်ပါမယ်)
-        } catch (e) {}
-      }
-
       setLoading(false);
     });
+
+    // 2. User ရဲ့ Bookmarks တွေကို ယူမယ်
+    fetch("/api/bookmarks")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data) {
+          setBookmarkedIds(data.data.map((b: any) => b.articleId));
+        }
+      })
+      .catch(() => {}); // Login မဝင်ထားရင် Error တက်နိုင်လို့ လျစ်လျူရှုမယ်
   }, []);
 
   const categories = useMemo(() => {
@@ -111,6 +107,27 @@ export default function LibraryPage() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const toggleBookmark = async (e: React.MouseEvent, articleId: string) => {
+    e.preventDefault(); // Link ကို မသွားအောင် တား
+    try {
+      const res = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articleId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        if (data.action === "added") {
+          setBookmarkedIds((prev) => [...prev, articleId]);
+        } else {
+          setBookmarkedIds((prev) => prev.filter((id) => id !== articleId));
+        }
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -180,7 +197,7 @@ export default function LibraryPage() {
           <div className="mb-6">
             <div className="flex items-center justify-between px-4 mb-3">
               <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
-                <Cpu size={16} /> Browse by Machine
+                <Monitor size={16} /> Browse by Machine
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
@@ -191,7 +208,7 @@ export default function LibraryPage() {
                       {m.imageUrl ? (
                         <img src={m.imageUrl} alt={m.name} className="w-full h-full object-cover" />
                       ) : (
-                        <Cpu className="text-[var(--nx-text-muted-updated)]" size={24} />
+                        <Monitor className="text-[var(--nx-text-muted-updated)]" size={24} />
                       )}
                     </div>
                     <span className="text-[10px] text-center font-medium text-[var(--nx-text-primary)] line-clamp-2">{m.name}</span>
@@ -276,15 +293,20 @@ export default function LibraryPage() {
                     )}
                     
                     <div className="p-4 relative z-10 -mt-8">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2.5 py-1 text-[10px] font-bold bg-[var(--nx-cyan)] text-black rounded-md">
-                          FEATURED
-                        </span>
-                        {featuredArticle.category && (
-                          <span className="text-xs font-semibold text-[var(--nx-cyan)] flex items-center gap-1">
-                            {getCategoryIcon(featuredArticle.category)} {featuredArticle.category}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 text-[10px] font-bold bg-[var(--nx-cyan)] text-black rounded-md">
+                            FEATURED
                           </span>
-                        )}
+                          {featuredArticle.category && (
+                            <span className="text-xs font-semibold text-[var(--nx-cyan)] flex items-center gap-1">
+                              {getCategoryIcon(featuredArticle.category)} {featuredArticle.category}
+                            </span>
+                          )}
+                        </div>
+                        <button onClick={(e) => toggleBookmark(e, featuredArticle.id)} className="p-2 bg-[var(--nx-bg-base-deep)] rounded-full text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-cyan)] transition-colors z-20">
+                          {bookmarkedIds.includes(featuredArticle.id) ? <BookmarkCheck size={20} className="text-[var(--nx-cyan)]" /> : <Bookmark size={20} />}
+                        </button>
                       </div>
                       <h4 className="text-lg font-bold text-[var(--nx-text-primary)] mb-1 leading-snug">{featuredArticle.title}</h4>
                       {featuredArticle.summary && (
@@ -300,19 +322,24 @@ export default function LibraryPage() {
                   {otherArticles.map((a) => (
                     <Link key={a.id} href={`/library/${a.slug}`}>
                       <div className="group flex flex-col h-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl overflow-hidden hover:border-[var(--nx-cyan)] transition-all duration-200">
-                        {a.coverImageUrl ? (
-                          <div className="h-28 w-full overflow-hidden">
-                            <img 
-                              src={a.coverImageUrl.startsWith("http") ? a.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${a.coverImageUrl}`} 
-                              alt={a.title} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-28 w-full bg-[var(--nx-bg-base-deep)] flex items-center justify-center border-b border-[var(--nx-border-updated)]">
-                            <BookOpen size={28} className="text-[var(--nx-text-muted-updated)] opacity-30" />
-                          </div>
-                        )}
+                        <div className="relative">
+                          {a.coverImageUrl ? (
+                            <div className="h-28 w-full overflow-hidden">
+                              <img 
+                                src={a.coverImageUrl.startsWith("http") ? a.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${a.coverImageUrl}`} 
+                                alt={a.title} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-28 w-full bg-[var(--nx-bg-base-deep)] flex items-center justify-center border-b border-[var(--nx-border-updated)]">
+                              <BookOpen size={28} className="text-[var(--nx-text-muted-updated)] opacity-30" />
+                            </div>
+                          )}
+                          <button onClick={(e) => toggleBookmark(e, a.id)} className="absolute top-2 right-2 p-1.5 bg-[var(--nx-bg-card)]/80 backdrop-blur-sm rounded-full text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-cyan)] transition-colors z-10">
+                            {bookmarkedIds.includes(a.id) ? <BookmarkCheck size={16} className="text-[var(--nx-cyan)]" /> : <Bookmark size={16} />}
+                          </button>
+                        </div>
                         
                         <div className="p-3 flex-1 flex flex-col">
                           {a.category && (
