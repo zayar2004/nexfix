@@ -23,6 +23,7 @@ const createSchema = z.object({
   bodyMy: z.string().min(1),
   summaryEn: z.string().optional(),
   summaryMy: z.string().optional(),
+  type: z.string().max(30).optional().default("article"),
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   galleryImages: z.array(z.string().url()).optional().default([]),
@@ -38,6 +39,7 @@ const patchSchema = z.object({
   bodyMy: z.string().min(1).optional(),
   summaryEn: z.string().optional(),
   summaryMy: z.string().optional(),
+  type: z.string().max(30).optional(),
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   galleryImages: z.array(z.string().url()).optional(),
@@ -140,6 +142,7 @@ export async function POST(req: Request) {
 
   const {
     slug,
+    type,
     titleEn,
     titleMy,
     bodyEn,
@@ -159,6 +162,7 @@ export async function POST(req: Request) {
         .values({
           slug,
           status: "published",
+          type: type || "article",
           category: category || null,
           coverImageUrl: coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null,
           galleryImages: galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null,
@@ -242,6 +246,7 @@ export async function PATCH(req: Request) {
   const {
     id,
     slug,
+    type,
     titleEn,
     titleMy,
     bodyEn,

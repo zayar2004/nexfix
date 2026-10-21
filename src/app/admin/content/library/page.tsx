@@ -17,7 +17,7 @@ type Article = {
 };
 
 const emptyForm = {
-  slug: "", title: "", summary: "", body: "", category: "", coverImageUrl: "",
+  slug: "", title: "", summary: "", body: "", type: "article", category: "", coverImageUrl: "",
 };
 
 function AdminLibraryContent() {
@@ -65,6 +65,7 @@ function AdminLibraryContent() {
           title: content.title || "",
           summary: content.summary || "",
           body: content.body || "",
+          type: (article as any).type || "article",
           category: article.category || "",
           coverImageUrl: article.coverImageUrl || "",
         });
@@ -92,6 +93,7 @@ function AdminLibraryContent() {
       // API ကို နှစ်ဘာသာလုံး အတူတူ ပို့ပေးလိုက်မယ်
       const apiPayload = {
         slug: payload.slug,
+        type: payload.type,
         category: payload.category,
         coverImageUrl: payload.coverImageUrl,
         titleEn: payload.title, titleMy: payload.title,

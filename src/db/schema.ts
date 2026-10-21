@@ -130,6 +130,7 @@ export const knowledgeArticles = pgTable("knowledge_articles", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: varchar("slug", { length: 200 }).unique().notNull(),
   status: varchar("status", { length: 20 }).default("published").notNull(),
+  type: varchar("type", { length: 30 }).default("article").notNull(),
   category: varchar("category", { length: 100 }),
   coverImageUrl: text("cover_image_url"),
   galleryImages: text("gallery_images"),
