@@ -22,6 +22,8 @@ export default function LibraryListPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -54,23 +56,31 @@ export default function LibraryListPage() {
     }
   };
 
-  const handleDeleteSingle = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this article?")) return;
+  const handleDeleteSingle = (id: string, title: string) => {
+    setDeleteTarget({ id, title });
+  };
+
+  const confirmDeleteSingle = async () => {
+    if (!deleteTarget) return;
     try {
-      const res = await fetch(`/api/admin/library?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/library?id=${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setMessage("✅ Article deleted.");
+      setDeleteTarget(null);
       fetchArticles();
     } catch (err) {
       setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
+      setDeleteTarget(null);
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Delete ${selectedIds.length} selected articles? This cannot be undone.`)) return;
-    
+    setShowBulkDelete(true);
+  };
+
+  const confirmBulkDelete = async () => {
     setDeleting(true);
     setMessage("");
     try {
@@ -79,6 +89,7 @@ export default function LibraryListPage() {
       }
       setMessage(`✅ Deleted ${selectedIds.length} articles.`);
       setSelectedIds([]);
+      setShowBulkDelete(false);
       fetchArticles();
     } catch (err) {
       setMessage("❌ Error deleting some articles.");
@@ -233,12 +244,69 @@ export default function LibraryListPage() {
                   <Eye size={14} /> View
                 </Link>
                 <div className="w-px bg-[var(--nx-border-updated)]" />
-                <button onClick={() => handleDeleteSingle(a.id)} className="flex-1 py-2.5 text-center text-red-400 text-xs font-medium hover:bg-red-500/10 transition flex items-center justify-center gap-1">
+                <button onClick={() => handleDeleteSingle(a.id, a.title || a.slug)} className="flex-1 py-2.5 text-center text-red-400 text-xs font-medium hover:bg-red-500/10 transition flex items-center justify-center gap-1">
                   <Trash2 size={14} /> Delete
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Custom Delete Modal - Single */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-6 shadow-2xl">
+            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Delete Article?</h3>
+            <p className="text-sm text-[var(--nx-text-muted-updated)] text-center mb-1">You are about to delete:</p>
+            <p className="text-sm font-semibold text-white text-center mb-5 line-clamp-2">"{deleteTarget.title}"</p>
+            <p className="text-xs text-red-400 text-center mb-5">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-3 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg font-medium hover:border-gray-500 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteSingle}
+                className="flex-1 py-3 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Modal - Bulk */}
+      {showBulkDelete && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-6 shadow-2xl">
+            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Delete {selectedIds.length} Articles?</h3>
+            <p className="text-sm text-[var(--nx-text-muted-updated)] text-center mb-5">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDelete(false)}
+                className="flex-1 py-3 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg font-medium hover:border-gray-500 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBulkDelete}
+                disabled={deleting}
+                className="flex-1 py-3 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : `Delete ${selectedIds.length}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
