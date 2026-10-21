@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Trash2, Upload } from "lucide-react";
 
 type MediaItem = {
   id: string;
@@ -14,7 +15,6 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  // useCallback ကို သုံးပြီး Function ကို မှတ်ထားပေးပါတယ်
   const loadImages = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/media?ownerType=${ownerType}&ownerId=${ownerId}`);
@@ -60,6 +60,7 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
+      // Input ကို ရှင်းမယ် (တူညီတဲ့ ပုံကို ထပ်တင်လို့ရအောင်)
       e.target.value = "";
     }
   };
@@ -67,35 +68,32 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this image?")) return;
     try {
-      const res = await fetch(`/api/admin/media?id=${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error);
+      await fetch(`/api/admin/media?id=${id}`, { method: "DELETE" });
       loadImages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      console.error(err);
     }
   };
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <label className="cursor-pointer px-4 py-2 bg-[var(--nx-accent)] text-black font-bold rounded-lg text-sm hover:opacity-90">
-          {uploading ? "Uploading..." : "+ Upload Image"}
-          <input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} className="hidden" />
-        </label>
-        {error && <p className="text-sm text-[var(--nx-error)]">{error}</p>}
-      </div>
+      <label className={`w-full py-2 bg-[var(--nx-bg-base-deep)] border border-dashed border-[var(--nx-border-updated)] text-[var(--nx-text-muted-updated)] text-sm rounded-lg hover:border-[var(--nx-cyan)] transition flex items-center justify-center gap-2 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+        <Upload size={16} /> {uploading ? "Uploading..." : "+ Upload Image"}
+        <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+      </label>
+      {error && <p className="text-xs text-red-400">{error}</p>}
 
       {images.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 mt-2">
           {images.map((img) => (
-            <div key={img.id} className="relative group">
-              <img src={img.url} alt="Media" className="w-full h-24 object-cover rounded-lg border border-[var(--nx-border-updated)]" />
-              <button
-                onClick={() => handleDelete(img.id)}
-                className="absolute top-1 right-1 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+            <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-[var(--nx-border-updated)]">
+              <img src={img.url} alt="Gallery" className="w-full h-full object-cover" />
+              <button 
+                type="button"
+                onClick={() => handleDelete(img.id)} 
+                className="absolute top-1 right-1 p-1.5 bg-black/60 text-red-400 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                ✕
+                <Trash2 size={14} />
               </button>
             </div>
           ))}

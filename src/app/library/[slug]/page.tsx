@@ -34,7 +34,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               .sort((a, b) => Number(a.displayOrder) - Number(b.displayOrder))
               .map((v) => ({ youtubeUrl: String(v.youtubeUrl || ""), title: v.title ? String(v.title) : null, displayOrder: String(v.displayOrder || "0") }));
 
-            // galleryImages ကို JSON string ကနေ parse လုပ်မယ်
+            // 1. galleryImages ကို JSON string ကနေ parse လုပ်မယ်
             let parsedImages: string[] = [];
             if (found.galleryImages) {
               try {
@@ -43,6 +43,15 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               } catch {}
             }
 
+            // 2. Sync ကလာတဲ့ articleMedia ထဲက ပုံတွေကိုပါ ပေါင်းထည့်မယ်
+            const mediaData = (data as any).articleMedia || [];
+            const mediaImages = mediaData
+              .filter((m: any) => m.ownerId === found.id)
+              .map((m: any) => m.url);
+            
+            // ပုံတွေ ထပ်မနေအောင် Set သုံးမယ်
+            const allImages = Array.from(new Set([...parsedImages, ...mediaImages]));
+
             setArticle({
               title: String(content.title),
               body: String(content.body),
@@ -50,7 +59,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               category: found.category ? String(found.category) : null,
               coverImageUrl: found.coverImageUrl ? String(found.coverImageUrl) : null,
               videos,
-              galleryImages: parsedImages,
+              galleryImages: allImages,
             });
           }
         }
