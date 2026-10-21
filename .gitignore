@@ -50,3 +50,9 @@ temp/
 # Uploads (local dev only)
 uploads/
 tsconfig.tsbuildinfo
+
+# Backup files (do not commit)
+*.bak
+*.bak_*
+*.bak[0-9]*
+backups/
