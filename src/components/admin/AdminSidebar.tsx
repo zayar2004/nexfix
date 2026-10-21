@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Home, AlertCircle, List, BookOpen, Image as ImageIcon, FolderOpen, FileText, Users, Clock, Settings, Menu, X, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Home, AlertCircle, List, BookOpen, Image as ImageIcon, Users, Clock, Settings, Menu, X, ShieldAlert } from "lucide-react";
 
 const iconMap: Record<string, any> = {
   "grid": LayoutDashboard,
@@ -12,15 +12,11 @@ const iconMap: Record<string, any> = {
   "list": List,
   "book": BookOpen,
   "image": ImageIcon,
-  "folder": FolderOpen,
-  "file": FileText,
   "users": Users,
   "clock": Clock,
   "settings": Settings,
   "shield": ShieldAlert,
 };
-
-type NavItem = { label: string; href: string; icon: string; disabled?: boolean };
 
 const sections = [
   {
