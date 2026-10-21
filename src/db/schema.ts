@@ -216,3 +216,13 @@ export const libraryBookmarks = pgTable("library_bookmarks", {
   userArticleUnique: unique("library_bookmarks_user_article_unique").on(table.userId, table.articleId),
   userIdx: index("library_bookmarks_user_idx").on(table.userId),
 }));
+
+// 14. Library Article-Machine Association (Many-to-Many)
+export const libraryArticleMachines = pgTable("library_article_machines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
+  machineId: uuid("machine_id").references(() => machines.id, { onDelete: "cascade" }).notNull(),
+}, (table) => ({
+  articleMachineUnique: unique("library_article_machine_unique").on(table.articleId, table.machineId),
+  articleIdx: index("library_article_machine_article_idx").on(table.articleId),
+}));
