@@ -10,7 +10,7 @@ import { useSettings } from "@/lib/settings-context";
 import { 
   Search, BookOpen, ChevronRight, Monitor, AlertTriangle, Wrench, 
   Video, Bookmark, BookmarkCheck, Clock, Image as ImageIcon, 
-  FileText, Flame, ArrowRight, Library, Activity} from "lucide-react";
+  FileText, Flame, ArrowRight, Library, Activity, Eye} from "lucide-react";
 
 type Article = {
   id: string;
@@ -43,6 +43,7 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [heroImages, setHeroImages] = useState<string[]>([]);
   const [pageConfig, setPageConfig] = useState<any>(null);
+  const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
@@ -99,6 +100,18 @@ export default function LibraryPage() {
               }
             } catch {}
           }
+        }
+      })
+      .catch(() => {});
+
+    // View Count ကို ယူမယ်
+    fetch("/api/view-history/count")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data) {
+          const counts: Record<string, number> = {};
+          data.data.forEach((d: any) => { counts[d.articleId] = Number(d.count); });
+          setViewCounts(counts);
         }
       })
       .catch(() => {});
@@ -483,6 +496,11 @@ export default function LibraryPage() {
                               <Bookmark size={16} />
                             )}
                           </button>
+                          {viewCounts[a.id] > 0 && (
+                            <span className="text-[10px] text-[var(--nx-text-muted-updated)] flex items-center gap-0.5">
+                              <Eye size={10} /> {viewCounts[a.id]}
+                            </span>
+                          )}
                           <ArrowRight size={14} className="text-[var(--nx-text-muted-updated)] group-hover:text-[var(--nx-cyan)] transition" />
                         </div>
                       </div>

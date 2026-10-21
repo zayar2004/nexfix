@@ -102,6 +102,17 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
     }
   }, [article, slug]);
 
+  // View History ကို Database မှာ မှတ်တမ်းတင်မယ်
+  useEffect(() => {
+    if (article?.id) {
+      fetch("/api/view-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articleId: article.id }),
+      }).catch(() => {});
+    }
+  }, [article?.id]);
+
   const handleReportSubmit = async () => {
     if (!reportReason) return;
     try {
