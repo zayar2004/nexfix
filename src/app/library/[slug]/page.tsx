@@ -20,6 +20,10 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
   const { t } = useSettings();
   const [article, setArticle] = useState<ArticleState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDesc, setReportDesc] = useState("");
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   useEffect(() => {
     getLocalData().then((data) => {
@@ -67,6 +71,61 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
       setLoading(false);
     });
   }, [slug]);
+
+  // Recently Viewed ကို LocalStorage ထဲ သိမ်းမယ်
+  useEffect(() => {
+    if (article && article.title) {
+      try {
+        const stored = localStorage.getItem("nexfix-recent-articles");
+        let recent = stored ? JSON.parse(stored) : [];
+        
+        // အဟောင်းတွေကို ဖျက်မယ် (အများဆုံး ၁၀ ခုပဲ ထားမယ်)
+        recent = recent.filter((item: any) => item.slug !== slug);
+        
+        // အသစ်ကို အပေါ်ဆုံးမှာ ထည့်မယ်
+        recent.unshift({
+          slug: slug,
+          title: article.title,
+          category: article.category,
+          coverImageUrl: article.coverImageUrl,
+          viewedAt: Date.now(),
+        });
+        
+        if (recent.length > 10) recent = recent.slice(0, 10);
+        
+        localStorage.setItem("nexfix-recent-articles", JSON.stringify(recent));
+      } catch (e) {
+        console.error("Failed to save recent article", e);
+      }
+    }
+  }, [article, slug]);
+
+  const handleReportSubmit = async () => {
+    if (!reportReason) return;
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleId: article?.id || "",
+          reason: reportReason,
+          description: reportDesc,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setReportSubmitted(true);
+        setTimeout(() => {
+          setShowReport(false);
+          setReportSubmitted(false);
+          setReportReason("");
+          setReportDesc("");
+        }, 2000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) return <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex items-center justify-center"><div className="w-8 h-8 border-4 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div></div>;
   if (!article) return <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col items-center justify-center p-4"><p className="text-[var(--nx-text-primary)] mb-4">{t("articleNotFound")}</p><button onClick={() => router.back()} className="px-4 py-2 bg-[var(--nx-bg-card)] text-[var(--nx-text-primary)] rounded-lg">{t("goBack")}</button></div>;
@@ -122,6 +181,67 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               })}
             </div>
           </section>
+        )}
+        {/* Report Button */}
+        <div className="mt-12 mb-6 text-center border-t border-[var(--nx-border-updated)] pt-6">
+          <button 
+            onClick={() => setShowReport(true)}
+            className="text-xs text-[var(--nx-text-muted-updated)] hover:text-red-400 underline transition"
+          >
+            Report Incorrect Information
+          </button>
+        </div>
+
+        {/* Report Modal */}
+        {showReport && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-2xl p-5 relative">
+              <button onClick={() => setShowReport(false)} className="absolute top-3 right-3 text-gray-400 hover:text-white">
+                <X size={20} />
+              </button>
+              
+              {reportSubmitted ? (
+                <div className="text-center py-8">
+                  <CheckCircle size={40} className="text-green-400 mx-auto mb-3" />
+                  <p className="text-white font-bold">Thank you!</p>
+                  <p className="text-sm text-[var(--nx-text-muted-updated)]">Your report has been submitted.</p>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-lg font-bold text-white mb-4">Report Article</h3>
+                  <div className="flex flex-col gap-3">
+                    <select 
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
+                    >
+                      <option value="">Select a reason...</option>
+                      <option value="wrong_info">Incorrect troubleshooting information</option>
+                      <option value="wrong_code">Wrong Error Code</option>
+                      <option value="broken_media">Broken image/video</option>
+                      <option value="outdated">Outdated manual</option>
+                      <option value="safety">Safety concern</option>
+                      <option value="other">Other issue</option>
+                    </select>
+                    <textarea 
+                      placeholder="Optional description..."
+                      value={reportDesc}
+                      onChange={(e) => setReportDesc(e.target.value)}
+                      rows={3}
+                      className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
+                    />
+                    <button 
+                      onClick={handleReportSubmit}
+                      disabled={!reportReason}
+                      className="w-full py-3 bg-red-500 text-white font-bold rounded-lg disabled:opacity-50"
+                    >
+                      Submit Report
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </main>
       <BottomNav />
