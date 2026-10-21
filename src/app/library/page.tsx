@@ -219,7 +219,7 @@ export default function LibraryPage() {
           <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide mb-3 flex items-center gap-2">
             <Activity size={14} /> Browse Categories
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {categories.length > 0 ? categories.map((cat) => {
               const count = articles.filter((a) => a.category === cat).length;
               return (
@@ -314,9 +314,16 @@ export default function LibraryPage() {
               <Flame size={14} className="text-orange-400" /> 
               {searchQuery || selectedCategory !== "all" || selectedMachine !== "all" ? "Filtered Results" : "Popular Resources"}
             </h3>
-            <span className="text-xs text-[var(--nx-text-muted-updated)]">
-              {filteredArticles.length} items
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--nx-text-muted-updated)]">
+                {filteredArticles.length} items
+              </span>
+              {filteredArticles.length > 4 && (
+                <Link href="/search" className="text-[10px] text-[var(--nx-cyan)] hover:underline font-bold">
+                  View All →
+                </Link>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -328,7 +335,7 @@ export default function LibraryPage() {
               No resources found. Try different filters.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filteredArticles.slice(0, 10).map((a) => (
                 <Link key={a.id} href={`/library/${a.slug}`}>
                   <div className="group flex gap-3 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-cyan)] transition-all">
