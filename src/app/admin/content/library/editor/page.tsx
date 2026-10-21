@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Save, CheckCircle, AlertCircle, ExternalLink, Type, Search } from "lucide-react";
+import { Save, CheckCircle, AlertCircle, ExternalLink, Type, Search , Image as ImageIcon, Trash2} from "lucide-react";
 
 export default function LibraryEditorPage() {
   const [locale, setLocale] = useState<"en" | "my">("en");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [heroImages, setHeroImages] = useState<string[]>([]);
   const [form, setForm] = useState({
     pageTitle: "Knowledge Library",
     pageSubtitle: "Find solutions. Keep machines running.",
@@ -63,7 +64,7 @@ export default function LibraryEditorPage() {
       const res = await fetch("/api/admin/library-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, ...form }),
+        body: JSON.stringify({ locale, ...form, heroImages: heroImages.length > 0 ? JSON.stringify(heroImages) : null }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
@@ -129,6 +130,47 @@ export default function LibraryEditorPage() {
                   <label className="block text-[10px] font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase">Page Subtitle</label>
                   <input type="text" value={form.pageSubtitle} onChange={(e) => setForm({ ...form, pageSubtitle: e.target.value })} className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none" />
                 </div>
+              </div>
+            </div>
+
+            {/* Section: Hero Images (Carousel) */}
+            <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-5">
+              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <ImageIcon size={16} className="text-[var(--nx-cyan)]" /> Hero Images (Carousel)
+              </h2>
+              <p className="text-xs text-[var(--nx-text-muted-updated)] mb-3">Library Page ရဲ့ Banner မှာ ပြမယ့် ပုံများ (၁၀ စက္ကန့်တစ်ခါ ပြောင်းမည်)</p>
+              
+              <div className="flex flex-col gap-2">
+                {heroImages.map((url, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <img src={url} alt="" className="w-12 h-12 rounded object-cover border border-[var(--nx-border-updated)]" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+                    <input 
+                      type="url" 
+                      placeholder="https://example.com/image.jpg" 
+                      value={url} 
+                      onChange={(e) => {
+                        const newUrls = [...heroImages];
+                        newUrls[idx] = e.target.value;
+                        setHeroImages(newUrls);
+                      }} 
+                      className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-xs focus:border-[var(--nx-cyan)] outline-none" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setHeroImages(heroImages.filter((_, i) => i !== idx))} 
+                      className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  type="button" 
+                  onClick={() => setHeroImages([...heroImages, ""])} 
+                  className="w-full py-2 bg-[var(--nx-bg-base-deep)] border border-dashed border-[var(--nx-border-updated)] text-[var(--nx-text-muted-updated)] text-xs rounded-lg hover:border-[var(--nx-cyan)] transition"
+                >
+                  + Add Hero Image
+                </button>
               </div>
             </div>
 

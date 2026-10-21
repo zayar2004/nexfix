@@ -89,7 +89,17 @@ export default function LibraryPage() {
     fetch("/api/admin/library-config?locale=en")
       .then((res) => res.json())
       .then((data) => {
-        if (data.ok && data.data) setPageConfig(data.data);
+        if (data.ok && data.data) {
+          setPageConfig(data.data);
+          if (data.data.heroImages) {
+            try {
+              const parsed = JSON.parse(String(data.data.heroImages));
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setHeroImages(parsed);
+              }
+            } catch {}
+          }
+        }
       })
       .catch(() => {});
 

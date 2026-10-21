@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       machineFilterTitle: machineFilterTitle || "Filter by Machine",
       recentlyViewedTitle: recentlyViewedTitle || "Recently Viewed",
       popularTitle: popularTitle || "Popular Resources",
+      heroImages: body.heroImages || null,
       updatedAt: new Date(),
     };
 

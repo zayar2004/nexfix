@@ -288,6 +288,7 @@ export const libraryPageConfig = pgTable("library_page_config", {
   id: uuid("id").primaryKey().defaultRandom(),
   locale: varchar("locale", { length: 5 }).notNull(),
   pageTitle: text("page_title").notNull().default("Knowledge Library"),
+  heroImages: text("hero_images"),
   pageSubtitle: text("page_subtitle").notNull().default("Find solutions. Keep machines running."),
   heroLabel: text("hero_label").notNull().default("TECHNICAL KNOWLEDGE"),
   heroTitle: text("hero_title").notNull().default("Find Solutions. Keep Machines Running."),
