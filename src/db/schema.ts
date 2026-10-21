@@ -270,3 +270,14 @@ export const libraryPdfs = pgTable("library_pdfs", {
   articleIdx: index("pdf_article_idx").on(table.articleId),
   machineIdx: index("pdf_machine_idx").on(table.machineId),
 }));
+
+// 18. Library View History
+export const libraryViewHistory = pgTable("library_view_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
+  viewedAt: timestamp("viewed_at").defaultNow().notNull(),
+}, (table) => ({
+  userArticleUnique: unique("view_history_user_article_unique").on(table.userId, table.articleId),
+  userViewedIdx: index("view_history_user_viewed_idx").on(table.userId, table.viewedAt),
+}));

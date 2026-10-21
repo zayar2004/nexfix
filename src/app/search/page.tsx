@@ -5,14 +5,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ArrowLeft, Copy, Check, Database, BookOpen } from "lucide-react";
 import { searchPrivateExcelData, UserExcelRow } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
-import { copyToClipboard } from "@/lib/clipboard";
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useSettings();
 
   const mode = searchParams.get("mode") || "machineError";
-  const { t } = useSettings();
   const initialQuery = searchParams.get("code") || searchParams.get("machine") || searchParams.get("q") || "";
 
   const [query, setQuery] = useState(initialQuery);
@@ -21,6 +20,7 @@ function SearchContent() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -57,13 +57,13 @@ function SearchContent() {
     }
   }, [query, mode, searchParams]);
 
-  const handleCopy = async (text: string, fieldId: string) => {
-    const ok = await copyToClipboard(text);
-    if (ok) {
-      setCopiedField(fieldId);
-      setTimeout(() => setCopiedField(null), 2000);
-    }
+  const handleCopy = (text: string, fieldId: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldId);
+    setTimeout(() => setCopiedField(null), 2000);
   };
+
+  const filteredApiResults = apiResults.filter((r) => typeFilter === "all" || r.type === typeFilter);
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] text-[var(--nx-text-primary)]">
@@ -91,14 +91,10 @@ function SearchContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)]" size={18} />
             <input
               type="text"
-              placeholder={
-                mode === "machineCode"
-                  ? t("searchExcelPlaceholder")
-                  : t("searchArticlesErrors")
-              }
+              placeholder={mode === "machineCode" ? t("searchExcelPlaceholder") : t("searchArticlesErrors")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[var(--nx-accent)] outline-none"
+              className="w-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[var(--nx-cyan)] outline-none"
             />
           </div>
         </div>
@@ -113,13 +109,47 @@ function SearchContent() {
             {/* API Results (Error + Article) */}
             {mode !== "machineCode" && (
               <div className="flex flex-col gap-3">
-                {apiResults.length === 0 && searched && (
+                {/* Type Filter */}
+                <div className="flex gap-2 mb-2 overflow-x-auto scrollbar-hide">
+                  <button
+                    onClick={() => setTypeFilter("all")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-colors border ${
+                      typeFilter === "all"
+                        ? "bg-[var(--nx-cyan)] text-black border-[var(--nx-cyan)]"
+                        : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border-[var(--nx-border-updated)]"
+                    }`}
+                  >
+                    All Results
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter("error")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-colors border ${
+                      typeFilter === "error"
+                        ? "bg-red-500 text-white border-red-500"
+                        : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border-[var(--nx-border-updated)]"
+                    }`}
+                  >
+                    🚨 Errors
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter("article")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-colors border ${
+                      typeFilter === "article"
+                        ? "bg-[var(--nx-cyan)] text-black border-[var(--nx-cyan)]"
+                        : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border-[var(--nx-border-updated)]"
+                    }`}
+                  >
+                    📚 Articles
+                  </button>
+                </div>
+
+                {filteredApiResults.length === 0 && searched && (
                   <p className="text-center text-[var(--nx-text-muted-updated)] py-10">
                     {t("noResultsFound")}
                   </p>
                 )}
 
-                {apiResults.map((r) => {
+                {filteredApiResults.map((r) => {
                   // ===== ARTICLE CARD =====
                   if (r.type === "article") {
                     return (
@@ -130,33 +160,21 @@ function SearchContent() {
                       >
                         <div className="w-20 h-20 flex-shrink-0 bg-[var(--nx-bg-base-deep)] rounded-lg overflow-hidden flex items-center justify-center border border-[var(--nx-border-updated)]">
                           {r.coverImageUrl ? (
-                            <img
-                              src={r.coverImageUrl}
-                              alt={r.title}
-                              className="w-full h-full object-cover"
-                            />
+                            <img src={r.coverImageUrl} alt={r.title} className="w-full h-full object-cover" />
                           ) : (
                             <BookOpen className="text-[var(--nx-text-muted-updated)]" size={24} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-cyan-500/15 text-cyan-400">
-                              ART
-                            </span>
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-cyan-500/15 text-cyan-400">ART</span>
                             {r.category && (
-                              <span className="text-[10px] text-[var(--nx-text-muted-updated)]">
-                                {r.category}
-                              </span>
+                              <span className="text-[10px] text-[var(--nx-text-muted-updated)]">{r.category}</span>
                             )}
                           </div>
-                          <p className="font-semibold text-[var(--nx-text-primary)] truncate">
-                            {r.title}
-                          </p>
+                          <p className="font-semibold text-[var(--nx-text-primary)] truncate">{r.title}</p>
                           {r.summary && (
-                            <p className="text-xs text-[var(--nx-text-muted-updated)] line-clamp-1">
-                              {r.summary}
-                            </p>
+                            <p className="text-xs text-[var(--nx-text-muted-updated)] line-clamp-1">{r.summary}</p>
                           )}
                         </div>
                       </div>
@@ -172,23 +190,15 @@ function SearchContent() {
                     >
                       <div className="w-20 h-20 flex-shrink-0 bg-[var(--nx-bg-base-deep)] rounded-lg overflow-hidden flex items-center justify-center border border-[var(--nx-border-updated)]">
                         {r.media && r.media.length > 0 ? (
-                          <img
-                            src={r.media[0].url}
-                            alt={r.machineName}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={r.media[0].url} alt={r.machineName} className="w-full h-full object-cover" />
                         ) : (
                           <Database className="text-[var(--nx-text-muted-updated)]" size={24} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/15 text-red-400">
-                            ERR
-                          </span>
-                          <p className="text-[10px] text-[var(--nx-text-muted-updated)]">
-                            {r.machineName}
-                          </p>
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-500/15 text-red-400">ERR</span>
+                          <p className="text-[10px] text-[var(--nx-text-muted-updated)]">{r.machineName}</p>
                         </div>
                         <h3 className="font-bold text-[var(--nx-cyan)] font-mono text-lg">{r.code}</h3>
                         <p className="text-sm text-[var(--nx-text-primary)] truncate">{r.title}</p>
@@ -213,10 +223,7 @@ function SearchContent() {
                   const fixId = `fix-${idx}`;
 
                   return (
-                    <div
-                      key={idx}
-                      className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 hover:border-[var(--nx-cyan)] transition"
-                    >
+                    <div key={idx} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 hover:border-[var(--nx-cyan)] transition">
                       <div className="flex justify-between items-center mb-3 pb-3 border-b border-[var(--nx-border-updated)]">
                         <div className="flex items-center gap-2">
                           <span className="w-6 h-6 rounded-full bg-[var(--nx-accent)]/20 text-[var(--nx-accent)] text-xs flex items-center justify-center font-bold">
@@ -225,85 +232,43 @@ function SearchContent() {
                           <span className="text-xs text-[var(--nx-text-muted-updated)]">Result</span>
                         </div>
                         <button
-                          onClick={() =>
-                            handleCopy(
-                              `${row.machineName} | ${row.errorCode} | ${row.errorFix}`,
-                              `all-${idx}`
-                            )
-                          }
+                          onClick={() => handleCopy(`${row.machineName} | ${row.errorCode} | ${row.errorFix}`, `all-${idx}`)}
                           className="text-xs flex items-center gap-1 px-2 py-1 bg-[var(--nx-bg-base-deep)] rounded hover:bg-[var(--nx-bg-card)] transition text-[var(--nx-text-primary)]"
                         >
                           {copiedField === `all-${idx}` ? (
-                            <>
-                              <Check size={12} className="text-green-400" /> Copied
-                            </>
+                            <><Check size={12} className="text-green-400" /> Copied</>
                           ) : (
-                            <>
-                              <Copy size={12} /> Copy All
-                            </>
+                            <><Copy size={12} /> Copy All</>
                           )}
                         </button>
                       </div>
 
                       <div className="mb-3">
-                        <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase mb-1">
-                          Machine Name
-                        </p>
+                        <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase mb-1">Machine Name</p>
                         <div className="flex justify-between items-start gap-2">
-                          <p className="text-sm font-semibold text-[var(--nx-text-primary)] break-all">
-                            {row.machineName}
-                          </p>
-                          <button
-                            onClick={() => handleCopy(row.machineName, machineId)}
-                            className="text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] p-1"
-                          >
-                            {copiedField === machineId ? (
-                              <Check size={14} className="text-green-400" />
-                            ) : (
-                              <Copy size={14} />
-                            )}
+                          <p className="text-sm font-semibold text-[var(--nx-text-primary)] break-all">{row.machineName}</p>
+                          <button onClick={() => handleCopy(row.machineName, machineId)} className="text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] p-1">
+                            {copiedField === machineId ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                           </button>
                         </div>
                       </div>
 
                       <div className="mb-3">
-                        <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase mb-1">
-                          Error Code
-                        </p>
+                        <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase mb-1">Error Code</p>
                         <div className="flex justify-between items-start gap-2">
-                          <p className="text-sm font-mono font-bold text-[var(--nx-cyan)] break-all">
-                            {row.errorCode}
-                          </p>
-                          <button
-                            onClick={() => handleCopy(row.errorCode, codeId)}
-                            className="text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] p-1"
-                          >
-                            {copiedField === codeId ? (
-                              <Check size={14} className="text-green-400" />
-                            ) : (
-                              <Copy size={14} />
-                            )}
+                          <p className="text-sm font-mono font-bold text-[var(--nx-cyan)] break-all">{row.errorCode}</p>
+                          <button onClick={() => handleCopy(row.errorCode, codeId)} className="text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] p-1">
+                            {copiedField === codeId ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                           </button>
                         </div>
                       </div>
 
                       <div>
-                        <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase mb-1">
-                          Error Fix
-                        </p>
+                        <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase mb-1">Error Fix</p>
                         <div className="flex justify-between items-start gap-2">
-                          <p className="text-sm text-[var(--nx-text-secondary-updated)] break-all">
-                            {row.errorFix}
-                          </p>
-                          <button
-                            onClick={() => handleCopy(row.errorFix, fixId)}
-                            className="text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] p-1"
-                          >
-                            {copiedField === fixId ? (
-                              <Check size={14} className="text-green-400" />
-                            ) : (
-                              <Copy size={14} />
-                            )}
+                          <p className="text-sm text-[var(--nx-text-secondary-updated)] break-all">{row.errorFix}</p>
+                          <button onClick={() => handleCopy(row.errorFix, fixId)} className="text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] p-1">
+                            {copiedField === fixId ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                           </button>
                         </div>
                       </div>
@@ -321,13 +286,7 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex items-center justify-center text-[var(--nx-text-primary)]">
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex items-center justify-center text-[var(--nx-text-primary)]">Loading...</div>}>
       <SearchContent />
     </Suspense>
   );

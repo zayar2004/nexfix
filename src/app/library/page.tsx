@@ -16,6 +16,7 @@ type Article = {
   summary: string | null;
   category: string | null;
   coverImageUrl: string | null;
+  machineId?: string | null;
 };
 
 type Machine = {
@@ -33,6 +34,7 @@ export default function LibraryPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedMachine, setSelectedMachine] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
@@ -91,6 +93,9 @@ export default function LibraryPage() {
     if (selectedCategory !== "all") {
       result = result.filter((a) => a.category === selectedCategory);
     }
+    if (selectedMachine !== "all") {
+      result = result.filter((a) => a.machineId === selectedMachine);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((a) => 
@@ -103,6 +108,12 @@ export default function LibraryPage() {
 
   const featuredArticle = filteredArticles.length > 0 ? filteredArticles[0] : null;
   const otherArticles = filteredArticles.length > 1 ? filteredArticles.slice(1) : [];
+
+  const resetFilters = () => {
+    setSelectedCategory("all");
+    setSelectedMachine("all");
+    setSearchQuery("");
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,6 +261,31 @@ export default function LibraryPage() {
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Section D3: Machine Filter */}
+        {machines.length > 0 && (
+          <div className="px-4 mb-4">
+            <label className="text-xs font-bold text-[var(--nx-text-muted-updated)] uppercase tracking-wide mb-2 block">
+              Filter by Machine
+            </label>
+            <select
+              value={selectedMachine}
+              onChange={(e) => setSelectedMachine(e.target.value)}
+              className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+              aria-label="Filter by machine"
+            >
+              <option value="all">All Machines ({articles.length})</option>
+              {machines.map((m) => {
+                const count = articles.filter((a) => a.machineId === m.id).length;
+                return (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({count})
+                  </option>
+                );
+              })}
+            </select>
           </div>
         )}
 
