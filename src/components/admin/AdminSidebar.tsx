@@ -40,7 +40,6 @@ const sections = [
       { label: "Library List", href: "/admin/content/library/list", icon: "list" },
       { label: "Content Reports", href: "/admin/content/reports", icon: "shield" },
       { label: "Media Library", href: "/admin/media", icon: "image" },
-      { label: "PDF Manuals", href: "/admin/content/pdfs", icon: "file" },
     ]
   },
   {
