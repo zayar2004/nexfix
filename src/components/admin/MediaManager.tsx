@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Trash2, Upload } from "lucide-react";
+import { Trash2, Upload, Image as ImageIcon } from "lucide-react";
 
 type MediaItem = {
   id: string;
@@ -60,7 +60,6 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      // Input ကို ရှင်းမယ် (တူညီတဲ့ ပုံကို ထပ်တင်လို့ရအောင်)
       e.target.value = "";
     }
   };
@@ -76,29 +75,45 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <label className={`w-full py-2 bg-[var(--nx-bg-base-deep)] border border-dashed border-[var(--nx-border-updated)] text-[var(--nx-text-muted-updated)] text-sm rounded-lg hover:border-[var(--nx-cyan)] transition flex items-center justify-center gap-2 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-        <Upload size={16} /> {uploading ? "Uploading..." : "+ Upload Image"}
+    <div className="flex flex-col gap-4">
+      {/* Upload Button */}
+      <label className={`w-full py-3 bg-[var(--nx-bg-base-deep)] border-2 border-dashed border-[var(--nx-border-updated)] text-[var(--nx-text-muted-updated)] text-sm font-medium rounded-xl hover:border-[var(--nx-cyan)] hover:text-[var(--nx-cyan)] transition flex flex-col items-center justify-center gap-2 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+        <Upload size={20} />
+        {uploading ? "Uploading..." : "Click to Upload Image"}
         <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
       </label>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-400 text-center bg-red-500/10 p-2 rounded-lg">{error}</p>}
 
+      {/* Image Grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 mt-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
           {images.map((img) => (
-            <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-[var(--nx-border-updated)]">
+            <div key={img.id} className="group relative aspect-square rounded-xl overflow-hidden border border-[var(--nx-border-updated)] bg-[var(--nx-bg-base-deep)]">
               <img src={img.url} alt="Gallery" className="w-full h-full object-cover" />
               
-              {/* ဖုန်းပေါ်မှာလည်း အမြဲမြင်ရအောင် opacity-100 ထားမယ် */}
+              {/* Delete Overlay */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span className="text-white text-xs font-bold">Delete?</span>
+              </div>
+              
+              {/* Delete Button (Always visible for mobile) */}
               <button 
                 type="button"
                 onClick={() => handleDelete(img.id)} 
-                className="absolute top-1 right-1 p-1.5 bg-black/70 text-red-400 rounded-md hover:bg-red-500/20 transition-colors"
+                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg shadow-lg hover:bg-red-600 transition-colors"
+                title="Delete Image"
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} />
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {images.length === 0 && !uploading && (
+        <div className="text-center py-6 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-xl">
+          <ImageIcon size={32} className="mx-auto text-[var(--nx-text-muted-updated)] opacity-30 mb-2" />
+          <p className="text-xs text-[var(--nx-text-muted-updated)]">No images uploaded yet.</p>
         </div>
       )}
     </div>
