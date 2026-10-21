@@ -1,18 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Trash2, Plus, Video } from "lucide-react";
 
-type Video = {
+type VideoItem = {
   id: string;
   youtubeUrl: string;
   title: string | null;
 };
 
 export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "article"; ownerId: string }) {
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ youtubeUrl: "", title: "" });
   const [message, setMessage] = useState("");
+  const [showForm, setShowForm] = useState(false);
 
   const fetchVideos = useCallback(() => {
     setLoading(true);
@@ -38,6 +40,7 @@ export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "art
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setForm({ youtubeUrl: "", title: "" });
+      setShowForm(false); // Form ကို � pow ပြန်ပိတ်မယ်
       fetchVideos();
     } catch (err) {
       setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
@@ -52,47 +55,61 @@ export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "art
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold text-white">YouTube Videos</h3>
-      
-      <form onSubmit={handleAdd} className="flex flex-col gap-2">
-        <input
-          type="url"
-          placeholder="https://www.youtube.com/watch?v=..."
-          value={form.youtubeUrl}
-          onChange={(e) => setForm({ ...form, youtubeUrl: e.target.value })}
-          className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Video Title (Optional)"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm"
-        />
-        <button type="submit" className="px-3 py-2 bg-[var(--nx-accent)] text-black font-semibold rounded-lg text-sm">
-          + Add Video
-        </button>
-      </form>
-
-      {message && <p className="text-xs text-center">{message}</p>}
-
       {loading ? (
-        <p className="text-xs text-[var(--nx-text-muted-updated)]">Loading...</p>
+        <p className="text-sm text-[var(--nx-text-muted-updated)]">Loading videos...</p>
       ) : videos.length === 0 ? (
-        <p className="text-xs text-[var(--nx-text-muted-updated)]">No videos added yet.</p>
+        <p className="text-xs text-[var(--nx-text-muted-updated)] italic">No videos added yet.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {videos.map((v) => (
-            <div key={v.id} className="flex items-center justify-between p-2 bg-[var(--nx-bg-surface-deep)] rounded-lg">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-white truncate">{v.title || "Untitled"}</p>
-                <p className="text-[10px] text-[var(--nx-text-muted-updated)] truncate">{v.youtubeUrl}</p>
+            <div key={v.id} className="flex items-center justify-between p-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-lg">
+              <div className="flex items-center gap-2 min-w-0">
+                <Video size={16} className="text-[var(--nx-cyan)] flex-shrink-0" />
+                <span className="text-sm text-white truncate">{v.title || v.youtubeUrl}</span>
               </div>
-              <button onClick={() => handleDelete(v.id)} className="ml-2 text-xs text-[var(--nx-error)] hover:underline">Remove</button>
+              <button onClick={() => handleDelete(v.id)} className="p-1 text-red-400 hover:text-red-300 transition-colors flex-shrink-0">
+                <Trash2 size={16} />
+              </button>
             </div>
           ))}
         </div>
+      )}
+
+      {!showForm ? (
+        <button 
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="w-full py-2 bg-[var(--nx-bg-base-deep)] border border-dashed border-[var(--nx-border-updated)] text-[var(--nx-text-muted-updated)] text-sm rounded-lg hover:border-[var(--nx-cyan)] transition flex items-center justify-center gap-2"
+        >
+          <Plus size={16} /> Add Video
+        </button>
+      ) : (
+        <form onSubmit={handleAdd} className="flex flex-col gap-2 p-3 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-cyan)]/30 rounded-lg">
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={form.youtubeUrl}
+            onChange={(e) => setForm({ ...form, youtubeUrl: e.target.value })}
+            className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-cyan)] outline-none"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Video Title (Optional)"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-cyan)] outline-none"
+          />
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 py-2 bg-[var(--nx-cyan)] text-black text-sm font-bold rounded-lg hover:opacity-90 transition">
+              Save Video
+            </button>
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-[var(--nx-bg-card)] text-white text-sm border border-[var(--nx-border-updated)] rounded-lg hover:border-red-500/50 transition">
+              Cancel
+            </button>
+          </div>
+          {message && <p className="text-xs text-red-400 text-center">{message}</p>}
+        </form>
       )}
     </div>
   );
