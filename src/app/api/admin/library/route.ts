@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { knowledgeArticles, articleContent, mediaVideos, notifications } from "@/db/schema";
+import { knowledgeArticles, articleContent, mediaVideos, notifications, libraryArticleMachines } from "@/db/schema";
 import { auth } from "@/auth";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { validateSlug } from "@/lib/slug";
 
 const YOUTUBE_REGEX =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)[\w-]{11}([&\?].*)?$/;
@@ -16,7 +15,7 @@ const videoSchema = z.object({
 });
 
 const createSchema = z.object({
-  slug: z.string().min(1).max(200),
+  slug: z.string().max(200).optional(),
   titleEn: z.string().min(1).max(300),
   titleMy: z.string().min(1).max(300),
   bodyEn: z.string().min(1),
@@ -24,10 +23,12 @@ const createSchema = z.object({
   summaryEn: z.string().optional(),
   summaryMy: z.string().optional(),
   type: z.string().max(30).optional().default("article"),
+  status: z.enum(["published", "draft", "archived"]).optional().default("published"),
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   galleryImages: z.array(z.string().url()).optional().default([]),
   videos: z.array(videoSchema).optional().default([]),
+  machineId: z.string().uuid().optional(),
 });
 
 const patchSchema = z.object({
@@ -40,18 +41,13 @@ const patchSchema = z.object({
   summaryEn: z.string().optional(),
   summaryMy: z.string().optional(),
   type: z.string().max(30).optional(),
+  status: z.enum(["published", "draft", "archived"]).optional(),
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   galleryImages: z.array(z.string().url()).optional(),
   videos: z.array(videoSchema).optional(),
+  machineId: z.string().uuid().optional(),
 });
-
-function extractYouTubeId(url: string): string | null {
-  const match = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]{11})/
-  );
-  return match ? match[1] : null;
-}
 
 async function requireAdmin() {
   const session = await auth();
@@ -109,9 +105,19 @@ export async function GET(req: Request) {
       (a, b) => Number(a.displayOrder) - Number(b.displayOrder)
     );
 
+    const [machineAssoc] = await db
+      .select()
+      .from(libraryArticleMachines)
+      .where(eq(libraryArticleMachines.articleId, id))
+      .limit(1);
+
     return NextResponse.json({
       ok: true,
-      data: { article, contents, videos: sortedVideos },
+      data: {
+        article: { ...article, machineId: machineAssoc?.machineId || null },
+        contents,
+        videos: sortedVideos,
+      },
     });
   }
 
@@ -134,26 +140,14 @@ export async function POST(req: Request) {
     );
   }
 
-  // Validate slug format
-  const slugError = validateSlug(result.data.slug);
-  if (slugError) {
-    return NextResponse.json({ ok: false, error: slugError }, { status: 400 });
-  }
-
   const {
-    slug,
-    type,
-    titleEn,
-    titleMy,
-    bodyEn,
-    bodyMy,
-    summaryEn,
-    summaryMy,
-    category,
-    coverImageUrl,
-    galleryImages,
-    videos,
+    slug: inputSlug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
+    type, status, category, coverImageUrl, videos, machineId
   } = result.data;
+
+  // Slug အလိုအလျောက် ဖန်တီးမယ် (Title ကနေ)
+  const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const slug = inputSlug || slugify(titleEn) || `article-${Date.now()}`;
 
   try {
     const newArticle = await db.transaction(async (tx) => {
@@ -161,29 +155,16 @@ export async function POST(req: Request) {
         .insert(knowledgeArticles)
         .values({
           slug,
-          status: "published",
+          status: status || "published",
           type: type || "article",
           category: category || null,
           coverImageUrl: coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null,
-          galleryImages: galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null,
         })
         .returning();
 
       await tx.insert(articleContent).values([
-        {
-          articleId: article.id,
-          locale: "en",
-          title: titleEn,
-          body: bodyEn,
-          summary: summaryEn || null,
-        },
-        {
-          articleId: article.id,
-          locale: "my",
-          title: titleMy,
-          body: bodyMy,
-          summary: summaryMy || null,
-        },
+        { articleId: article.id, locale: "en", title: titleEn, body: bodyEn, summary: summaryEn || null },
+        { articleId: article.id, locale: "my", title: titleMy, body: bodyMy, summary: summaryMy || null },
       ]);
 
       if (videos && videos.length > 0) {
@@ -198,10 +179,13 @@ export async function POST(req: Request) {
         );
       }
 
+      if (machineId) {
+        await tx.insert(libraryArticleMachines).values({ articleId: article.id, machineId });
+      }
+
       return article;
     });
 
-    // 🔔 Create Global Notification for New Article
     await db.insert(notifications).values({
       userId: null,
       type: "article_new",
@@ -213,10 +197,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, data: newArticle });
   } catch (err) {
     console.error("POST /api/admin/library error:", err);
-    return NextResponse.json(
-      { ok: false, error: "Failed to create article" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "Failed to create article" }, { status: 500 });
   }
 }
 
@@ -235,119 +216,69 @@ export async function PATCH(req: Request) {
     );
   }
 
-  // Validate slug format if provided
-  if (result.data.slug) {
-    const slugError = validateSlug(result.data.slug);
-    if (slugError) {
-      return NextResponse.json({ ok: false, error: slugError }, { status: 400 });
-    }
-  }
-
   const {
-    id,
-    slug,
-    type,
-    titleEn,
-    titleMy,
-    bodyEn,
-    bodyMy,
-    summaryEn,
-    summaryMy,
-    category,
-    coverImageUrl,
-    galleryImages,
-    videos,
+    id, slug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
+    type, status, category, coverImageUrl, videos, machineId
   } = result.data;
 
   try {
     await db.transaction(async (tx) => {
       const articleUpdate: Record<string, unknown> = { updatedAt: new Date() };
       if (slug !== undefined) articleUpdate.slug = slug;
+      if (type !== undefined) articleUpdate.type = type;
+      if (status !== undefined) articleUpdate.status = status;
       if (category !== undefined) articleUpdate.category = category || null;
       if (coverImageUrl !== undefined) {
-        articleUpdate.coverImageUrl =
-          coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null;
+        articleUpdate.coverImageUrl = coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null;
       }
-      if (galleryImages !== undefined) {
-        articleUpdate.galleryImages =
-          galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null;
-      }
-      await tx
-        .update(knowledgeArticles)
-        .set(articleUpdate)
-        .where(eq(knowledgeArticles.id, id));
+      
+      await tx.update(knowledgeArticles).set(articleUpdate).where(eq(knowledgeArticles.id, id));
 
+      // Update English Content
       if (titleEn !== undefined || bodyEn !== undefined || summaryEn !== undefined) {
         const enUpdate: Record<string, unknown> = {};
         if (titleEn !== undefined) enUpdate.title = titleEn;
         if (bodyEn !== undefined) enUpdate.body = bodyEn;
         if (summaryEn !== undefined) enUpdate.summary = summaryEn || null;
-
-        const existing = await tx
-          .select()
-          .from(articleContent)
-          .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en")))
-          .limit(1);
-
-        if (existing.length > 0) {
-          await tx
-            .update(articleContent)
-            .set(enUpdate)
-            .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en")));
+        const existingEn = await tx.select().from(articleContent).where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en"))).limit(1);
+        if (existingEn.length > 0) {
+          await tx.update(articleContent).set(enUpdate).where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en")));
         } else if (titleEn && bodyEn) {
-          await tx.insert(articleContent).values({
-            articleId: id,
-            locale: "en",
-            title: titleEn,
-            body: bodyEn,
-            summary: summaryEn || null,
-          });
+          await tx.insert(articleContent).values({ articleId: id, locale: "en", title: titleEn, body: bodyEn, summary: summaryEn || null });
         }
       }
 
+      // Update Myanmar Content
       if (titleMy !== undefined || bodyMy !== undefined || summaryMy !== undefined) {
         const myUpdate: Record<string, unknown> = {};
         if (titleMy !== undefined) myUpdate.title = titleMy;
         if (bodyMy !== undefined) myUpdate.body = bodyMy;
         if (summaryMy !== undefined) myUpdate.summary = summaryMy || null;
-
-        const existing = await tx
-          .select()
-          .from(articleContent)
-          .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "my")))
-          .limit(1);
-
-        if (existing.length > 0) {
-          await tx
-            .update(articleContent)
-            .set(myUpdate)
-            .where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "my")));
+        const existingMy = await tx.select().from(articleContent).where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "my"))).limit(1);
+        if (existingMy.length > 0) {
+          await tx.update(articleContent).set(myUpdate).where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "my")));
         } else if (titleMy && bodyMy) {
-          await tx.insert(articleContent).values({
-            articleId: id,
-            locale: "my",
-            title: titleMy,
-            body: bodyMy,
-            summary: summaryMy || null,
-          });
+          await tx.insert(articleContent).values({ articleId: id, locale: "my", title: titleMy, body: bodyMy, summary: summaryMy || null });
         }
       }
 
+      // Update Videos
       if (videos !== undefined) {
-        await tx
-          .delete(mediaVideos)
-          .where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
-
+        await tx.delete(mediaVideos).where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
         if (videos.length > 0) {
           await tx.insert(mediaVideos).values(
             videos.map((v, i) => ({
-              ownerType: "article",
-              ownerId: id,
-              youtubeUrl: v.url,
-              title: v.title || null,
-              displayOrder: String(v.order ?? i),
+              ownerType: "article", ownerId: id, youtubeUrl: v.url, title: v.title || null, displayOrder: String(v.order ?? i),
             }))
           );
+        }
+      }
+
+      // Update Machine Association
+      if (machineId !== undefined) {
+        await tx.delete(libraryArticleMachines).where(eq(libraryArticleMachines.articleId, id));
+        if (machineId && machineId !== "") {
+          await tx.insert(libraryArticleMachines).values({ articleId: id, machineId });
         }
       }
     });
@@ -355,10 +286,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("PATCH /api/admin/library error:", err);
-    return NextResponse.json(
-      { ok: false, error: "Failed to update article" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "Failed to update article" }, { status: 500 });
   }
 }
 
@@ -376,19 +304,14 @@ export async function DELETE(req: Request) {
 
   try {
     await db.transaction(async (tx) => {
-      await tx
-        .delete(mediaVideos)
-        .where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
-
+      await tx.delete(mediaVideos).where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
+      await tx.delete(libraryArticleMachines).where(eq(libraryArticleMachines.articleId, id));
       await tx.delete(knowledgeArticles).where(eq(knowledgeArticles.id, id));
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("DELETE /api/admin/library error:", err);
-    return NextResponse.json(
-      { ok: false, error: "Failed to delete article" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "Failed to delete article" }, { status: 500 });
   }
 }

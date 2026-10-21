@@ -17,7 +17,7 @@ type Article = {
 };
 
 const emptyForm = {
-  slug: "", title: "", summary: "", body: "", type: "article", status: "published", category: "", coverImageUrl: "",
+  title: "", summary: "", body: "", type: "article", status: "published", category: "", coverImageUrl: "", machineId: "",
 };
 
 function AdminLibraryContent() {
@@ -26,6 +26,7 @@ function AdminLibraryContent() {
   const editId = searchParams.get("id");
 
   const [articles, setArticles] = useState<Article[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingEdit, setFetchingEdit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +49,12 @@ function AdminLibraryContent() {
   useEffect(() => { fetchArticles(); }, []);
 
   useEffect(() => {
+    fetch("/api/admin/machines").then(r => r.json()).then(data => {
+      if (data.ok) setMachines(data.data);
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
     if (!editId) {
       setForm({ ...emptyForm });
       return;
@@ -61,12 +68,12 @@ function AdminLibraryContent() {
         // Content ရှိရင် ပထမဆုံးတစ်ခုကို ယူမယ် (en/my မခွဲဘူး)
         const content = contents[0] || {};
         setForm({
-          slug: article.slug || "",
           title: content.title || "",
           summary: content.summary || "",
           body: content.body || "",
           type: (article as any).type || "article",
           status: (article as any).status || "published",
+          machineId: (article as any).machineId || "",
           category: article.category || "",
           coverImageUrl: article.coverImageUrl || "",
         });
@@ -93,9 +100,9 @@ function AdminLibraryContent() {
 
       // API ကို နှစ်ဘာသာလုံး အတူတူ ပို့ပေးလိုက်မယ်
       const apiPayload = {
-        slug: payload.slug,
         type: payload.type,
         status: payload.status,
+        machineId: payload.machineId || undefined,
         category: payload.category,
         coverImageUrl: payload.coverImageUrl,
         titleEn: payload.title, titleMy: payload.title,
