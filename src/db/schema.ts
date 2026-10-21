@@ -226,3 +226,47 @@ export const libraryArticleMachines = pgTable("library_article_machines", {
   articleMachineUnique: unique("library_article_machine_unique").on(table.articleId, table.machineId),
   articleIdx: index("library_article_machine_article_idx").on(table.articleId),
 }));
+
+// 15. Library Content Reports Table
+export const libraryContentReports = pgTable("library_content_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  reason: varchar("reason", { length: 100 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  articleIdx: index("report_article_idx").on(table.articleId),
+  statusIdx: index("report_status_idx").on(table.status),
+}));
+
+// 16. Admin Audit Logs Table
+export const adminAuditLogs = pgTable("admin_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 50 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: uuid("entity_id"),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  actorIdx: index("audit_actor_idx").on(table.actorId),
+  entityIdx: index("audit_entity_idx").on(table.entityType, table.entityId),
+}));
+
+// 17. Library PDF Manuals Table
+export const libraryPdfs = pgTable("library_pdfs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }),
+  machineId: uuid("machine_id").references(() => machines.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  storageKey: text("storage_key").notNull(),
+  size: varchar("size", { length: 20 }),
+  language: varchar("language", { length: 5 }).default("en"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  articleIdx: index("pdf_article_idx").on(table.articleId),
+  machineIdx: index("pdf_machine_idx").on(table.machineId),
+}));
