@@ -7,7 +7,7 @@ import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
 
 type VideoItem = { youtubeUrl: string; title: string | null; displayOrder: string };
-type ArticleState = { title: string; body: string; summary: string | null; category: string | null; coverImageUrl: string | null; videos: VideoItem[]; };
+type ArticleState = { title: string; body: string; summary: string | null; category: string | null; coverImageUrl: string | null; videos: VideoItem[]; galleryImages: string[]; };
 
 function extractYouTubeId(url: string): string {
   const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]{11})/);
@@ -34,6 +34,15 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               .sort((a, b) => Number(a.displayOrder) - Number(b.displayOrder))
               .map((v) => ({ youtubeUrl: String(v.youtubeUrl || ""), title: v.title ? String(v.title) : null, displayOrder: String(v.displayOrder || "0") }));
 
+            // galleryImages ကို JSON string ကနေ parse လုပ်မယ်
+            let parsedImages: string[] = [];
+            if (found.galleryImages) {
+              try {
+                const parsed = JSON.parse(String(found.galleryImages));
+                if (Array.isArray(parsed)) parsedImages = parsed;
+              } catch {}
+            }
+
             setArticle({
               title: String(content.title),
               body: String(content.body),
@@ -41,6 +50,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               category: found.category ? String(found.category) : null,
               coverImageUrl: found.coverImageUrl ? String(found.coverImageUrl) : null,
               videos,
+              galleryImages: parsedImages,
             });
           }
         }
@@ -69,6 +79,24 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
         <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-4">{article.title}</h1>
         {article.summary && <p className="text-[var(--nx-text-secondary-updated)] mb-4 border-l-2 border-[#20E3FF] pl-3 italic">{article.summary}</p>}
         <div className="prose prose-invert max-w-none text-[var(--nx-text-secondary-updated)]" dangerouslySetInnerHTML={{ __html: article.body }} />
+        {/* Gallery Images */}
+        {article.galleryImages && article.galleryImages.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-lg font-bold text-[var(--nx-text-primary)] mb-3">📸 Images</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {article.galleryImages.map((img, i) => (
+                <div key={i} className="rounded-xl overflow-hidden border border-[var(--nx-border-updated)]">
+                  <img 
+                    src={img.startsWith("http") ? img : `${process.env.NEXT_PUBLIC_S3_URL}/${img}`} 
+                    alt={`Gallery ${i + 1}`} 
+                    className="w-full h-32 object-cover hover:scale-105 transition-transform duration-200" 
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {article.videos.length > 0 && (
           <section className="mt-8">
             <h2 className="text-lg font-bold text-[var(--nx-text-primary)] mb-3">🎬 {t("videos")}</h2>

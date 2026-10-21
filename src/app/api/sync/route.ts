@@ -29,10 +29,20 @@ export async function GET() {
     ]);
 
     const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
+    
+    // All Media တွေကို URL ပါ ထည့်မယ်
     const mediaWithUrls = allMedia.map(m => ({
       ...m,
-      url: `${S3_URL}/${m.storageKey}`,
+      url: m.storageKey.startsWith("http") ? m.storageKey : `${S3_URL}/${m.storageKey}`,
     }));
+
+    // Article Media တွေကို သီးသန့် ခွဲထုတ်မယ်
+    const articleMedia = allMedia
+      .filter(m => m.ownerType === "article")
+      .map(m => ({
+        ...m,
+        url: m.storageKey.startsWith("http") ? m.storageKey : `${S3_URL}/${m.storageKey}`
+      }));
 
     const homepageMy = allHomepage.find(h => h.locale === "my");
     const homepageEn = allHomepage.find(h => h.locale === "en");
@@ -55,6 +65,7 @@ export async function GET() {
         articleContents: allArticleContents,
         media: mediaWithUrls,
         mediaVideos: allVideos,
+        articleMedia: articleMedia,
         homepage,
         stats,
         lastSyncedAt: Date.now(),
