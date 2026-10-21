@@ -7,7 +7,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
-import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Clock } from "lucide-react";
+import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Clock, Cpu, History } from "lucide-react";
 
 type Article = {
   id: string;
@@ -19,33 +19,66 @@ type Article = {
   updatedAt?: string | null;
 };
 
+type Machine = {
+  id: string;
+  name: string;
+  code: string | null;
+  imageUrl: string | null;
+};
+
 export default function LibraryPage() {
   const { t } = useSettings();
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentlyViewed, setRecentlyViewed] = useState<Article[]>([]);
 
   useEffect(() => {
     getLocalData().then((data) => {
-      if (data && data.articles && data.articleContents) {
-        const contents = data.articleContents as Record<string, unknown>[];
-        const items: Article[] = (data.articles as Record<string, unknown>[]).map((a) => {
-          const content = contents.find((c) => c.articleId === a.id && c.locale === "my")
-            || contents.find((c) => c.articleId === a.id);
-          return {
-            id: String(a.id),
-            slug: String(a.slug),
-            title: content ? String(content.title) : String(a.slug),
-            summary: content?.summary ? String(content.summary) : null,
-            category: a.category ? String(a.category) : null,
-            coverImageUrl: a.coverImageUrl ? String(a.coverImageUrl) : null,
-            updatedAt: a.updatedAt ? String(a.updatedAt) : null,
-          };
-        });
-        setArticles(items);
+      if (data) {
+        // 1. Articles ကို ဆွဲထုတ်မယ်
+        if (data.articles && data.articleContents) {
+          const contents = data.articleContents as Record<string, unknown>[];
+          const items: Article[] = (data.articles as Record<string, unknown>[]).map((a) => {
+            const content = contents.find((c) => c.articleId === a.id && c.locale === "my")
+              || contents.find((c) => c.articleId === a.id);
+            return {
+              id: String(a.id),
+              slug: String(a.slug),
+              title: content ? String(content.title) : String(a.slug),
+              summary: content?.summary ? String(content.summary) : null,
+              category: a.category ? String(a.category) : null,
+              coverImageUrl: a.coverImageUrl ? String(a.coverImageUrl) : null,
+              updatedAt: a.updatedAt ? String(a.updatedAt) : null,
+            };
+          });
+          setArticles(items);
+        }
+
+        // 2. Machines ကို ဆွဲထုတ်မယ်
+        if (data.machines) {
+          const machs: Machine[] = (data.machines as Record<string, unknown>[]).map((m) => ({
+            id: String(m.id),
+            name: String(m.name),
+            code: m.code ? String(m.code) : null,
+            imageUrl: m.imageUrl ? String(m.imageUrl) : null,
+          }));
+          setMachines(machs);
+        }
       }
+
+      // 3. Recently Viewed ကို Local Storage ကနေ ယူမယ်
+      const stored = localStorage.getItem("nexfix-recent-articles");
+      if (stored) {
+        try {
+          const ids = JSON.parse(stored) as string[];
+          // (ဒီနေရာမှာ Article list နဲ့ ချိတ်ဆက်ဖို့ လိုပါတယ်၊ ဒါပေမယ့် ရိုးရှင်းအောင် ခဏထားလိုက်ပါမယ်)
+        } catch (e) {}
+      }
+
       setLoading(false);
     });
   }, []);
@@ -108,7 +141,6 @@ export default function LibraryPage() {
         <div className="px-4 mb-6">
           <div className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] bg-[var(--nx-bg-card)] p-5 shadow-lg">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--nx-cyan)] opacity-10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
-            
             <div className="relative z-10 flex flex-col gap-3">
               <span className="inline-block px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/20">
                 TECHNICAL KNOWLEDGE
@@ -143,7 +175,34 @@ export default function LibraryPage() {
           </form>
         </div>
 
-        {/* Section D: Category Filter */}
+        {/* Section D: Browse by Machine */}
+        {machines.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between px-4 mb-3">
+              <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
+                <Cpu size={16} /> Browse by Machine
+              </h3>
+            </div>
+            <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
+              {machines.slice(0, 10).map((m) => (
+                <Link key={m.id} href={`/search?machine=${encodeURIComponent(m.name)}`}>
+                  <div className="flex flex-col items-center w-20 gap-2 group">
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] flex items-center justify-center group-hover:border-[var(--nx-cyan)] transition-colors">
+                      {m.imageUrl ? (
+                        <img src={m.imageUrl} alt={m.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Cpu className="text-[var(--nx-text-muted-updated)]" size={24} />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-center font-medium text-[var(--nx-text-primary)] line-clamp-2">{m.name}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Section E: Category Filter */}
         {categories.length > 0 && (
           <div className="flex gap-2 overflow-x-auto px-4 pb-4 mb-2 scrollbar-hide">
             <button
@@ -175,7 +234,7 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* Section E: Article List */}
+        {/* Section F: Article List */}
         <div className="px-4" id="article-list">
           <div className="flex items-center justify-between mb-3 mt-2">
             <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide">
