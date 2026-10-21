@@ -20,6 +20,7 @@ const navGroups: { title: string | null; items: NavItem[] }[] = [
       { label: "Add Error", href: "/admin/content/errors", icon: "alert-circle" },
       { label: "View Errors", href: "/admin/content/errors/list", icon: "list" },
       { label: "Knowledge Library", href: "/admin/content/library", icon: "book" },
+      { label: "Library List", href: "/admin/content/library/list", icon: "list" },
       { label: "Media Library", href: "/admin/media", icon: "image" },
     ],
   },
