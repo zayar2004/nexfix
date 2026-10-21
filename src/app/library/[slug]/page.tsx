@@ -225,13 +225,13 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                       onChange={(e) => setReportReason(e.target.value)}
                       className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
                     >
-                      <option value="">t("selectReason")</option>
-                      <option value="wrong_info">t("wrongInfo")</option>
-                      <option value="wrong_code">t("wrongCode")</option>
-                      <option value="broken_media">t("brokenMedia")</option>
-                      <option value="outdated">t("outdated")</option>
-                      <option value="safety">t("safetyConcern")</option>
-                      <option value="other">t("otherIssue")</option>
+                      <option value="">{t("selectReason")}</option>
+                      <option value="wrong_info">{t("wrongInfo")}</option>
+                      <option value="wrong_code">{t("wrongCode")}</option>
+                      <option value="broken_media">{t("brokenMedia")}</option>
+                      <option value="outdated">{t("outdated")}</option>
+                      <option value="safety">{t("safetyConcern")}</option>
+                      <option value="other">{t("otherIssue")}</option>
                     </select>
                     <textarea 
                       placeholder={t("optionalDesc")}
