@@ -14,6 +14,7 @@ type Article = {
   status: string;
   category?: string | null;
   coverImageUrl?: string | null;
+  title?: string | null;
 };
 
 type Machine = {
@@ -252,12 +253,24 @@ function AdminLibraryContent() {
       {loading ? <p className="text-white">Loading...</p> : articles.length === 0 ? <p className="text-gray-400">No articles.</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {articles.map((a) => (
-            <div key={a.id} className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl">
-              <p className="font-semibold text-white truncate">{a.slug}</p>
-              <p className="text-xs text-gray-400 truncate">{a.category || "Uncategorized"}</p>
-              <div className="flex gap-2 mt-3">
-                <Link href={`/admin/content/library?id=${a.id}`} className="flex-1 py-2 text-center bg-[var(--nx-bg-base-deep)] text-white text-xs rounded">Edit</Link>
-                <Link href={`/library/${a.slug}`} target="_blank" className="flex-1 py-2 text-center bg-[var(--nx-bg-base-deep)] text-white text-xs rounded">View</Link>
+            <div key={a.id} className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="font-bold text-white truncate text-sm">{a.title || a.slug}</p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                    a.status === 'published' ? 'text-green-400 border-green-400/30 bg-green-400/10' : 
+                    a.status === 'draft' ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' : 
+                    'text-gray-400 border-gray-400/30 bg-gray-400/10'
+                  }`}>
+                    {a.status}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--nx-cyan)] truncate mb-1">{a.category || "Uncategorized"}</p>
+                <p className="text-[10px] text-gray-500 truncate">/{a.slug}</p>
+              </div>
+              <div className="flex gap-2 mt-3 pt-3 border-t border-[var(--nx-border-updated)]">
+                <Link href={`/admin/content/library?id=${a.id}`} className="flex-1 py-1.5 text-center bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white text-xs rounded hover:border-[var(--nx-cyan)] transition">Edit</Link>
+                <Link href={`/library/${a.slug}`} target="_blank" className="flex-1 py-1.5 text-center bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white text-xs rounded hover:border-[var(--nx-cyan)] transition">View</Link>
               </div>
             </div>
           ))}

@@ -122,7 +122,18 @@ export async function GET(req: Request) {
   }
 
   const data = await db.select().from(knowledgeArticles);
-  return NextResponse.json({ ok: true, data });
+  
+  // Article တစ်ခုချင်းစီအတွက် Title ကို ဆွဲထုတ်မယ်
+  const articlesWithTitles = await Promise.all(data.map(async (article) => {
+    const [content] = await db
+      .select({ title: articleContent.title })
+      .from(articleContent)
+      .where(eq(articleContent.articleId, article.id))
+      .limit(1);
+    return { ...article, title: content?.title || article.slug };
+  }));
+
+  return NextResponse.json({ ok: true, data: articlesWithTitles });
 }
 
 export async function POST(req: Request) {
