@@ -38,6 +38,7 @@ function AdminLibraryContent() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
+  const [heroImages, setHeroImages] = useState<string[]>([]);
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -79,6 +80,13 @@ function AdminLibraryContent() {
         if (!data.ok) throw new Error(data.error);
         const { article, contents } = data.data;
         const content = contents[0] || {};
+        // Hero Images ကို parse လုပ်မယ်
+        if ((article as any).heroImages) {
+          try {
+            const parsed = JSON.parse(String((article as any).heroImages));
+            if (Array.isArray(parsed)) setHeroImages(parsed);
+          } catch {}
+        }
         setForm({
           title: content.title || "",
           body: content.body || "",
@@ -129,6 +137,7 @@ function AdminLibraryContent() {
         coverImageUrl: payload.coverImageUrl,
         titleEn: payload.title, titleMy: payload.title,
         bodyEn: formattedBody, bodyMy: formattedBody,
+        heroImages: heroImages.length > 0 ? JSON.stringify(heroImages) : null,
         ...(editId ? { id: editId } : {})
       };
 
@@ -225,6 +234,44 @@ function AdminLibraryContent() {
             <textarea placeholder="Main Body (ရိုးရိုးစာသား ရိုက်ပါ)" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={8} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
             
             <input type="url" placeholder="Cover Image URL (Optional)" value={form.coverImageUrl} onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" />
+
+            {/* Hero Images (Carousel) */}
+            <div className="border-t border-[var(--nx-border-updated)] pt-4 mt-2">
+              <h3 className="text-sm font-bold text-white mb-2">🎠 Hero Images (Carousel)</h3>
+              <p className="text-[10px] text-[var(--nx-text-muted-updated)] mb-2 italic">Library Page ရဲ့ အပေါ်ဆုံး Banner မှာ ပြမယ့် ပုံတွေ (၁၀ စက္ကန့်တစ်ခါ ပြောင်းမယ်)</p>
+              
+              <div className="flex flex-col gap-2">
+                {heroImages.map((url, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input 
+                      type="url" 
+                      placeholder="https://example.com/image.jpg" 
+                      value={url} 
+                      onChange={(e) => {
+                        const newUrls = [...heroImages];
+                        newUrls[idx] = e.target.value;
+                        setHeroImages(newUrls);
+                      }} 
+                      className="flex-1 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-cyan)] outline-none" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setHeroImages(heroImages.filter((_, i) => i !== idx))} 
+                      className="px-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  type="button" 
+                  onClick={() => setHeroImages([...heroImages, ""])} 
+                  className="text-sm text-[var(--nx-cyan)] text-left hover:underline mt-1 font-medium"
+                >
+                  + Add Hero Image
+                </button>
+              </div>
+            </div>
 
             <div className="border-t border-[var(--nx-border-updated)] pt-4 mt-2 flex flex-col gap-4">
               <div>

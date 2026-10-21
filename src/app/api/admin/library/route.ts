@@ -28,6 +28,7 @@ const createSchema = z.object({
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   galleryImages: z.array(z.string().url()).optional().default([]),
+  heroImages: z.string().optional(),
   videos: z.array(videoSchema).optional().default([]),
   machineId: z.string().uuid().optional(),
 });
@@ -46,6 +47,7 @@ const patchSchema = z.object({
   category: z.string().max(100).optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   galleryImages: z.array(z.string().url()).optional(),
+  heroImages: z.string().optional(),
   videos: z.array(videoSchema).optional(),
   machineId: z.string().uuid().optional(),
 });
@@ -153,7 +155,7 @@ export async function POST(req: Request) {
   }
 
   const {slug: inputSlug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
-    type, status, category, coverImageUrl, videos, machineId, galleryImages} = result.data;
+    type, status, category, coverImageUrl, videos, machineId, galleryImages, heroImages} = result.data;
 
   // Slug အလိုအလျောက် ဖန်တီးမယ် (Title ကနေ)
   const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -168,6 +170,7 @@ export async function POST(req: Request) {
           status: status || "published",
           type: type || "article",
           galleryImages: galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null,
+          heroImages: heroImages || null,
           category: category || null,
           coverImageUrl: coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null,
         })
@@ -236,7 +239,7 @@ export async function PATCH(req: Request) {
   }
 
   const {id, slug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
-    type, status, category, coverImageUrl, videos, machineId, galleryImages} = result.data;
+    type, status, category, coverImageUrl, videos, machineId, galleryImages, heroImages } = result.data;
 
   try {
     await db.transaction(async (tx) => {
@@ -245,6 +248,9 @@ export async function PATCH(req: Request) {
       if (type !== undefined) articleUpdate.type = type;
       if (status !== undefined) articleUpdate.status = status;
       if (category !== undefined) articleUpdate.category = category || null;
+      if (heroImages !== undefined) {
+        articleUpdate.heroImages = heroImages || null;
+      }
       if (galleryImages !== undefined) {
         articleUpdate.galleryImages = galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null;
       }

@@ -20,6 +20,7 @@ type Article = {
   category: string | null;
   coverImageUrl: string | null;
   machineId?: string | null;
+  heroImages?: string | null;
 };
 
 type Machine = {
@@ -40,6 +41,9 @@ export default function LibraryPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [heroImages, setHeroImages] = useState<string[]>([]);
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
 
   useEffect(() => {
     getLocalData().then((data) => {
@@ -57,6 +61,7 @@ export default function LibraryPage() {
               category: a.category ? String(a.category) : null,
               coverImageUrl: a.coverImageUrl ? String(a.coverImageUrl) : null,
               machineId: a.machineId ? String(a.machineId) : null,
+              heroImages: (a as any).heroImages ? String((a as any).heroImages) : null,
             };
           });
           setArticles(items);
@@ -88,6 +93,36 @@ export default function LibraryPage() {
       })
       .catch(() => {});
   }, []);
+
+  // ၁၀ စက္ကန့်တစ်ခါ Hero Image ကို ပြောင်းမယ်
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % heroImages.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [heroImages]);
+
+  // Swipe အတွက် Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && heroImages.length > 1) {
+      setCurrentHeroIndex((prev) => (prev + 1) % heroImages.length);
+    }
+    if (isRightSwipe && heroImages.length > 1) {
+      setCurrentHeroIndex((prev) => (prev - 1 + heroImages.length) % heroImages.length);
+    }
+    setTouchStart(null);
+  };
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -166,27 +201,73 @@ export default function LibraryPage() {
           <p className="text-sm text-[var(--nx-text-muted-updated)]">Find solutions. Keep machines running.</p>
         </div>
 
-        {/* Section B: Featured Banner */}
+                {/* Section B: Featured Banner (Carousel) */}
         <div className="px-4 mb-6">
-          <div className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] bg-gradient-to-br from-[#0B1020] via-[#101F3D] to-[#0A1E4A] p-5 shadow-xl">
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-40 h-40 bg-[var(--nx-cyan)] opacity-20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-[var(--nx-accent)] opacity-10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none"></div>
-            
-            <div className="relative z-10 flex flex-col gap-3">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/30">
+          <div 
+            className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] shadow-xl h-[200px]"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Background Image Carousel */}
+            {heroImages.length > 0 ? (
+              <>
+                {heroImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`absolute inset-0 transition-opacity duration-700 ${
+                      idx === currentHeroIndex ? "opacity-100" : "opacity-0"
+                    }`}
+                  >
+                    <img
+                      src={img.startsWith("http") ? img : `${process.env.NEXT_PUBLIC_S3_URL}/${img}`}
+                      alt={`Hero ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Dark overlay for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#0B1020]/95 via-[#0B1020]/70 to-transparent"></div>
+                  </div>
+                ))}
+                
+                {/* Carousel Dots */}
+                {heroImages.length > 1 && (
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                    {heroImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentHeroIndex(idx)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          idx === currentHeroIndex 
+                            ? "w-6 bg-[var(--nx-cyan)]" 
+                            : "w-1.5 bg-white/40"
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              // Hero Images မရှိရင် Gradient ပဲ ပြမယ်
+              <div className="absolute inset-0 bg-gradient-to-br from-[#0B1020] via-[#101F3D] to-[#0A1E4A]">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-[var(--nx-cyan)] opacity-20 rounded-full blur-3xl -mr-16 -mt-16"></div>
+              </div>
+            )}
+
+            {/* Text Content (Always on top) */}
+            <div className="relative z-10 p-5 h-full flex flex-col justify-center">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/30 backdrop-blur-sm">
                 <BookOpen size={10} /> TECHNICAL KNOWLEDGE
               </span>
-              <h2 className="text-xl font-extrabold text-[var(--nx-text-primary)] leading-tight">
+              <h2 className="text-xl font-extrabold text-white leading-tight mt-2 drop-shadow-lg">
                 Find Solutions.<br/>
                 <span className="text-[var(--nx-cyan)]">Keep Machines Running.</span>
               </h2>
-              <p className="text-xs text-[var(--nx-text-muted-updated)] leading-relaxed max-w-[90%]">
+              <p className="text-xs text-gray-300 leading-relaxed max-w-[85%] mt-1 drop-shadow">
                 Explore error codes, repair guides, machine manuals, and video tutorials.
               </p>
               <button 
                 onClick={() => document.getElementById('article-list')?.scrollIntoView({ behavior: 'smooth' })}
-                className="mt-2 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/20"
+                className="mt-2 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/30"
               >
                 Explore Library <ChevronRight size={14} />
               </button>

@@ -134,6 +134,7 @@ export const knowledgeArticles = pgTable("knowledge_articles", {
   category: varchar("category", { length: 100 }),
   coverImageUrl: text("cover_image_url"),
   galleryImages: text("gallery_images"),
+  heroImages: text("hero_images"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
