@@ -7,7 +7,10 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
-import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Bookmark, BookmarkCheck, Clock } from "lucide-react";
+import { 
+  Search, BookOpen, ChevronRight, Monitor, AlertTriangle, Wrench, 
+  Video, Bookmark, BookmarkCheck, Clock, Image as ImageIcon, 
+  FileText, Flame, ArrowRight, Library, Activity} from "lucide-react";
 
 type Article = {
   id: string;
@@ -31,15 +34,14 @@ export default function LibraryPage() {
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
   useEffect(() => {
-    // 1. Local Data (Articles + Machines) ကို ယူမယ်
     getLocalData().then((data) => {
       if (data) {
         if (data.articles && data.articleContents) {
@@ -54,6 +56,7 @@ export default function LibraryPage() {
               summary: content?.summary ? String(content.summary) : null,
               category: a.category ? String(a.category) : null,
               coverImageUrl: a.coverImageUrl ? String(a.coverImageUrl) : null,
+              machineId: a.machineId ? String(a.machineId) : null,
             };
           });
           setArticles(items);
@@ -71,7 +74,11 @@ export default function LibraryPage() {
       setLoading(false);
     });
 
-    // 2. User ရဲ့ Bookmarks တွေကို ယူမယ်
+    try {
+      const stored = localStorage.getItem("nexfix-recent-articles");
+      if (stored) setRecentlyViewed(JSON.parse(stored));
+    } catch (e) {}
+
     fetch("/api/bookmarks")
       .then((res) => res.json())
       .then((data) => {
@@ -79,7 +86,7 @@ export default function LibraryPage() {
           setBookmarkedIds(data.data.map((b: any) => b.articleId));
         }
       })
-      .catch(() => {}); // Login မဝင်ထားရင် Error တက်နိုင်လို့ လျစ်လျူရှုမယ်
+      .catch(() => {});
   }, []);
 
   const categories = useMemo(() => {
@@ -104,16 +111,7 @@ export default function LibraryPage() {
       );
     }
     return result;
-  }, [articles, selectedCategory, searchQuery]);
-
-  const featuredArticle = filteredArticles.length > 0 ? filteredArticles[0] : null;
-  const otherArticles = filteredArticles.length > 1 ? filteredArticles.slice(1) : [];
-
-  const resetFilters = () => {
-    setSelectedCategory("all");
-    setSelectedMachine("all");
-    setSearchQuery("");
-  };
+  }, [articles, selectedCategory, selectedMachine, searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +121,7 @@ export default function LibraryPage() {
   };
 
   const toggleBookmark = async (e: React.MouseEvent, articleId: string) => {
-    e.preventDefault(); // Link ကို မသွားအောင် တား
+    e.preventDefault();
     try {
       const res = await fetch("/api/bookmarks", {
         method: "POST",
@@ -150,6 +148,8 @@ export default function LibraryPage() {
     if (c.includes("repair") || c.includes("maintenance")) return <Wrench size={14} />;
     if (c.includes("video")) return <Video size={14} />;
     if (c.includes("machine")) return <Monitor size={14} />;
+    if (c.includes("image") || c.includes("diagram")) return <ImageIcon size={14} />;
+    if (c.includes("manual") || c.includes("document")) return <FileText size={14} />;
     return <BookOpen size={14} />;
   };
 
@@ -161,28 +161,32 @@ export default function LibraryPage() {
         {/* Section A: Header */}
         <div className="px-4 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-1 flex items-center gap-2">
-            <BookOpen className="text-[var(--nx-cyan)]" size={24} /> {t("knowledgeLibrary")}
+            <Library className="text-[var(--nx-cyan)]" size={28} /> Knowledge Library
           </h1>
           <p className="text-sm text-[var(--nx-text-muted-updated)]">Find solutions. Keep machines running.</p>
         </div>
 
         {/* Section B: Featured Banner */}
         <div className="px-4 mb-6">
-          <div className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] bg-[var(--nx-bg-card)] p-5 shadow-lg">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--nx-cyan)] opacity-10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+          <div className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] bg-gradient-to-br from-[#0B1020] via-[#101F3D] to-[#0A1E4A] p-5 shadow-xl">
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-[var(--nx-cyan)] opacity-20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-[var(--nx-accent)] opacity-10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none"></div>
+            
             <div className="relative z-10 flex flex-col gap-3">
-              <span className="inline-block px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/20">
-                TECHNICAL KNOWLEDGE
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/30">
+                <BookOpen size={10} /> TECHNICAL KNOWLEDGE
               </span>
               <h2 className="text-xl font-extrabold text-[var(--nx-text-primary)] leading-tight">
-                {t("findSolutionsLong")}
+                Find Solutions.<br/>
+                <span className="text-[var(--nx-cyan)]">Keep Machines Running.</span>
               </h2>
-              <p className="text-xs text-[var(--nx-text-muted-updated)] leading-relaxed max-w-[85%]">
-                {t("exploreLibraryDesc")}
+              <p className="text-xs text-[var(--nx-text-muted-updated)] leading-relaxed max-w-[90%]">
+                Explore error codes, repair guides, machine manuals, and video tutorials.
               </p>
               <button 
                 onClick={() => document.getElementById('article-list')?.scrollIntoView({ behavior: 'smooth' })}
-                className="mt-1 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5"
+                className="mt-2 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/20"
               >
                 Explore Library <ChevronRight size={14} />
               </button>
@@ -191,59 +195,98 @@ export default function LibraryPage() {
         </div>
 
         {/* Section C: Search Bar */}
-        <div className="px-4 mb-5">
+        <div className="px-4 mb-6">
           <form onSubmit={handleSearchSubmit} className="relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)] group-focus-within:text-[var(--nx-cyan)] transition-colors" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)] group-focus-within:text-[var(--nx-cyan)] transition-colors" size={20} />
             <input
               type="text"
-              placeholder={t("searchPlaceholder")}
+              placeholder="Search machines, error codes, solutions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl py-3 pl-10 pr-4 text-sm text-[var(--nx-text-primary)] focus:border-[var(--nx-cyan)] focus:ring-1 focus:ring-[var(--nx-cyan)] outline-none transition-all"
+              className="w-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl py-3.5 pl-12 pr-20 text-sm text-[var(--nx-text-primary)] focus:border-[var(--nx-cyan)] focus:ring-1 focus:ring-[var(--nx-cyan)] outline-none transition-all"
             />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:opacity-90 transition"
+            >
+              Search
+            </button>
           </form>
         </div>
 
-        {/* Section D: Browse by Machine */}
-        {machines.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between px-4 mb-3">
-              <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
-                <Monitor size={16} /> {t("browseByMachine")}
-              </h3>
-            </div>
-            <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
-              {machines.slice(0, 10).map((m) => (
-                <Link key={m.id} href={`/search?machine=${encodeURIComponent(m.name)}`}>
-                  <div className="flex flex-col items-center w-20 gap-2 group">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] flex items-center justify-center group-hover:border-[var(--nx-cyan)] transition-colors">
-                      {m.imageUrl ? (
-                        <img src={m.imageUrl} alt={m.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Monitor className="text-[var(--nx-text-muted-updated)]" size={24} />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-center font-medium text-[var(--nx-text-primary)] line-clamp-2">{m.name}</span>
+        {/* Section D: Category Cards (Grid) */}
+        <div className="px-4 mb-6">
+          <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide mb-3 flex items-center gap-2">
+            <Activity size={14} /> Browse Categories
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {categories.length > 0 ? categories.map((cat) => {
+              const count = articles.filter((a) => a.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(selectedCategory === cat ? "all" : cat)}
+                  className={`p-3 rounded-xl border transition-all text-left flex flex-col gap-1.5 ${
+                    selectedCategory === cat
+                      ? "bg-[var(--nx-cyan)]/10 border-[var(--nx-cyan)] ring-1 ring-[var(--nx-cyan)]/30"
+                      : "bg-[var(--nx-bg-card)] border-[var(--nx-border-updated)] hover:border-[var(--nx-cyan)]/50"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    selectedCategory === cat ? "bg-[var(--nx-cyan)]/20" : "bg-[var(--nx-cyan)]/10"
+                  }`}>
+                    <span className="text-[var(--nx-cyan)]">{getCategoryIcon(cat)}</span>
                   </div>
-                </Link>
-              ))}
-            </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[var(--nx-text-primary)] truncate">{cat}</p>
+                    <p className="text-[10px] text-[var(--nx-text-muted-updated)]">{count} resources</p>
+                  </div>
+                  <ChevronRight size={12} className="text-[var(--nx-cyan)] self-end" />
+                </button>
+              );
+            }) : (
+              <div className="col-span-2 p-6 text-center text-[var(--nx-text-muted-updated)] text-xs border border-dashed border-[var(--nx-border-updated)] rounded-xl">
+                No categories available
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section E: Machine Filter */}
+        {machines.length > 0 && (
+          <div className="px-4 mb-6">
+            <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide mb-3 flex items-center gap-2">
+              <Monitor size={14} /> Filter by Machine
+            </h3>
+            <select
+              value={selectedMachine}
+              onChange={(e) => setSelectedMachine(e.target.value)}
+              className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-xl p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+            >
+              <option value="all">All Machines ({articles.length})</option>
+              {machines.map((m) => {
+                const count = articles.filter((a) => a.machineId === m.id).length;
+                return (
+                  <option key={m.id} value={m.id}>{m.name} ({count})</option>
+                );
+              })}
+            </select>
           </div>
         )}
 
-        {/* Section D2: Recently Viewed */}
+        {/* Section F: Recently Viewed */}
         {recentlyViewed.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between px-4 mb-3">
               <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
-                <Clock size={16} /> {t("recentlyViewed")}
+                <Clock size={14} /> Recently Viewed
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
               {recentlyViewed.map((r, idx) => (
                 <Link key={idx} href={`/library/${r.slug}`}>
                   <div className="flex flex-col w-32 gap-2 group">
-                    <div className="w-32 h-20 rounded-lg overflow-hidden bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] relative">
+                    <div className="w-32 h-20 rounded-lg overflow-hidden bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)]">
                       {r.coverImageUrl ? (
                         <img 
                           src={r.coverImageUrl.startsWith("http") ? r.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${r.coverImageUrl}`} 
@@ -264,71 +307,15 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* Section D3: Machine Filter */}
-        {machines.length > 0 && (
-          <div className="px-4 mb-4">
-            <label className="text-xs font-bold text-[var(--nx-text-muted-updated)] uppercase tracking-wide mb-2 block">
-              Filter by Machine
-            </label>
-            <select
-              value={selectedMachine}
-              onChange={(e) => setSelectedMachine(e.target.value)}
-              className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
-              aria-label="Filter by machine"
-            >
-              <option value="all">All Machines ({articles.length})</option>
-              {machines.map((m) => {
-                const count = articles.filter((a) => a.machineId === m.id).length;
-                return (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({count})
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        )}
-
-        {/* Section E: Category Filter */}
-        {categories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-4 mb-2 scrollbar-hide">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`px-4 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-colors border flex items-center gap-1.5 ${
-                selectedCategory === "all"
-                  ? "bg-[var(--nx-cyan)] text-black border-[var(--nx-cyan)]"
-                  : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border-[var(--nx-border-updated)]"
-              }`}
-            >
-              All ({articles.length})
-            </button>
-            {categories.map((cat) => {
-              const count = articles.filter((a) => a.category === cat).length;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition-colors border flex items-center gap-1.5 ${
-                    selectedCategory === cat
-                      ? "bg-[var(--nx-cyan)] text-black border-[var(--nx-cyan)]"
-                      : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border-[var(--nx-border-updated)]"
-                  }`}
-                >
-                  {getCategoryIcon(cat)} {cat} ({count})
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Section F: Article List */}
+        {/* Section G: Popular Resources */}
         <div className="px-4" id="article-list">
           <div className="flex items-center justify-between mb-3 mt-2">
-            <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide">
-              {searchQuery ? t("searchResults") : t("latestArticles")}
+            <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
+              <Flame size={14} className="text-orange-400" /> 
+              {searchQuery || selectedCategory !== "all" || selectedMachine !== "all" ? "Filtered Results" : "Popular Resources"}
             </h3>
-            <span className="text-xs text-[var(--nx-text-muted-updated)] flex items-center gap-1">
-              <Activity size={12} /> {filteredArticles.length} items
+            <span className="text-xs text-[var(--nx-text-muted-updated)]">
+              {filteredArticles.length} items
             </span>
           </div>
 
@@ -338,96 +325,66 @@ export default function LibraryPage() {
             </div>
           ) : filteredArticles.length === 0 ? (
             <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)] text-sm">
-              {articles.length === 0 
-                ? t("noArticlesFound") 
-                : t("noSearchResults")}
+              No resources found. Try different filters.
             </div>
           ) : (
-            <>
-              {featuredArticle && (
-                <Link href={`/library/${featuredArticle.slug}`} className="block mb-4">
-                  <div className="relative rounded-2xl overflow-hidden bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] hover:border-[var(--nx-cyan)] transition-all group">
-                    {featuredArticle.coverImageUrl ? (
-                      <div className="relative h-48 w-full overflow-hidden">
+            <div className="grid grid-cols-1 gap-3">
+              {filteredArticles.slice(0, 10).map((a) => (
+                <Link key={a.id} href={`/library/${a.slug}`}>
+                  <div className="group flex gap-3 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-cyan)] transition-all">
+                    {/* Thumbnail */}
+                    {a.coverImageUrl ? (
+                      <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border border-[var(--nx-border-updated)] relative">
                         <img 
-                          src={featuredArticle.coverImageUrl.startsWith("http") ? featuredArticle.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${featuredArticle.coverImageUrl}`} 
-                          alt={featuredArticle.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                          src={a.coverImageUrl.startsWith("http") ? a.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${a.coverImageUrl}`} 
+                          alt={a.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1020] via-[#0B1020]/50 to-transparent"></div>
+                        {a.category && (
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[8px] font-bold text-white bg-black/70 rounded">
+                            {a.category}
+                          </span>
+                        )}
                       </div>
                     ) : (
-                      <div className="h-32 w-full bg-[var(--nx-bg-base-deep)] flex items-center justify-center">
-                        <BookOpen size={40} className="text-[var(--nx-text-muted-updated)] opacity-20" />
+                      <div className="w-24 h-24 rounded-lg flex-shrink-0 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] flex items-center justify-center">
+                        <BookOpen size={24} className="text-[var(--nx-text-muted-updated)] opacity-30" />
                       </div>
                     )}
-                    
-                    <div className="p-4 relative z-10 -mt-8">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 text-[10px] font-bold bg-[var(--nx-cyan)] text-black rounded-md">
-                            FEATURED
-                          </span>
-                          {featuredArticle.category && (
-                            <span className="text-xs font-semibold text-[var(--nx-cyan)] flex items-center gap-1">
-                              {getCategoryIcon(featuredArticle.category)} {featuredArticle.category}
-                            </span>
-                          )}
-                        </div>
-                        <button onClick={(e) => toggleBookmark(e, featuredArticle.id)} className="p-2 bg-[var(--nx-bg-base-deep)] rounded-full text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-cyan)] transition-colors z-20">
-                          {bookmarkedIds.includes(featuredArticle.id) ? <BookmarkCheck size={20} className="text-[var(--nx-cyan)]" /> : <Bookmark size={20} />}
-                        </button>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div>
+                        <p className="font-bold text-[var(--nx-text-primary)] text-sm line-clamp-2 leading-snug mb-1">{a.title}</p>
+                        {a.summary && (
+                          <p className="text-[11px] text-[var(--nx-text-muted-updated)] line-clamp-2">{a.summary}</p>
+                        )}
                       </div>
-                      <h4 className="text-lg font-bold text-[var(--nx-text-primary)] mb-1 leading-snug">{featuredArticle.title}</h4>
-                      {featuredArticle.summary && (
-                        <p className="text-sm text-[var(--nx-text-muted-updated)] line-clamp-2">{featuredArticle.summary}</p>
-                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        {a.category && (
+                          <span className="text-[10px] font-bold text-[var(--nx-cyan)] flex items-center gap-1">
+                            {getCategoryIcon(a.category)} {a.category}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={(e) => toggleBookmark(e, a.id)} 
+                            className="p-1.5 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-cyan)] transition"
+                          >
+                            {bookmarkedIds.includes(a.id) ? (
+                              <BookmarkCheck size={16} className="text-[var(--nx-cyan)]" />
+                            ) : (
+                              <Bookmark size={16} />
+                            )}
+                          </button>
+                          <ArrowRight size={14} className="text-[var(--nx-text-muted-updated)] group-hover:text-[var(--nx-cyan)] transition" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </Link>
-              )}
-
-              {otherArticles.length > 0 && (
-                <div className="grid grid-cols-2 gap-3">
-                  {otherArticles.map((a) => (
-                    <Link key={a.id} href={`/library/${a.slug}`}>
-                      <div className="group flex flex-col h-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl overflow-hidden hover:border-[var(--nx-cyan)] transition-all duration-200">
-                        <div className="relative">
-                          {a.coverImageUrl ? (
-                            <div className="h-28 w-full overflow-hidden">
-                              <img 
-                                src={a.coverImageUrl.startsWith("http") ? a.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${a.coverImageUrl}`} 
-                                alt={a.title} 
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
-                              />
-                            </div>
-                          ) : (
-                            <div className="h-28 w-full bg-[var(--nx-bg-base-deep)] flex items-center justify-center border-b border-[var(--nx-border-updated)]">
-                              <BookOpen size={28} className="text-[var(--nx-text-muted-updated)] opacity-30" />
-                            </div>
-                          )}
-                          <button onClick={(e) => toggleBookmark(e, a.id)} className="absolute top-2 right-2 p-1.5 bg-[var(--nx-bg-card)]/80 backdrop-blur-sm rounded-full text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-cyan)] transition-colors z-10">
-                            {bookmarkedIds.includes(a.id) ? <BookmarkCheck size={16} className="text-[var(--nx-cyan)]" /> : <Bookmark size={16} />}
-                          </button>
-                        </div>
-                        
-                        <div className="p-3 flex-1 flex flex-col">
-                          {a.category && (
-                            <span className="text-[10px] font-bold text-[var(--nx-cyan)] mb-1 flex items-center gap-1">
-                              {getCategoryIcon(a.category)} {a.category}
-                            </span>
-                          )}
-                          <p className="font-semibold text-[var(--nx-text-primary)] text-sm line-clamp-2 leading-snug">{a.title}</p>
-                          {a.summary && (
-                            <p className="text-[11px] text-[var(--nx-text-muted-updated)] line-clamp-2 mt-1">{a.summary}</p>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
         </div>
       </main>
