@@ -50,11 +50,14 @@ function AnnouncementBanner({ settings }: { settings: any }) {
 export default function HomePage() {
   const { t, locale } = useSettings();
   const [heroData, setHeroData] = useState<any>(null);
-  const [heroLoading, setHeroLoading] = useState(true);
   const [recentSearches, setRecentSearches] = useState<RecentItem[]>([]);
   const [recentArticles, setRecentArticles] = useState<ArticleItem[]>([]);
   const [homeSettings, setHomeSettings] = useState<any>(null);
   const [stats, setStats] = useState<{ totalErrors: number; totalMachines: number; totalArticles: number }>({ totalErrors: 0, totalMachines: 0, totalArticles: 0 });
+
+  // ၃ စက္ကန့်နောက် Hero Loading ကို အတင်းပိတ်မယ် (Data မရရင်)
+  useEffect(() => {
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -140,19 +143,7 @@ export default function HomePage() {
       {announcementPosition === "top" && <AnnouncementBanner settings={homeSettings} />}
 
       <main className="max-w-3xl mx-auto">
-        {heroLoading ? (
-          <div className="px-4 mb-4">
-            <div className="h-48 rounded-2xl bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] animate-pulse flex items-center justify-center">
-              <div className="flex flex-col gap-2 w-full px-5">
-                <div className="h-3 w-24 bg-[var(--nx-bg-base-deep)] rounded"></div>
-                <div className="h-6 w-3/4 bg-[var(--nx-bg-base-deep)] rounded"></div>
-                <div className="h-3 w-full bg-[var(--nx-bg-base-deep)] rounded"></div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <HeroSection data={heroData} />
-        )}
+        <HeroSection data={heroData} />
 
         {/* Announcement at Middle (Below Hero) */}
         {announcementPosition === "middle" && <AnnouncementBanner settings={homeSettings} />}
