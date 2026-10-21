@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { BookOpen, ChevronRight, ArrowRight } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { HeroSection } from "@/components/home/HeroSection";
@@ -170,6 +171,26 @@ export default function HomePage() {
               </div>
             </div>
           )}
+
+          {/* Knowledge Library Card */}
+          <div className="mb-4">
+            <Link 
+              href="/library" 
+              className="flex items-center gap-3 p-4 bg-gradient-to-r from-[var(--nx-bg-card)] to-[var(--nx-cyan)]/5 border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-cyan)] transition group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-[var(--nx-cyan)]/10 flex items-center justify-center flex-shrink-0">
+                <BookOpen size={24} className="text-[var(--nx-cyan)]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[var(--nx-text-primary)] text-sm mb-0.5 flex items-center gap-1.5">
+                  Knowledge Library
+                  <span className="text-[8px] font-bold text-black bg-[var(--nx-cyan)] px-1.5 py-0.5 rounded uppercase">NEW</span>
+                </p>
+                <p className="text-xs text-[var(--nx-text-muted-updated)]">Error codes, repair guides & tutorials</p>
+              </div>
+              <ChevronRight size={18} className="text-[var(--nx-text-muted-updated)] group-hover:text-[var(--nx-cyan)] transition flex-shrink-0" />
+            </Link>
+          </div>
 
           {homeSettings?.showRecentDiagnostics !== false && (
             <div className="mt-8 flex flex-col gap-3">
