@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Edit, Trash2, Eye, CheckSquare, Square, Plus, Search } from "lucide-react";
+import { Edit, Trash2, Eye, CheckSquare, Square, Plus, Search, BookOpen, AlertTriangle, Video, Wrench, Monitor } from "lucide-react";
 
 type Article = {
   id: string;
@@ -17,11 +15,11 @@ type Article = {
 };
 
 export default function LibraryListPage() {
-  const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -90,6 +88,7 @@ export default function LibraryListPage() {
   };
 
   const filteredArticles = articles.filter((a) => {
+    if (statusFilter !== "all" && a.status !== statusFilter) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -99,21 +98,33 @@ export default function LibraryListPage() {
     );
   });
 
+  const getTypeIcon = (type: string | null | undefined) => {
+    if (!type) return <BookOpen size={16} />;
+    const t = type.toLowerCase();
+    if (t.includes("troubleshoot") || t.includes("error")) return <AlertTriangle size={16} />;
+    if (t.includes("maintenance") || t.includes("repair")) return <Wrench size={16} />;
+    if (t.includes("video")) return <Video size={16} />;
+    if (t.includes("machine")) return <Monitor size={16} />;
+    return <BookOpen size={16} />;
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Library Content List</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <BookOpen className="text-[var(--nx-cyan)]" size={28} /> Library Content List
+          </h1>
           <p className="text-sm text-[var(--nx-text-muted-updated)] mt-1">Manage all knowledge articles.</p>
         </div>
-        <Link href="/admin/content/library" className="px-4 py-2 bg-[var(--nx-accent)] text-black text-sm font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 transition">
-          <Plus size={16} /> Add New Article
+        <Link href="/admin/content/library" className="px-4 py-2.5 bg-[var(--nx-accent)] text-black text-sm font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 transition shadow-lg">
+          <Plus size={18} /> Add New Article
         </Link>
       </div>
 
       {/* Toolbar */}
-      <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-4 flex flex-wrap items-center gap-3">
+      <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-wrap items-center gap-3 shadow-md">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)]" size={16} />
           <input
@@ -121,34 +132,45 @@ export default function LibraryListPage() {
             placeholder="Search by title, slug, or category..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg py-2 pl-9 pr-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+            className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg py-2.5 pl-9 pr-3 text-sm focus:border-[var(--nx-cyan)] outline-none transition"
           />
         </div>
         
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2.5 bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg text-sm focus:border-[var(--nx-cyan)] outline-none"
+        >
+          <option value="all">All Status</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
+
+        <button
+          onClick={toggleSelectAll}
+          className="px-4 py-2.5 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white text-sm font-medium rounded-lg hover:border-[var(--nx-cyan)] transition flex items-center gap-1.5"
+        >
+          {selectedIds.length === filteredArticles.length && filteredArticles.length > 0 ? <CheckSquare size={16} className="text-[var(--nx-cyan)]" /> : <Square size={16} />}
+          Select All
+        </button>
+
         {selectedIds.length > 0 && (
           <button
             onClick={handleBulkDelete}
             disabled={deleting}
-            className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium rounded-lg hover:bg-red-500/20 transition disabled:opacity-50 flex items-center gap-1.5"
+            className="px-4 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-bold rounded-lg hover:bg-red-500/20 transition disabled:opacity-50 flex items-center gap-1.5 animate-pulse"
           >
             <Trash2 size={16} /> Delete Selected ({selectedIds.length})
           </button>
         )}
-        
-        <button
-          onClick={toggleSelectAll}
-          className="px-4 py-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white text-sm font-medium rounded-lg hover:border-[var(--nx-cyan)] transition flex items-center gap-1.5"
-        >
-          {selectedIds.length === filteredArticles.length && filteredArticles.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
-          Select All
-        </button>
       </div>
 
       {message && (
         <p className="text-center text-sm p-3 rounded-lg mb-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)]">{message}</p>
       )}
 
-      {/* List */}
+      {/* List Grid */}
       {loading ? (
         <p className="text-center text-white py-10">Loading...</p>
       ) : filteredArticles.length === 0 ? (
@@ -156,53 +178,62 @@ export default function LibraryListPage() {
           No articles found.
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredArticles.map((a) => (
             <div
               key={a.id}
-              className={`flex items-center gap-3 p-3 bg-[var(--nx-bg-card)] border rounded-xl transition ${
-                selectedIds.includes(a.id) ? "border-[var(--nx-cyan)] bg-[var(--nx-cyan)]/5" : "border-[var(--nx-border-updated)]"
+              className={`flex flex-col bg-[var(--nx-bg-card)] border rounded-xl overflow-hidden transition shadow-sm ${
+                selectedIds.includes(a.id) ? "border-[var(--nx-cyan)] ring-1 ring-[var(--nx-cyan)]" : "border-[var(--nx-border-updated)] hover:border-[var(--nx-cyan)]"
               }`}
             >
-              {/* Checkbox */}
-              <button onClick={() => toggleSelect(a.id)} className="p-1 text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-cyan)]">
-                {selectedIds.includes(a.id) ? <CheckSquare size={20} className="text-[var(--nx-cyan)]" /> : <Square size={20} />}
-              </button>
-
-              {/* Cover */}
-              {a.coverImageUrl ? (
-                <img src={a.coverImageUrl} alt="" className="w-12 h-12 object-cover rounded-lg border border-[var(--nx-border-updated)] flex-shrink-0" />
-              ) : (
-                <div className="w-12 h-12 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] rounded-lg flex-shrink-0" />
-              )}
+              {/* Cover & Checkbox */}
+              <div className="relative h-32 w-full bg-[var(--nx-bg-base-deep)] border-b border-[var(--nx-border-updated)]">
+                {a.coverImageUrl ? (
+                  <img src={a.coverImageUrl.startsWith("http") ? a.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${a.coverImageUrl}`} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center opacity-30">
+                    <BookOpen size={32} className="text-[var(--nx-text-muted-updated)]" />
+                  </div>
+                )}
+                {/* Checkbox Overlay */}
+                <button 
+                  onClick={() => toggleSelect(a.id)} 
+                  className="absolute top-2 left-2 p-1.5 bg-black/60 backdrop-blur-sm rounded-md text-white hover:bg-black/80 transition"
+                >
+                  {selectedIds.includes(a.id) ? <CheckSquare size={18} className="text-[var(--nx-cyan)]" /> : <Square size={18} />}
+                </button>
+                {/* Status Badge */}
+                <span className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-bold border backdrop-blur-md ${
+                  a.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" :
+                  a.status === "draft" ? "text-yellow-400 border-yellow-400/30 bg-yellow-400/10" :
+                  "text-gray-400 border-gray-400/30 bg-gray-400/10"
+                }`}>{a.status}</span>
+              </div>
 
               {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-bold text-white text-sm truncate">{a.title || a.slug}</p>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                    a.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" :
-                    a.status === "draft" ? "text-yellow-400 border-yellow-400/30 bg-yellow-400/10" :
-                    "text-gray-400 border-gray-400/30 bg-gray-400/10"
-                  }`}>{a.status}</span>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 p-1 rounded">
+                    {getTypeIcon(a.type)}
+                  </span>
+                  <span className="text-xs font-semibold text-[var(--nx-cyan)] truncate">{a.category || "Uncategorized"}</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-[var(--nx-text-muted-updated)]">
-                  <span className="text-[var(--nx-cyan)]">{a.category || "Uncategorized"}</span>
-                  <span>•</span>
-                  <span className="truncate">/{a.slug}</span>
-                </div>
+                <h3 className="font-bold text-white text-sm line-clamp-2 leading-snug mb-1">{a.title || a.slug}</h3>
+                <p className="text-[10px] text-[var(--nx-text-muted-updated)] truncate mt-auto pt-2">/{a.slug}</p>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-1 flex-shrink-0">
-                <Link href={`/admin/content/library?id=${a.id}`} className="p-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white rounded-lg hover:border-[var(--nx-cyan)] transition">
-                  <Edit size={16} />
+              <div className="flex border-t border-[var(--nx-border-updated)] bg-[var(--nx-bg-base-deep)]/50">
+                <Link href={`/admin/content/library?id=${a.id}`} className="flex-1 py-2.5 text-center text-white text-xs font-medium hover:bg-[var(--nx-bg-card)] transition flex items-center justify-center gap-1">
+                  <Edit size={14} /> Edit
                 </Link>
-                <Link href={`/library/${a.slug}`} target="_blank" className="p-2 bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white rounded-lg hover:border-[var(--nx-cyan)] transition">
-                  <Eye size={16} />
+                <div className="w-px bg-[var(--nx-border-updated)]" />
+                <Link href={`/library/${a.slug}`} target="_blank" className="flex-1 py-2.5 text-center text-white text-xs font-medium hover:bg-[var(--nx-bg-card)] transition flex items-center justify-center gap-1">
+                  <Eye size={14} /> View
                 </Link>
-                <button onClick={() => handleDeleteSingle(a.id)} className="p-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/20 transition">
-                  <Trash2 size={16} />
+                <div className="w-px bg-[var(--nx-border-updated)]" />
+                <button onClick={() => handleDeleteSingle(a.id)} className="flex-1 py-2.5 text-center text-red-400 text-xs font-medium hover:bg-red-500/10 transition flex items-center justify-center gap-1">
+                  <Trash2 size={14} /> Delete
                 </button>
               </div>
             </div>

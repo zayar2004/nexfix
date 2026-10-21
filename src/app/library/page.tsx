@@ -7,7 +7,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
-import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Bookmark, BookmarkCheck } from "lucide-react";
+import { Search, BookOpen, ChevronRight, Activity, Monitor, AlertTriangle, Wrench, Video, Bookmark, BookmarkCheck, Clock } from "lucide-react";
 
 type Article = {
   id: string;
@@ -34,6 +34,7 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
   useEffect(() => {
     // 1. Local Data (Articles + Machines) ကို ယူမယ်
@@ -212,6 +213,39 @@ export default function LibraryPage() {
                       )}
                     </div>
                     <span className="text-[10px] text-center font-medium text-[var(--nx-text-primary)] line-clamp-2">{m.name}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Section D2: Recently Viewed */}
+        {recentlyViewed.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between px-4 mb-3">
+              <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
+                <Clock size={16} /> Recently Viewed
+              </h3>
+            </div>
+            <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
+              {recentlyViewed.map((r, idx) => (
+                <Link key={idx} href={`/library/${r.slug}`}>
+                  <div className="flex flex-col w-32 gap-2 group">
+                    <div className="w-32 h-20 rounded-lg overflow-hidden bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] relative">
+                      {r.coverImageUrl ? (
+                        <img 
+                          src={r.coverImageUrl.startsWith("http") ? r.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${r.coverImageUrl}`} 
+                          alt={r.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <BookOpen size={20} className="text-[var(--nx-text-muted-updated)] opacity-30" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-[var(--nx-text-primary)] line-clamp-2 leading-tight">{r.title}</span>
                   </div>
                 </Link>
               ))}

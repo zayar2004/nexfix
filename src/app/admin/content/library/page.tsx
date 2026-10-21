@@ -93,6 +93,19 @@ function AdminLibraryContent() {
       .finally(() => setFetchingEdit(false));
   }, [editId]);
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this article? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/library?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Delete failed");
+      setMessage({ text: "✅ Article deleted.", type: "success" });
+      fetchArticles();
+    } catch (err) {
+      setMessage({ text: "❌ " + (err instanceof Error ? err.message : "Error"), type: "error" });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -271,6 +284,9 @@ function AdminLibraryContent() {
               <div className="flex gap-2 mt-3 pt-3 border-t border-[var(--nx-border-updated)]">
                 <Link href={`/admin/content/library?id=${a.id}`} className="flex-1 py-1.5 text-center bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white text-xs rounded hover:border-[var(--nx-cyan)] transition">Edit</Link>
                 <Link href={`/library/${a.slug}`} target="_blank" className="flex-1 py-1.5 text-center bg-[var(--nx-bg-base-deep)] border border-[var(--nx-border-updated)] text-white text-xs rounded hover:border-[var(--nx-cyan)] transition">View</Link>
+                <button onClick={() => handleDelete(a.id)} className="py-1.5 px-2.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded hover:bg-red-500/20 transition flex items-center justify-center">
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           ))}

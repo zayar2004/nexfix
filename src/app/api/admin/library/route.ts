@@ -4,6 +4,7 @@ import { knowledgeArticles, articleContent, mediaVideos, notifications, libraryA
 import { auth } from "@/auth";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
+import { logAdminAction } from "@/lib/audit-log";
 
 const YOUTUBE_REGEX =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)[\w-]{11}([&\?].*)?$/;
@@ -151,10 +152,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const {
-    slug: inputSlug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
-    type, status, category, coverImageUrl, videos, machineId
-  } = result.data;
+  const {slug: inputSlug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
+    type, status, category, coverImageUrl, videos, machineId, galleryImages} = result.data;
 
   // Slug အလိုအလျောက် ဖန်တီးမယ် (Title ကနေ)
   const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -168,6 +167,7 @@ export async function POST(req: Request) {
           slug,
           status: status || "published",
           type: type || "article",
+          galleryImages: galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null,
           category: category || null,
           coverImageUrl: coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null,
         })
@@ -195,6 +195,14 @@ export async function POST(req: Request) {
       }
 
       return article;
+    });
+
+    await logAdminAction({
+      actorId: session.user.id,
+      action: "create",
+      entityType: "library_article",
+      entityId: newArticle.id,
+      details: `Created article: ${titleEn}`,
     });
 
     await db.insert(notifications).values({
@@ -227,10 +235,8 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const {
-    id, slug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
-    type, status, category, coverImageUrl, videos, machineId
-  } = result.data;
+  const {id, slug, titleEn, titleMy, bodyEn, bodyMy, summaryEn, summaryMy,
+    type, status, category, coverImageUrl, videos, machineId, galleryImages} = result.data;
 
   try {
     await db.transaction(async (tx) => {
@@ -239,6 +245,9 @@ export async function PATCH(req: Request) {
       if (type !== undefined) articleUpdate.type = type;
       if (status !== undefined) articleUpdate.status = status;
       if (category !== undefined) articleUpdate.category = category || null;
+      if (galleryImages !== undefined) {
+        articleUpdate.galleryImages = galleryImages && galleryImages.length > 0 ? JSON.stringify(galleryImages) : null;
+      }
       if (coverImageUrl !== undefined) {
         articleUpdate.coverImageUrl = coverImageUrl && coverImageUrl !== "" ? coverImageUrl : null;
       }
@@ -294,6 +303,14 @@ export async function PATCH(req: Request) {
       }
     });
 
+    await logAdminAction({
+      actorId: session.user.id,
+      action: "update",
+      entityType: "library_article",
+      entityId: id,
+      details: `Updated article ID: ${id}`,
+    });
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("PATCH /api/admin/library error:", err);
@@ -318,6 +335,14 @@ export async function DELETE(req: Request) {
       await tx.delete(mediaVideos).where(and(eq(mediaVideos.ownerType, "article"), eq(mediaVideos.ownerId, id)));
       await tx.delete(libraryArticleMachines).where(eq(libraryArticleMachines.articleId, id));
       await tx.delete(knowledgeArticles).where(eq(knowledgeArticles.id, id));
+    });
+
+    await logAdminAction({
+      actorId: session.user.id,
+      action: "delete",
+      entityType: "library_article",
+      entityId: id,
+      details: `Deleted article ID: ${id}`,
     });
 
     return NextResponse.json({ ok: true });
