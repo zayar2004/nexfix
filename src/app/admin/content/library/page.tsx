@@ -17,7 +17,7 @@ type Article = {
 };
 
 const emptyForm = {
-  slug: "", title: "", summary: "", body: "", type: "article", category: "", coverImageUrl: "",
+  slug: "", title: "", summary: "", body: "", type: "article", status: "published", category: "", coverImageUrl: "",
 };
 
 function AdminLibraryContent() {
@@ -66,6 +66,7 @@ function AdminLibraryContent() {
           summary: content.summary || "",
           body: content.body || "",
           type: (article as any).type || "article",
+          status: (article as any).status || "published",
           category: article.category || "",
           coverImageUrl: article.coverImageUrl || "",
         });
@@ -94,6 +95,7 @@ function AdminLibraryContent() {
       const apiPayload = {
         slug: payload.slug,
         type: payload.type,
+        status: payload.status,
         category: payload.category,
         coverImageUrl: payload.coverImageUrl,
         titleEn: payload.title, titleMy: payload.title,
