@@ -88,10 +88,12 @@ export function MediaManager({ ownerType, ownerId }: { ownerType: string; ownerI
           {images.map((img) => (
             <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-[var(--nx-border-updated)]">
               <img src={img.url} alt="Gallery" className="w-full h-full object-cover" />
+              
+              {/* ဖုန်းပေါ်မှာလည်း အမြဲမြင်ရအောင် opacity-100 ထားမယ် */}
               <button 
                 type="button"
                 onClick={() => handleDelete(img.id)} 
-                className="absolute top-1 right-1 p-1.5 bg-black/60 text-red-400 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-1 right-1 p-1.5 bg-black/70 text-red-400 rounded-md hover:bg-red-500/20 transition-colors"
               >
                 <Trash2 size={14} />
               </button>
