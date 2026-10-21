@@ -444,8 +444,20 @@ export default function LibraryPage() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-[var(--nx-cyan)] border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-3 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl animate-pulse">
+                  <div className="w-24 h-24 rounded-lg bg-[var(--nx-bg-base-deep)]"></div>
+                  <div className="flex-1 flex flex-col justify-between py-1">
+                    <div>
+                      <div className="h-3 w-16 bg-[var(--nx-bg-base-deep)] rounded mb-2"></div>
+                      <div className="h-4 w-full bg-[var(--nx-bg-base-deep)] rounded mb-1"></div>
+                      <div className="h-4 w-3/4 bg-[var(--nx-bg-base-deep)] rounded"></div>
+                    </div>
+                    <div className="h-3 w-1/2 bg-[var(--nx-bg-base-deep)] rounded"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredArticles.length === 0 ? (
             <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)] text-sm">
