@@ -146,7 +146,15 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
       <main className="max-w-3xl mx-auto p-4 py-6">
         {article.coverImageUrl && <img src={article.coverImageUrl.startsWith("http") ? article.coverImageUrl : `${process.env.NEXT_PUBLIC_S3_URL}/${article.coverImageUrl}`} alt={article.title} className="w-full aspect-video object-cover rounded-xl mb-4 border border-[var(--nx-border-updated)]" />}
         {article.category && <span className="inline-block px-3 py-1 text-xs font-bold bg-[#176BFF] text-white rounded-full mb-3">{article.category}</span>}
-        <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-4">{article.title}</h1>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h1 className="text-2xl font-bold text-[var(--nx-text-primary)]">{article.title}</h1>
+          <button 
+            onClick={() => setShowReport(true)}
+            className="mt-1 flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-[10px] font-bold text-[var(--nx-text-muted-updated)] hover:text-red-400 hover:border-red-400/50 transition"
+          >
+            <AlertCircle size={14} /> {t("reportIncorrect")}
+          </button>
+        </div>
         {article.summary && <p className="text-[var(--nx-text-secondary-updated)] mb-4 border-l-2 border-[#20E3FF] pl-3 italic">{article.summary}</p>}
         <div className="prose prose-invert max-w-none text-[var(--nx-text-secondary-updated)]" dangerouslySetInnerHTML={{ __html: article.body }} />
         {/* Gallery Images */}
@@ -205,28 +213,28 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
               {reportSubmitted ? (
                 <div className="text-center py-8">
                   <CheckCircle size={40} className="text-green-400 mx-auto mb-3" />
-                  <p className="text-white font-bold">Thank you!</p>
-                  <p className="text-sm text-[var(--nx-text-muted-updated)]">Your report has been submitted.</p>
+                  <p className="text-white font-bold">t("thankYou")</p>
+                  <p className="text-sm text-[var(--nx-text-muted-updated)]">t("reportSubmitted")</p>
                 </div>
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-white mb-4">Report Article</h3>
+                  <h3 className="text-lg font-bold text-white mb-4">t("reportArticle")</h3>
                   <div className="flex flex-col gap-3">
                     <select 
                       value={reportReason}
                       onChange={(e) => setReportReason(e.target.value)}
                       className="w-full bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
                     >
-                      <option value="">Select a reason...</option>
-                      <option value="wrong_info">Incorrect troubleshooting information</option>
-                      <option value="wrong_code">Wrong Error Code</option>
-                      <option value="broken_media">Broken image/video</option>
-                      <option value="outdated">Outdated manual</option>
-                      <option value="safety">Safety concern</option>
-                      <option value="other">Other issue</option>
+                      <option value="">t("selectReason")</option>
+                      <option value="wrong_info">t("wrongInfo")</option>
+                      <option value="wrong_code">t("wrongCode")</option>
+                      <option value="broken_media">t("brokenMedia")</option>
+                      <option value="outdated">t("outdated")</option>
+                      <option value="safety">t("safetyConcern")</option>
+                      <option value="other">t("otherIssue")</option>
                     </select>
                     <textarea 
-                      placeholder="Optional description..."
+                      placeholder={t("optionalDesc")}
                       value={reportDesc}
                       onChange={(e) => setReportDesc(e.target.value)}
                       rows={3}
