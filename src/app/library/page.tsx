@@ -42,6 +42,7 @@ export default function LibraryPage() {
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [heroImages, setHeroImages] = useState<string[]>([]);
+  const [pageConfig, setPageConfig] = useState<any>(null);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
@@ -83,6 +84,14 @@ export default function LibraryPage() {
       const stored = localStorage.getItem("nexfix-recent-articles");
       if (stored) setRecentlyViewed(JSON.parse(stored));
     } catch (e) {}
+
+    // Library Page Config ကို ယူမယ်
+    fetch("/api/admin/library-config?locale=en")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data) setPageConfig(data.data);
+      })
+      .catch(() => {});
 
     fetch("/api/bookmarks")
       .then((res) => res.json())
@@ -196,9 +205,9 @@ export default function LibraryPage() {
         {/* Section A: Header */}
         <div className="px-4 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-1 flex items-center gap-2">
-            <Library className="text-[var(--nx-cyan)]" size={28} /> Knowledge Library
+            <Library className="text-[var(--nx-cyan)]" size={28} /> {pageConfig?.pageTitle || "Knowledge Library"}
           </h1>
-          <p className="text-sm text-[var(--nx-text-muted-updated)]">Find solutions. Keep machines running.</p>
+          <p className="text-sm text-[var(--nx-text-muted-updated)]">{pageConfig?.pageSubtitle || "Find solutions. Keep machines running."}</p>
         </div>
 
                 {/* Section B: Featured Banner (Carousel) */}
@@ -258,18 +267,17 @@ export default function LibraryPage() {
               <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/30 backdrop-blur-sm">
                 <BookOpen size={10} /> TECHNICAL KNOWLEDGE
               </span>
-              <h2 className="text-xl font-extrabold text-white leading-tight mt-2 drop-shadow-lg">
-                Find Solutions.<br/>
-                <span className="text-[var(--nx-cyan)]">Keep Machines Running.</span>
+              <h2 className="text-xl font-extrabold text-white leading-tight mt-2 drop-shadow-lg whitespace-pre-line">
+                {pageConfig?.heroTitle || "Find Solutions. Keep Machines Running."}
               </h2>
               <p className="text-xs text-gray-300 leading-relaxed max-w-[85%] mt-1 drop-shadow">
-                Explore error codes, repair guides, machine manuals, and video tutorials.
+                {pageConfig?.heroDescription || "Explore error codes, repair guides, machine manuals, and video tutorials."}
               </p>
               <button 
                 onClick={() => document.getElementById('article-list')?.scrollIntoView({ behavior: 'smooth' })}
                 className="mt-2 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/30"
               >
-                Explore Library <ChevronRight size={14} />
+                {pageConfig?.heroCtaText || "Explore Library"} <ChevronRight size={14} />
               </button>
             </div>
           </div>
@@ -281,7 +289,7 @@ export default function LibraryPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)] group-focus-within:text-[var(--nx-cyan)] transition-colors" size={20} />
             <input
               type="text"
-              placeholder="Search machines, error codes, solutions..."
+              placeholder={pageConfig?.searchPlaceholder || "Search machines, error codes, solutions..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl py-3.5 pl-12 pr-20 text-sm text-[var(--nx-text-primary)] focus:border-[var(--nx-cyan)] focus:ring-1 focus:ring-[var(--nx-cyan)] outline-none transition-all"
@@ -298,7 +306,7 @@ export default function LibraryPage() {
         {/* Section D: Category Cards (Grid) */}
         <div className="px-4 mb-6">
           <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide mb-3 flex items-center gap-2">
-            <Activity size={14} /> Browse Categories
+            <Activity size={14} /> {pageConfig?.categoriesTitle || "Browse Categories"}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {categories.length > 0 ? categories.map((cat) => {
@@ -337,7 +345,7 @@ export default function LibraryPage() {
         {machines.length > 0 && (
           <div className="px-4 mb-6">
             <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide mb-3 flex items-center gap-2">
-              <Monitor size={14} /> Filter by Machine
+              <Monitor size={14} /> {pageConfig?.machineFilterTitle || "Filter by Machine"}
             </h3>
             <select
               value={selectedMachine}
@@ -360,7 +368,7 @@ export default function LibraryPage() {
           <div className="mb-6">
             <div className="flex items-center justify-between px-4 mb-3">
               <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
-                <Clock size={14} /> Recently Viewed
+                <Clock size={14} /> {pageConfig?.recentlyViewedTitle || "Recently Viewed"}
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
@@ -393,7 +401,7 @@ export default function LibraryPage() {
           <div className="flex items-center justify-between mb-3 mt-2">
             <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
               <Flame size={14} className="text-orange-400" /> 
-              {searchQuery || selectedCategory !== "all" || selectedMachine !== "all" ? "Filtered Results" : "Popular Resources"}
+              {searchQuery || selectedCategory !== "all" || selectedMachine !== "all" ? "Filtered Results" : (pageConfig?.popularTitle || "Popular Resources")}
             </h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-[var(--nx-text-muted-updated)]">

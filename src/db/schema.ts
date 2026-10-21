@@ -282,3 +282,24 @@ export const libraryViewHistory = pgTable("library_view_history", {
   userArticleUnique: unique("view_history_user_article_unique").on(table.userId, table.articleId),
   userViewedIdx: index("view_history_user_viewed_idx").on(table.userId, table.viewedAt),
 }));
+
+// 19. Library Page Config Table
+export const libraryPageConfig = pgTable("library_page_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  locale: varchar("locale", { length: 5 }).notNull(),
+  pageTitle: text("page_title").notNull().default("Knowledge Library"),
+  pageSubtitle: text("page_subtitle").notNull().default("Find solutions. Keep machines running."),
+  heroLabel: text("hero_label").notNull().default("TECHNICAL KNOWLEDGE"),
+  heroTitle: text("hero_title").notNull().default("Find Solutions. Keep Machines Running."),
+  heroDescription: text("hero_description").notNull().default("Explore error codes, repair guides, machine manuals, and video tutorials."),
+  heroCtaText: text("hero_cta_text").notNull().default("Explore Library"),
+  searchPlaceholder: text("search_placeholder").notNull().default("Search machines, error codes, solutions..."),
+  categoriesTitle: text("categories_title").notNull().default("Browse Categories"),
+  machineFilterTitle: text("machine_filter_title").notNull().default("Filter by Machine"),
+  recentlyViewedTitle: text("recently_viewed_title").notNull().default("Recently Viewed"),
+  popularTitle: text("popular_title").notNull().default("Popular Resources"),
+  isPublished: boolean("is_published").default(true).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  localeUnique: unique("library_page_config_locale_unique").on(table.locale),
+}));
