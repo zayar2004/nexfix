@@ -1,4 +1,7 @@
-"use client";
+"use c
+          <Link href="/admin/content/library/editor" className="px-4 py-2 bg-[var(--nx-cyan)] text-black text-sm font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 transition">
+            📚 Library Editor
+          </Link>lient";
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
