@@ -325,6 +325,15 @@ export const translations = {
     "connectionError": "ချိတ်ဆက်မှု အမှား",
     "chatRequiresInternet": "စကားပြောရန် အင်တာနက် လိုအပ်ပါသည်။",
     "retry": "ပြန်ကြိုးစားမယ်",
+    "technicalKnowledge": "နည်းပညာ ဗဟုသုတ",
+    "exploreLibraryDesc": "အမှားကုဒ်များ၊ ပြုပြင်ရေးလမ်းညွှန်များ၊ စက်လက်စွဲများနှင့် ဗီဒီယိုသင်ခန်းစာများကို လေ့လာပါ။",
+    "exploreLibrary": "စာကြည့်တိုက်သို့ သွားမည်",
+    "searchPlaceholder": "စက်များ၊ အမှားကုဒ်များ၊ ဖြေရှင်းနည်းများ ရှာပါ...",
+    "browseByMachine": "စက်အလိုက် ကြည့်ရန်",
+    "recentlyViewed": "မကြာသေးမီက ကြည့်ခဲ့သည်",
+    "latestArticles": "နောက်ဆုံး ဆောင်းပါးများ",
+    "noArticlesFound": "ဆောင်းပါး မရှိပါ။ ဒေတာ Sync လုပ်ပါ။",
+    "noSearchResults": "ဤရှာဖွေမှု/အမျိုးအစားအတွက် ဆောင်းပါး မတွေ့ပါ။",
   },
 };
 

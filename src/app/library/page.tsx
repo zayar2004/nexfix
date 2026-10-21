@@ -150,7 +150,7 @@ export default function LibraryPage() {
         {/* Section A: Header */}
         <div className="px-4 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-[var(--nx-text-primary)] mb-1 flex items-center gap-2">
-            <BookOpen className="text-[var(--nx-cyan)]" size={24} /> Knowledge Library
+            <BookOpen className="text-[var(--nx-cyan)]" size={24} /> {t("knowledgeLibrary")}
           </h1>
           <p className="text-sm text-[var(--nx-text-muted-updated)]">Find solutions. Keep machines running.</p>
         </div>
@@ -164,10 +164,10 @@ export default function LibraryPage() {
                 TECHNICAL KNOWLEDGE
               </span>
               <h2 className="text-xl font-extrabold text-[var(--nx-text-primary)] leading-tight">
-                Find Solutions.<br/>Keep Machines Running.
+                {t("findSolutionsLong")}
               </h2>
               <p className="text-xs text-[var(--nx-text-muted-updated)] leading-relaxed max-w-[85%]">
-                Explore error codes, repair guides, machine manuals, and video tutorials.
+                {t("exploreLibraryDesc")}
               </p>
               <button 
                 onClick={() => document.getElementById('article-list')?.scrollIntoView({ behavior: 'smooth' })}
@@ -185,7 +185,7 @@ export default function LibraryPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)] group-focus-within:text-[var(--nx-cyan)] transition-colors" size={18} />
             <input
               type="text"
-              placeholder="Search machines, error codes, solutions..."
+              placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl py-3 pl-10 pr-4 text-sm text-[var(--nx-text-primary)] focus:border-[var(--nx-cyan)] focus:ring-1 focus:ring-[var(--nx-cyan)] outline-none transition-all"
@@ -198,7 +198,7 @@ export default function LibraryPage() {
           <div className="mb-6">
             <div className="flex items-center justify-between px-4 mb-3">
               <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
-                <Monitor size={16} /> Browse by Machine
+                <Monitor size={16} /> {t("browseByMachine")}
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
@@ -225,7 +225,7 @@ export default function LibraryPage() {
           <div className="mb-6">
             <div className="flex items-center justify-between px-4 mb-3">
               <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide flex items-center gap-2">
-                <Clock size={16} /> Recently Viewed
+                <Clock size={16} /> {t("recentlyViewed")}
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
@@ -289,7 +289,7 @@ export default function LibraryPage() {
         <div className="px-4" id="article-list">
           <div className="flex items-center justify-between mb-3 mt-2">
             <h3 className="text-sm font-bold text-[var(--nx-text-primary)] uppercase tracking-wide">
-              {searchQuery ? "Search Results" : "Latest Articles"}
+              {searchQuery ? t("searchResults") : t("latestArticles")}
             </h3>
             <span className="text-xs text-[var(--nx-text-muted-updated)] flex items-center gap-1">
               <Activity size={12} /> {filteredArticles.length} items
@@ -303,8 +303,8 @@ export default function LibraryPage() {
           ) : filteredArticles.length === 0 ? (
             <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)] text-sm">
               {articles.length === 0 
-                ? "No articles available. Please sync data first." 
-                : "No articles found for this search/category."}
+                ? t("noArticlesFound") 
+                : t("noSearchResults")}
             </div>
           ) : (
             <>
