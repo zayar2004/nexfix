@@ -304,3 +304,26 @@ export const libraryPageConfig = pgTable("library_page_config", {
 }, (table) => ({
   localeUnique: unique("library_page_config_locale_unique").on(table.locale),
 }));
+
+// 20. Library Categories Table
+export const libraryCategories = pgTable("library_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  slug: varchar("slug", { length: 100 }).unique().notNull(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }).default("book"),
+  sortOrder: varchar("sort_order", { length: 10 }).default("0"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// 21. Article Versions Table
+export const articleVersions = pgTable("article_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id").references(() => knowledgeArticles.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  savedAt: timestamp("saved_at").defaultNow().notNull(),
+}, (table) => ({
+  articleIdx: index("article_version_article_idx").on(table.articleId),
+}));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { knowledgeArticles, articleContent, mediaVideos, notifications, libraryArticleMachines } from "@/db/schema";
+import { knowledgeArticles, articleContent, mediaVideos, notifications, libraryArticleMachines, articleVersions } from "@/db/schema";
 import { auth } from "@/auth";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
@@ -244,6 +244,18 @@ export async function PATCH(req: Request) {
   try {
     await db.transaction(async (tx) => {
       const articleUpdate: Record<string, unknown> = { updatedAt: new Date() };
+      // Version သိမ်းမယ် (အဟောင်း content ကို)
+      if (titleEn !== undefined || bodyEn !== undefined) {
+        const [oldContent] = await tx.select().from(articleContent).where(and(eq(articleContent.articleId, id), eq(articleContent.locale, "en"))).limit(1);
+        if (oldContent) {
+          await tx.insert(articleVersions).values({
+            articleId: id,
+            title: oldContent.title,
+            body: oldContent.body,
+          });
+        }
+      }
+
       if (slug !== undefined) articleUpdate.slug = slug;
       if (type !== undefined) articleUpdate.type = type;
       if (status !== undefined) articleUpdate.status = status;

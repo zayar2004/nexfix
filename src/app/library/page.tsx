@@ -81,10 +81,15 @@ export default function LibraryPage() {
       setLoading(false);
     });
 
-    try {
-      const stored = localStorage.getItem("nexfix-recent-articles");
-      if (stored) setRecentlyViewed(JSON.parse(stored));
-    } catch (e) {}
+    // Database ကနေ Recently Viewed ကို ယူမယ်
+    fetch("/api/view-history")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data) {
+          setRecentlyViewed(data.data);
+        }
+      })
+      .catch(() => {});
 
     // Library Page Config ကို ယူမယ်
     fetch("/api/admin/library-config?locale=en")

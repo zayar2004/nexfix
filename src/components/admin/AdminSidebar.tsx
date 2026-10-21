@@ -35,6 +35,7 @@ const sections = [
       { label: "Knowledge Library", href: "/admin/content/library", icon: "book" },
       { label: "Library List", href: "/admin/content/library/list", icon: "list" },
       { label: "Content Reports", href: "/admin/content/reports", icon: "shield" },
+      { label: "Categories", href: "/admin/content/categories", icon: "list" },
       { label: "Media Library", href: "/admin/media", icon: "image" },
     ]
   },
