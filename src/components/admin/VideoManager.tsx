@@ -28,8 +28,8 @@ export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "art
 
   useEffect(() => { fetchVideos(); }, [fetchVideos]);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAdd = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault(); // Page မလန်းအောင် တား
     setMessage("");
     try {
       const res = await fetch("/api/admin/videos", {
@@ -40,7 +40,7 @@ export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "art
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setForm({ youtubeUrl: "", title: "" });
-      setShowForm(false); // Form ကို � pow ပြန်ပိတ်မယ်
+      setShowForm(false);
       fetchVideos();
     } catch (err) {
       setMessage("❌ " + (err instanceof Error ? err.message : "Error"));
@@ -67,7 +67,7 @@ export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "art
                 <Video size={16} className="text-[var(--nx-cyan)] flex-shrink-0" />
                 <span className="text-sm text-white truncate">{v.title || v.youtubeUrl}</span>
               </div>
-              <button onClick={() => handleDelete(v.id)} className="p-1 text-red-400 hover:text-red-300 transition-colors flex-shrink-0">
+              <button type="button" onClick={() => handleDelete(v.id)} className="p-1 text-red-400 hover:text-red-300 transition-colors flex-shrink-0">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -101,7 +101,12 @@ export function VideoManager({ ownerType, ownerId }: { ownerType: "error" | "art
             className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-2 text-sm focus:border-[var(--nx-cyan)] outline-none"
           />
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 py-2 bg-[var(--nx-cyan)] text-black text-sm font-bold rounded-lg hover:opacity-90 transition">
+            {/* ဒီ Button ကို type="button" ပြောင်းပြီး နှိပ်ရင် handleAdd ကို ခေါ်မယ် */}
+            <button 
+              type="button" 
+              onClick={() => handleAdd()} 
+              className="flex-1 py-2 bg-[var(--nx-cyan)] text-black text-sm font-bold rounded-lg hover:opacity-90 transition"
+            >
               Save Video
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-[var(--nx-bg-card)] text-white text-sm border border-[var(--nx-border-updated)] rounded-lg hover:border-red-500/50 transition">
