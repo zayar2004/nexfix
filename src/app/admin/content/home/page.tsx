@@ -1,7 +1,4 @@
-"use c
-          <Link href="/admin/content/library/editor" className="px-4 py-2 bg-[var(--nx-cyan)] text-black text-sm font-bold rounded-lg flex items-center gap-1.5 hover:opacity-90 transition">
-            📚 Library Editor
-          </Link>lient";
+"use client";
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
@@ -202,6 +199,12 @@ export default function HomeConfigPage() {
             className="px-4 py-2 bg-[var(--nx-bg-surface-deep)] border border-[var(--nx-border-updated)] text-white font-semibold rounded-lg hover:bg-[var(--nx-border-updated)] transition flex items-center gap-2 text-sm"
           >
             👁️ View User Home Page
+          </a>
+          <a
+            href="/admin/content/library/editor"
+            className="px-4 py-2 bg-[var(--nx-cyan)] text-black text-sm font-bold rounded-lg hover:opacity-90 transition flex items-center gap-2"
+          >
+            📚 Library Editor
           </a>
           <div className="w-px h-6 bg-[var(--nx-border-updated)] mx-1"></div>
           <button onClick={() => setLocale("en")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${locale === "en" ? "bg-[var(--nx-accent)] text-black" : "bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)]"}`}>English</button>
