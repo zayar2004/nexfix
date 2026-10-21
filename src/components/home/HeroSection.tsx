@@ -47,16 +47,28 @@ function getVerticalPos(pos?: string) {
   }
 }
 
+
+const DEFAULT_HERO: Exclude<HeroData, null> = {
+  heading: "Find Solutions.\nKeep Machines Running.",
+  description: "Explore error codes, repair guides, machine manuals, and video tutorials.",
+  imageUrl: "",
+  imageUrls: [],
+  config: {},
+  showArcadeLabel: true,
+  showHeroText: true,
+};
+
 export function HeroSection({ data }: { data: HeroData }) {
+  const heroData = data || DEFAULT_HERO;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const images = data?.imageUrls && data.imageUrls.length > 0
-    ? data.imageUrls
-    : data?.imageUrl
-      ? [data.imageUrl]
+  const images = heroData?.imageUrls && heroData.imageUrls.length > 0
+    ? heroData.imageUrls
+    : heroData?.imageUrl
+      ? [heroData.imageUrl]
       : [];
 
   useEffect(() => {
@@ -64,14 +76,14 @@ export function HeroSection({ data }: { data: HeroData }) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (!data || images.length <= 1) return;
+    if (!heroData || images.length <= 1) return;
     intervalRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }, 10000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [data, images.length]);
+  }, [heroData, images.length]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -108,17 +120,17 @@ export function HeroSection({ data }: { data: HeroData }) {
     );
   }
 
-  const config = data.config || {};
+  const config = heroData.config || {};
   const fontClass = getFontSize(config.fontSize);
   const alignClass = getAlignment(config.alignment || config.align);
   const vPosClass = getVerticalPos(config.position || config.verticalPos);
   const textColor = config.textColor || "#FFFFFF";
 
-  const hasHeading = data.heading && data.heading.trim() !== "";
-  const hasDescription = data.description && data.description.trim() !== "";
-  const showArcadeLabel = data.showArcadeLabel !== false;
+  const hasHeading = heroData.heading && heroData.heading.trim() !== "";
+  const hasDescription = heroData.description && heroData.description.trim() !== "";
+  const showArcadeLabel = heroData.showArcadeLabel !== false;
   // ✅ Master toggle for all hero text
-  const showHeroText = data.showHeroText !== false;
+  const showHeroText = heroData.showHeroText !== false;
 
   return (
     <div
@@ -152,12 +164,12 @@ export function HeroSection({ data }: { data: HeroData }) {
             )}
             {hasHeading && (
               <h1 className={`font-black leading-tight mb-3 whitespace-pre-line ${fontClass}`} style={{ color: textColor }}>
-                {data.heading}
+                {heroData.heading}
               </h1>
             )}
             {hasDescription && (
               <p className="text-sm md:text-base mb-6 max-w-md" style={{ color: textColor, opacity: 0.8 }}>
-                {data.description}
+                {heroData.description}
               </p>
             )}
           </div>
