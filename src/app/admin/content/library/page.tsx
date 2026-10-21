@@ -16,8 +16,13 @@ type Article = {
   coverImageUrl?: string | null;
 };
 
+type Machine = {
+  id: string;
+  name: string;
+};
+
 const emptyForm = {
-  title: "", summary: "", body: "", type: "article", status: "published", category: "", coverImageUrl: "", machineId: "",
+  title: "", body: "", type: "article", status: "published", category: "", coverImageUrl: "", machineId: "",
 };
 
 function AdminLibraryContent() {
@@ -26,7 +31,7 @@ function AdminLibraryContent() {
   const editId = searchParams.get("id");
 
   const [articles, setArticles] = useState<Article[]>([]);
-  const [machines, setMachines] = useState<any[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingEdit, setFetchingEdit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -46,12 +51,19 @@ function AdminLibraryContent() {
     }
   };
 
-  useEffect(() => { fetchArticles(); }, []);
-
-  useEffect(() => {
-    fetch("/api/admin/machines").then(r => r.json()).then(data => {
+  const fetchMachines = async () => {
+    try {
+      const res = await fetch("/api/admin/machines");
+      const data = await res.json();
       if (data.ok) setMachines(data.data);
-    }).catch(console.error);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => { 
+    fetchArticles(); 
+    fetchMachines();
   }, []);
 
   useEffect(() => {
@@ -65,11 +77,9 @@ function AdminLibraryContent() {
       .then((data) => {
         if (!data.ok) throw new Error(data.error);
         const { article, contents } = data.data;
-        // Content ရှိရင် ပထမဆုံးတစ်ခုကို ယူမယ် (en/my မခွဲဘူး)
         const content = contents[0] || {};
         setForm({
           title: content.title || "",
-          summary: content.summary || "",
           body: content.body || "",
           type: (article as any).type || "article",
           status: (article as any).status || "published",
@@ -92,13 +102,11 @@ function AdminLibraryContent() {
       const payload: any = { ...form };
       if (editId) payload.id = editId;
 
-      // ရိုးရိုးစာသားကို HTML <p> အနေနဲ့ အလိုအလျောက် ပြောင်းပေးမယ်
       let formattedBody = payload.body;
       if (formattedBody && !formattedBody.includes("<")) {
         formattedBody = `<p>${formattedBody.replace(/\n/g, "</p><p>")}</p>`;
       }
 
-      // API ကို နှစ်ဘာသာလုံး အတူတူ ပို့ပေးလိုက်မယ်
       const apiPayload = {
         type: payload.type,
         status: payload.status,
@@ -106,7 +114,6 @@ function AdminLibraryContent() {
         category: payload.category,
         coverImageUrl: payload.coverImageUrl,
         titleEn: payload.title, titleMy: payload.title,
-        summaryEn: payload.summary, summaryMy: payload.summary,
         bodyEn: formattedBody, bodyMy: formattedBody,
         ...(editId ? { id: editId } : {})
       };
@@ -120,9 +127,15 @@ function AdminLibraryContent() {
       if (!data.ok) throw new Error(data.error || "Failed");
       
       setMessage({ text: editId ? "✅ Article updated!" : "✅ Article created!", type: "success" });
+      
       if (!editId) {
-        setForm({ ...emptyForm });
-        fetchArticles();
+        const newId = data.data?.id;
+        if (newId) {
+          router.push(`/admin/content/library?id=${newId}`);
+        } else {
+          setForm({ ...emptyForm });
+          fetchArticles();
+        }
       } else {
         router.push("/admin/content/library");
       }
@@ -137,8 +150,8 @@ function AdminLibraryContent() {
     <div className="max-w-5xl mx-auto">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-white">{editId ? "Edit Article" : "New Article"}</h1>
-        <Link href="/library" target="_blank" className="px-4 py-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] text-white text-sm rounded-lg">
-          <ExternalLink size={16} className="inline mr-1" /> View User Library
+        <Link href="/library" target="_blank" className="px-4 py-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] text-white text-sm rounded-lg flex items-center gap-1.5">
+          <ExternalLink size={16} /> View User Library
         </Link>
       </div>
 
@@ -147,24 +160,80 @@ function AdminLibraryContent() {
           <p className="text-center text-white py-6">Loading...</p>
         ) : (
           <>
+            <input type="text" placeholder="Title (English သို့မဟုတ် မြန်မာ ရိုက်ပါ)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Slug (URL name)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
-              <input type="text" placeholder="Category (Optional)" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" />
+              <select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
+              >
+                <option value="article">Article / Guide</option>
+                <option value="troubleshooting">Troubleshooting</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="video">Video Tutorial</option>
+                <option value="manual">PDF Manual</option>
+                <option value="safety">Safety Notice</option>
+              </select>
+
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
+              >
+                <option value="published">Published (အားလုံးမြင်နိုင်)</option>
+                <option value="draft">Draft (မပေါ်သေးပါ)</option>
+                <option value="archived">Archived (ဖျောက်ထားမည်)</option>
+              </select>
             </div>
 
-            <input type="text" placeholder="Title (English သို့မဟုတ် မြန်မာ ရိုက်ပါ)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
-            <textarea placeholder="Short Summary (Optional)" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={2} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <select
+                value={form.machineId}
+                onChange={(e) => setForm({ ...form, machineId: e.target.value })}
+                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
+              >
+                <option value="">-- No Machine --</option>
+                {machines.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+
+              <input
+                type="text"
+                placeholder="Category (Optional)"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3"
+              />
+            </div>
+
             <textarea placeholder="Main Body (ရိုးရိုးစာသား ရိုက်ပါ)" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={8} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" required />
+            
             <input type="url" placeholder="Cover Image URL (Optional)" value={form.coverImageUrl} onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3" />
 
-            {editId ? (
-              <div className="border-t border-[var(--nx-border-updated)] pt-4 mt-2 flex flex-col gap-4">
-                <div><h3 className="text-sm font-bold text-white mb-2">Images</h3><MediaManager ownerType="article" ownerId={editId} /></div>
-                <div><h3 className="text-sm font-bold text-white mb-2">Videos</h3><VideoManager ownerType="article" ownerId={editId} /></div>
+            <div className="border-t border-[var(--nx-border-updated)] pt-4 mt-2 flex flex-col gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-white mb-2">Images</h3>
+                {editId ? (
+                  <MediaManager ownerType="article" ownerId={editId} />
+                ) : (
+                  <p className="text-xs text-[var(--nx-text-muted-updated)] italic bg-[var(--nx-bg-base-deep)] p-3 rounded-lg border border-[var(--nx-border-updated)]">
+                    💡 Article ကို Save လုပ်ပြီးတာနဲ့ ဒီနေရာမှာ ပုံတွေ ထည့်နိုင်ပါပြီ။
+                  </p>
+                )}
               </div>
-            ) : (
-              <p className="text-xs text-[var(--nx-text-muted-updated)] italic border-t border-[var(--nx-border-updated)] pt-3">💡 Save လုပ်ပြီးမှ ပုံ/ဗီဒီယို ထည့်နိုင်ပါမည်။</p>
-            )}
+              <div>
+                <h3 className="text-sm font-bold text-white mb-2">Videos</h3>
+                {editId ? (
+                  <VideoManager ownerType="article" ownerId={editId} />
+                ) : (
+                  <p className="text-xs text-[var(--nx-text-muted-updated)] italic bg-[var(--nx-bg-base-deep)] p-3 rounded-lg border border-[var(--nx-border-updated)]">
+                    💡 Article ကို Save လုပ်ပြီးတာနဲ့ ဒီနေရာမှာ ဗီဒီယိုတွေ ထည့်နိုင်ပါပြီ။
+                  </p>
+                )}
+              </div>
+            </div>
 
             <div className="flex flex-wrap gap-3 pt-2">
               <button type="submit" disabled={submitting} className="flex-1 py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg disabled:opacity-50">
