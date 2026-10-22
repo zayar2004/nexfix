@@ -56,7 +56,22 @@ export default function HomePage() {
   const [stats, setStats] = useState<{ totalErrors: number; totalMachines: number; totalArticles: number }>({ totalErrors: 0, totalMachines: 0, totalArticles: 0 });
 
   // ၃ စက္ကန့်နောက် Hero Loading ကို အတင်းပိတ်မယ် (Data မရရင်)
+  
+
+  // Page ဝင်တာနဲ့ Auto Sync လုပ်မယ်
   useEffect(() => {
+    const autoSync = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const res = await fetch("/api/sync");
+        const data = await res.json();
+        if (data.ok) {
+          await saveLocalData(data.data);
+          window.location.reload();
+        }
+      } catch (e) {}
+    };
+    autoSync();
   }, []);
 
   useEffect(() => {
