@@ -8,7 +8,7 @@ export function UserBackButton() {
   const router = useRouter();
 
   // Don't show back button on main pages
-  const hiddenPaths = ["/", "/login", "/register", "/lab"];
+  const hiddenPaths = ["/", "/login", "/register"];
   if (hiddenPaths.includes(pathname)) return null;
 
   return (
