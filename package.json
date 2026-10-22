@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.8",
     "drizzle-orm": "^0.45.4",
