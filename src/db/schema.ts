@@ -180,9 +180,20 @@ export const notes = pgTable("notes", {
   reminderAt: timestamp("reminder_at"),
   recurrence: varchar("recurrence", { length: 20 }),
   isCompleted: boolean("is_completed").default(false).notNull(),
+  // NEW FIELDS FOR REMINDER SYSTEM
+  priority: varchar("priority", { length: 20 }).default("normal").notNull(),
+  reminderEnabled: boolean("reminder_enabled").default(true).notNull(),
+  reminderIntervalMinutes: varchar("reminder_interval_minutes", { length: 10 }).default("15").notNull(),
+  reminderStatus: varchar("reminder_status", { length: 20 }).default("pending").notNull(),
+  nextReminderAt: timestamp("next_reminder_at"),
+  timezone: varchar("timezone", { length: 50 }).default("Asia/Yangon").notNull(),
+  completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdx: index("notes_user_idx").on(table.userId),
+  reminderIdx: index("notes_reminder_idx").on(table.reminderStatus, table.nextReminderAt),
+}));
 
 // 14. Chat Messages Table
 export const chatMessages = pgTable("chat_messages", {
