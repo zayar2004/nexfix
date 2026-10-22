@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { getLocalData } from "@/lib/local-db";
+import { getLocalData, saveLocalData } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
 import { 
   Search, BookOpen, ChevronRight, Monitor, AlertTriangle, Wrench, 
@@ -46,6 +46,53 @@ export default function LibraryPage() {
   const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  // Page ဝင်တာနဲ့ Auto Sync လုပ်မယ် (Reload မလုပ်ဘူး)
+  useEffect(() => {
+    const autoSync = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const res = await fetch("/api/sync");
+        const data = await res.json();
+        if (data.ok) {
+          await saveLocalData(data.data);
+          // Sync ပြီးရင် Data ကို ချက်ချင်း ပြန်ဖတ်မယ်
+          const localData = await getLocalData();
+          if (localData) {
+            // Articles တွေ ပြန် set လုပ်မယ်
+            if (localData.articles && localData.articleContents) {
+              const contents = localData.articleContents as Record<string, unknown>[];
+              const items = (localData.articles as Record<string, unknown>[]).map((a) => {
+                const content = contents.find((c) => c.articleId === a.id && c.locale === "my")
+                  || contents.find((c) => c.articleId === a.id);
+                return {
+                  id: String(a.id),
+                  slug: String(a.slug),
+                  title: content ? String(content.title) : String(a.slug),
+                  summary: content?.summary ? String(content.summary) : null,
+                  category: a.category ? String(a.category) : null,
+                  coverImageUrl: a.coverImageUrl ? String(a.coverImageUrl) : null,
+                  machineId: a.machineId ? String(a.machineId) : null,
+                };
+              });
+              setArticles(items);
+            }
+            // Machines ပြန် set လုပ်မယ်
+            if (localData.machines) {
+              const machs = (localData.machines as Record<string, unknown>[]).map((m) => ({
+                id: String(m.id),
+                name: String(m.name),
+                code: m.code ? String(m.code) : null,
+                imageUrl: m.imageUrl ? String(m.imageUrl) : null,
+              }));
+              setMachines(machs);
+            }
+          }
+        }
+      } catch (e) {}
+    };
+    autoSync();
+  }, []);
 
   useEffect(() => {
     getLocalData().then((data) => {
