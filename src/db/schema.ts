@@ -327,3 +327,27 @@ export const articleVersions = pgTable("article_versions", {
 }, (table) => ({
   articleIdx: index("article_version_article_idx").on(table.articleId),
 }));
+
+// 22. Lab Progress Table
+export const labProgress = pgTable("lab_progress", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  scenarioId: varchar("scenario_id", { length: 20 }).notNull(),
+  attempts: varchar("attempts", { length: 10 }).default("0").notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  score: varchar("score", { length: 10 }).default("0").notNull(),
+  lastAttemptAt: timestamp("last_attempt_at").defaultNow().notNull(),
+}, (table) => ({
+  userScenarioUnique: unique("lab_progress_user_scenario_unique").on(table.userId, table.scenarioId),
+  userIdx: index("lab_progress_user_idx").on(table.userId),
+}));
+
+// 23. Lab Badges Table
+export const labBadges = pgTable("lab_badges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  badgeId: varchar("badge_id", { length: 50 }).notNull(),
+  earnedAt: timestamp("earned_at").defaultNow().notNull(),
+}, (table) => ({
+  userBadgeUnique: unique("lab_badges_user_badge_unique").on(table.userId, table.badgeId),
+}));
