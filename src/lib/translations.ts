@@ -101,6 +101,16 @@ export const translations = {
     
     // Library
     "knowledgeLibrary": "Knowledge Library",
+    "lab": "Lab",
+    "labTitle": "Interactive Technician Lab",
+    "labSubtitle": "Learn, Test, and Master Arcade Machines",
+    "exteriorView": "Exterior View",
+    "interiorView": "Interior View",
+    "explodedView": "Exploded View",
+    "resetView": "Reset View",
+    "selectComponent": "Tap a component to learn more",
+    "faultDetective": "Fault Detective",
+    "technicianJourney": "Technician Journey",
     "noArticles": "No articles available. Please sync data first.",
     "loading": "Loading...",
     "articleNotFound": "Article not found.",
@@ -270,6 +280,16 @@ export const translations = {
     
     // Library
     "knowledgeLibrary": "ဗဟုသုတ စာကြည့်တိုက်",
+    "lab": "Lab",
+    "labTitle": "အပြန်အလှန် နည်းပညာရှင် Lab",
+    "labSubtitle": "စက်တွေကို လေ့လာပါ၊ စမ်းသပ်ပါ၊ ကျွမ်းကျင်ပါ",
+    "exteriorView": "အပြင်ပိုင်း မြင်ကွင်း",
+    "interiorView": "အတွင်းပိုင်း မြင်ကွင်း",
+    "explodedView": "ခွဲထုတ် မြင်ကွင်း",
+    "resetView": "မြင်ကွင်း ပြန်လည်သတ်မှတ်",
+    "selectComponent": "အစိတ်အပိုင်းကို နှိပ်ပြီး လေ့လာပါ",
+    "faultDetective": "ချို့ယွင်းချက် ရှာဖွေသူ",
+    "technicianJourney": "နည်းပညာရှင် ခရီးစဉ်",
     "noArticles": "ဆောင်းပါး မရှိပါ။ ဒေတာ Sync လုပ်ပါ။",
     "loading": "ဖွင့်နေသည်...",
     "articleNotFound": "ဆောင်းပါး မတွေ့ပါ။",
