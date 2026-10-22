@@ -27,10 +27,38 @@ const DEFAULT_HERO: Exclude<HeroData, null> = {
   description: "Explore error codes, repair guides, machine manuals, and video tutorials.",
   imageUrl: "",
   imageUrls: [],
-  config: {},
+  config: { fontSize: "md", alignment: "left", position: "bottom" },
   showArcadeLabel: true,
   showHeroText: true,
 };
+
+// Font Size ကို ကန့်သတ်ထားမယ် (အလွန်ကြီးလွန်းတာကို ရှောင်ဖို့)
+function getFontSize(size?: string) {
+  switch (size) {
+    case "xs": return "text-base md:text-lg";
+    case "sm": return "text-lg md:text-xl";
+    case "md": return "text-xl md:text-2xl";
+    case "lg": return "text-2xl md:text-3xl";
+    case "xl": return "text-2xl md:text-3xl"; // Max 3xl (အကြီးဆုံး)
+    case "2xl": return "text-2xl md:text-3xl"; // Max 3xl
+    default: return "text-xl md:text-2xl";
+  }
+}
+
+function getAlignment(align?: string) {
+  if (align === "center") return "items-center text-center";
+  if (align === "right") return "items-end text-right";
+  return "items-start text-left";
+}
+
+function getVerticalPos(pos?: string) {
+  switch (pos) {
+    case "top": return "justify-start pt-4";
+    case "middle": return "justify-center";
+    case "bottom": return "justify-end pb-4";
+    default: return "justify-center";
+  }
+}
 
 export function HeroSection({ data }: { data: HeroData }) {
   const heroData = data || DEFAULT_HERO;
@@ -89,11 +117,21 @@ export function HeroSection({ data }: { data: HeroData }) {
   };
 
   const hasImages = images.length > 0;
+  
+  // စာသားတွေ ပြမလား ဆုံးဖြတ်မယ်
+  const showText = heroData?.showHeroText !== false;
+  const showLabel = heroData?.showArcadeLabel !== false;
+  
+  // Config တွေ
+  const config = heroData?.config || {};
+  const fontSizeClass = getFontSize(config.fontSize);
+  const alignClass = getAlignment(config.alignment || config.align);
+  const positionClass = getVerticalPos(config.position || config.verticalPos);
 
   return (
     <div className="px-4 mb-4">
       <div 
-        className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] shadow-xl h-[200px]"
+        className="relative rounded-2xl overflow-hidden border border-[var(--nx-border-updated)] shadow-xl min-h-[220px] flex flex-col"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -143,24 +181,31 @@ export function HeroSection({ data }: { data: HeroData }) {
           </div>
         )}
 
-        {/* Text Content */}
-        <div className="relative z-10 p-5 h-full flex flex-col justify-center">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/30 backdrop-blur-sm">
-            <BookOpen size={10} /> TECHNICAL KNOWLEDGE
-          </span>
-          <h2 className="text-xl font-extrabold text-white leading-tight mt-2 drop-shadow-lg whitespace-pre-line">
-            {heroData.heading}
-          </h2>
-          <p className="text-xs text-gray-300 leading-relaxed max-w-[85%] mt-1 drop-shadow line-clamp-2">
-            {heroData.description}
-          </p>
-          <button 
-            onClick={() => document.getElementById('article-list')?.scrollIntoView({ behavior: 'smooth' })}
-            className="mt-2 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/30"
-          >
-            Explore Library <ChevronRight size={14} />
-          </button>
-        </div>
+        {/* Text Content (Show/Hide Toggle ပါ) */}
+        {showText && (
+          <div className={`relative z-10 p-5 flex-1 flex flex-col ${alignClass} ${positionClass}`}>
+            {showLabel && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-wider text-[var(--nx-cyan)] bg-[var(--nx-cyan)]/10 rounded-md w-fit border border-[var(--nx-cyan)]/30 backdrop-blur-sm">
+                <BookOpen size={10} /> TECHNICAL KNOWLEDGE
+              </span>
+            )}
+            
+            <h2 className={`font-extrabold text-white leading-tight mt-2 drop-shadow-lg whitespace-pre-line ${fontSizeClass}`}>
+              {heroData.heading}
+            </h2>
+            
+            <p className="text-xs md:text-sm text-gray-200 leading-relaxed max-w-[95%] mt-1.5 drop-shadow line-clamp-3">
+              {heroData.description}
+            </p>
+            
+            <button 
+              onClick={() => document.getElementById('article-list')?.scrollIntoView({ behavior: 'smooth' })}
+              className="mt-3 w-fit px-4 py-2 bg-[var(--nx-cyan)] text-black text-xs font-bold rounded-lg hover:bg-[#06B6D4] transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/30"
+            >
+              Explore Library <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
