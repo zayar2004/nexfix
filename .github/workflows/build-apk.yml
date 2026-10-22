@@ -23,7 +23,12 @@ jobs:
           java-version: '17'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
+
+      - name: Verify Capacitor Android
+        run: |
+          echo "Checking @capacitor/android..."
+          ls -la node_modules/@capacitor/android || echo "❌ Not found"
 
       - name: Install Capacitor CLI Globally
         run: npm install -g @capacitor/cli
