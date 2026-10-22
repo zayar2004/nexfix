@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   displayName: varchar("display_name", { length: 100 }),
   locale: varchar("locale", { length: 5 }).default("my").notNull(),
   theme: varchar("theme", { length: 10 }).default("dark").notNull(),
+  isApproved: boolean("is_approved").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   lastSeenAt: timestamp("last_seen_at"),

@@ -54,6 +54,12 @@ export default function LibraryPage() {
       try {
         const res = await fetch("/api/sync");
         const data = await res.json();
+        if (data.ok && data.data?.pendingApproval) {
+          // Admin Approve မလုပ်ရသေးရင် Data မပြဘူး
+          console.log("Pending approval");
+          setLoading(false);
+          return;
+        }
         if (data.ok) {
           await saveLocalData(data.data);
           // Sync ပြီးရင် Data ကို ချက်ချင်း ပြန်ဖတ်မယ်

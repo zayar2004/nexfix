@@ -6,8 +6,33 @@ import { machines, errorCodes, errorContent, knowledgeArticles, articleContent, 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+import { auth } from "@/auth";
+import { users } from "@/db/schema";
+
 export async function GET() {
   try {
+    // User ကို စစ်မယ်
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    // User ရဲ့ isApproved ကို စစ်မယ်
+    const [user] = await db
+      .select({ isApproved: users.isApproved, role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    // Admin/Super Admin ဖြစ်ရင် ချက်ချင်း ခွင့်ပြုမယ်
+    const isAdmin = user?.role === "staff" || user?.role === "senior_admin" || user?.role === "super_admin";
+    const isApproved = user?.isApproved || isAdmin;
+
+    // Approve မလုပ်ရသေးရင် Data မပို့ဘူး
+    if (!isApproved) {
+      return NextResponse.json({ ok: true, data: { pendingApproval: true } });
+    }
+
     const [
       allMachines,
       allErrorCodes,
