@@ -1,247 +1,303 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
+import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Pause, ChevronRight, Trash2, Bell } from "lucide-react";
 
 type Note = {
   id: string;
   title: string;
   body: string | null;
   reminderAt: string | null;
-  recurrence: string;
+  recurrence: string | null;
+  priority: string;
+  reminderEnabled: boolean;
+  reminderIntervalMinutes: string;
+  reminderStatus: string;
+  nextReminderAt: string | null;
   isCompleted: boolean;
+  createdAt: string;
 };
 
+type Filter = "all" | "today" | "upcoming" | "overdue" | "completed";
+
 export default function NotesPage() {
-  const { data: session } = useSession();
   const router = useRouter();
-  const { t } = useSettings();
+  const { t, locale } = useSettings();
+  const isMyanmar = locale === "my";
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [form, setForm] = useState({
-    title: "", body: "", reminderAt: "", recurrence: "none" as "none" | "daily" | "weekly" | "monthly" | "yearly"
-  });
-
-  const fetchNotes = useCallback(() => {
-    const localNotes = localStorage.getItem("nexfix_notes");
-    if (localNotes) {
-      setNotes(JSON.parse(localNotes));
+  const fetchNotes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/notes");
+      const data = await res.json();
+      if (data.ok) setNotes(data.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-
-    if (navigator.onLine && session?.user) {
-      fetch("/api/notes").then(res => res.json()).then(data => {
-        if (data.ok) {
-          setNotes(data.data);
-          localStorage.setItem("nexfix_notes", JSON.stringify(data.data));
-        }
-      }).catch(() => console.log("Offline mode"));
-    }
-  }, [session]);
+  }, []);
 
   useEffect(() => {
-    if (session?.user) fetchNotes();
-    else setLoading(false);
-  }, [session, fetchNotes]);
+    fetchNotes();
+  }, [fetchNotes]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newNote: Note = {
-      id: crypto.randomUUID(),
-      title: form.title,
-      body: form.body || null,
-      reminderAt: form.reminderAt ? new Date(form.reminderAt).toISOString() : null,
-      recurrence: form.recurrence,
-      isCompleted: false,
-    };
-
-    const updatedNotes = [newNote, ...notes];
-    setNotes(updatedNotes);
-    localStorage.setItem("nexfix_notes", JSON.stringify(updatedNotes));
-    setForm({ title: "", body: "", reminderAt: "", recurrence: "none" });
-    setShowForm(false);
-
-    if (navigator.onLine) {
-      try {
-        await fetch("/api/notes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: form.title, body: form.body || undefined, reminderAt: newNote.reminderAt, recurrence: form.recurrence }),
-        });
-        fetchNotes();
-      } catch {}
+  const handleDelete = async (id: string) => {
+    if (!confirm(isMyanmar ? "ဤလုပ်ငန်းကို ဖျက်မလား?" : "Delete this task?")) return;
+    try {
+      await fetch(`/api/notes?id=${id}`, { method: "DELETE" });
+      fetchNotes();
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleToggleDone = async (id: string, current: boolean) => {
-    const updatedNotes = notes.map(n => n.id === id ? { ...n, isCompleted: !current } : n);
-    setNotes(updatedNotes);
-    localStorage.setItem("nexfix_notes", JSON.stringify(updatedNotes));
-
-    if (navigator.onLine) {
+  const handleDone = async (id: string) => {
+    try {
       await fetch("/api/notes", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, isCompleted: !current }),
-      }).catch(() => {});
+        body: JSON.stringify({
+          id,
+          isCompleted: true,
+          reminderStatus: "done",
+          completedAt: new Date().toISOString(),
+        }),
+      });
+      fetchNotes();
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(t("deleteNote"))) return;
-    const updatedNotes = notes.filter(n => n.id !== id);
-    setNotes(updatedNotes);
-    localStorage.setItem("nexfix_notes", JSON.stringify(updatedNotes));
+  // Filter Logic
+  const filteredNotes = useMemo(() => {
+    let result = notes;
+    const now = new Date();
 
-    if (navigator.onLine) {
-      await fetch(`/api/notes?id=${id}`, { method: "DELETE" }).catch(() => {});
+    if (filter === "today") {
+      result = result.filter((n) => {
+        if (!n.reminderAt) return false;
+        const d = new Date(n.reminderAt);
+        return d.toDateString() === now.toDateString() && !n.isCompleted;
+      });
+    } else if (filter === "upcoming") {
+      result = result.filter((n) => n.reminderAt && new Date(n.reminderAt) > now && !n.isCompleted);
+    } else if (filter === "overdue") {
+      result = result.filter((n) => n.reminderAt && new Date(n.reminderAt) < now && !n.isCompleted);
+    } else if (filter === "completed") {
+      result = result.filter((n) => n.isCompleted);
     }
-  };
 
-  // 🌟 Active နဲ့ Completed ခွဲမယ်
-  const { activeNotes, completedNotes } = useMemo(() => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((n) =>
+        n.title.toLowerCase().includes(q) ||
+        (n.body && n.body.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [notes, filter, searchQuery]);
+
+  // Counts
+  const counts = useMemo(() => {
+    const now = new Date();
     return {
-      activeNotes: notes.filter(n => !n.isCompleted),
-      completedNotes: notes.filter(n => n.isCompleted),
+      today: notes.filter((n) => n.reminderAt && new Date(n.reminderAt).toDateString() === now.toDateString() && !n.isCompleted).length,
+      upcoming: notes.filter((n) => n.reminderAt && new Date(n.reminderAt) > now && !n.isCompleted).length,
+      overdue: notes.filter((n) => n.reminderAt && new Date(n.reminderAt) < now && !n.isCompleted).length,
+      completed: notes.filter((n) => n.isCompleted).length,
     };
   }, [notes]);
 
-  // 🌟 Reminder အတွက် အချိန်ပြမယ်
-  const formatReminder = (dateStr: string, recurrence: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = date.getTime() - now.getTime();
-    const isPast = diff < 0;
-    const isWithin24h = diff > 0 && diff < 24 * 60 * 60 * 1000;
-    
-    const timeStr = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    
-    return { timeStr, isPast, isWithin24h };
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent": return "bg-red-500/15 text-red-400 border-red-500/30";
+      case "high": return "bg-orange-500/15 text-orange-400 border-orange-500/30";
+      case "low": return "bg-gray-500/15 text-gray-400 border-gray-500/30";
+      default: return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+    }
   };
 
-  if (!session?.user) {
-    return (
-      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex flex-col items-center justify-center p-4">
-        <p className="text-[var(--nx-text-primary)] mb-4">{t("signInNotes")}</p>
-        <button onClick={() => router.push("/login")} className="px-4 py-2 bg-[var(--nx-accent)] text-black rounded-lg font-bold">{t("login")}</button>
-      </div>
-    );
-  }
+  const getStatusBadge = (note: Note) => {
+    if (note.isCompleted) return { text: isMyanmar ? "ပြီးစီး" : "Done", color: "bg-green-500/15 text-green-400 border-green-500/30" };
+    if (note.reminderStatus === "paused") return { text: isMyanmar ? "ရပ်ထား" : "Paused", color: "bg-gray-500/15 text-gray-400 border-gray-500/30" };
+    if (note.reminderAt && new Date(note.reminderAt) < new Date()) return { text: isMyanmar ? "ကျော်လွန်" : "Overdue", color: "bg-red-500/15 text-red-400 border-red-500/30" };
+    return { text: isMyanmar ? "စောင့်ဆိုင်း" : "Pending", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" };
+  };
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       <TopNav />
-      <main className="max-w-3xl mx-auto p-4 py-6">
-        <div className="flex items-center justify-between mb-6">
+      <main className="max-w-3xl mx-auto p-4 py-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--nx-text-primary)]">{t("myNotes")}</h1>
-            <p className="text-xs text-[var(--nx-text-muted-updated)] mt-0.5">
-              {activeNotes.length} active · {completedNotes.length} completed
+            <h1 className="text-2xl font-bold text-white">{t("myTasks")}</h1>
+            <p className="text-xs text-[var(--nx-text-muted-updated)]">
+              {new Date().toLocaleDateString(isMyanmar ? "my-MM" : "en-US", { weekday: "short", month: "short", day: "numeric" })}
+              {" • "}
+              {notes.filter((n) => !n.isCompleted).length} {isMyanmar ? "လုပ်ငန်းများ" : "active"}
             </p>
           </div>
-          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-[var(--nx-accent)] text-black font-semibold rounded-lg text-sm">
-            {showForm ? "Cancel" : t("newNote")}
-          </button>
+          <div className="flex gap-2">
+            <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
+              <Search size={18} />
+            </button>
+            <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
+              <Bell size={18} />
+            </button>
+          </div>
         </div>
 
-        {showForm && (
-          <form onSubmit={handleSubmit} className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col gap-3">
-            <input type="text" placeholder={t("noteTitle")} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-[var(--nx-text-primary)] border border-[var(--nx-border-updated)] rounded-lg p-3" required />
-            <textarea placeholder={t("noteBody")} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-[var(--nx-text-primary)] border border-[var(--nx-border-updated)] rounded-lg p-3" rows={3} />
-            <input type="datetime-local" value={form.reminderAt} onChange={(e) => setForm({ ...form, reminderAt: e.target.value })} className="bg-[var(--nx-bg-base-deep)] text-[var(--nx-text-primary)] border border-[var(--nx-border-updated)] rounded-lg p-3" />
-            <select value={form.recurrence} onChange={(e) => setForm({ ...form, recurrence: e.target.value as any })} className="bg-[var(--nx-bg-base-deep)] text-[var(--nx-text-primary)] border border-[var(--nx-border-updated)] rounded-lg p-3">
-              <option value="none">{t("noRepeat")}</option>
-              <option value="daily">{t("daily")}</option>
-              <option value="weekly">{t("weekly")}</option>
-              <option value="monthly">{t("monthly")}</option>
-              <option value="yearly">{t("yearly")}</option>
-            </select>
-            <button type="submit" className="py-3 bg-[var(--nx-accent)] text-black font-bold rounded-lg">{t("createNote")}</button>
-          </form>
-        )}
+        {/* Summary Chips */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-center">
+            <p className="text-xl font-bold text-[var(--nx-cyan)]">{counts.today}</p>
+            <p className="text-[10px] text-[var(--nx-text-muted-updated)]">{t("today")}</p>
+          </div>
+          <div className="p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-center">
+            <p className="text-xl font-bold text-blue-400">{counts.upcoming}</p>
+            <p className="text-[10px] text-[var(--nx-text-muted-updated)]">{t("upcoming")}</p>
+          </div>
+          <div className="p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-center">
+            <p className="text-xl font-bold text-red-400">{counts.overdue}</p>
+            <p className="text-[10px] text-[var(--nx-text-muted-updated)]">{t("overdue")}</p>
+          </div>
+          <div className="p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl text-center">
+            <p className="text-xl font-bold text-green-400">{counts.completed}</p>
+            <p className="text-[10px] text-[var(--nx-text-muted-updated)]">{t("completed")}</p>
+          </div>
+        </div>
 
+        {/* Filter Chips */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+          {[
+            { id: "all", label: t("all") },
+            { id: "today", label: t("today") },
+            { id: "upcoming", label: t("upcoming") },
+            { id: "overdue", label: t("overdue") },
+            { id: "completed", label: t("completed") },
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id as Filter)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition ${
+                filter === f.id
+                  ? "bg-[var(--nx-cyan)] text-black"
+                  : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)]" size={16} />
+          <input
+            type="text"
+            placeholder={t("searchTasks")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg py-2.5 pl-9 pr-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+          />
+        </div>
+
+        {/* Task List */}
         {loading ? (
-          <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-[var(--nx-accent)] border-t-transparent rounded-full animate-spin"></div></div>
-        ) : activeNotes.length === 0 && completedNotes.length === 0 ? (
-          <div className="p-8 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl text-[var(--nx-text-muted-updated)]">
-            No notes yet. Click "{t("newNote")}" to add one.
+          <p className="text-center text-[var(--nx-text-muted-updated)] py-10">Loading...</p>
+        ) : filteredNotes.length === 0 ? (
+          <div className="p-10 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl">
+            <CheckCircle size={40} className="mx-auto text-[var(--nx-text-muted-updated)] opacity-30 mb-3" />
+            <p className="text-sm text-[var(--nx-text-muted-updated)]">{t("noTasks")}</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {/* 🌟 Active Notes */}
-            {activeNotes.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {activeNotes.map(n => {
-                  const reminder = n.reminderAt ? formatReminder(n.reminderAt, n.recurrence) : null;
-                  return (
-                    <div key={n.id} className={`p-4 bg-[var(--nx-bg-card)] border rounded-xl ${reminder?.isWithin24h ? 'border-[var(--nx-warning)]/50' : 'border-[var(--nx-border-updated)]'}`}>
-                      <div className="flex items-start gap-3">
-                        <input type="checkbox" checked={n.isCompleted} onChange={() => handleToggleDone(n.id, n.isCompleted)} className="mt-1 w-5 h-5 accent-[var(--nx-accent)] flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-[var(--nx-text-primary)]">{n.title}</h3>
-                          {n.body && <p className="text-sm text-[var(--nx-text-secondary-updated)] mt-1 line-clamp-3">{n.body}</p>}
-                          
-                          {reminder && (
-                            <div className={`mt-2 flex items-center gap-2 text-xs font-medium ${reminder.isPast ? 'text-[var(--nx-error)]' : reminder.isWithin24h ? 'text-[var(--nx-warning)]' : 'text-[var(--nx-text-muted-updated)]'}`}>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                              {reminder.timeStr}
-                              {n.recurrence !== "none" && (
-                                <span className="px-2 py-0.5 bg-[var(--nx-accent)]/10 text-[var(--nx-accent)] rounded-full text-[10px] font-bold uppercase">
-                                  {n.recurrence}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <button onClick={() => handleDelete(n.id)} className="text-[var(--nx-error)] p-1 hover:bg-[var(--nx-error)]/10 rounded flex-shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
+          <div className="flex flex-col gap-2">
+            {filteredNotes.map((note) => {
+              const status = getStatusBadge(note);
+              return (
+                <div
+                  key={note.id}
+                  className="p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-cyan)] transition"
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Done Checkbox */}
+                    <button
+                      onClick={() => !note.isCompleted && handleDone(note.id)}
+                      disabled={note.isCompleted}
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        note.isCompleted
+                          ? "bg-green-500 border-green-500"
+                          : "border-[var(--nx-text-muted-updated)] hover:border-[var(--nx-cyan)]"
+                      }`}
+                    >
+                      {note.isCompleted && <CheckCircle size={14} className="text-white" />}
+                    </button>
+
+                    {/* Content */}
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => router.push(`/notes/${note.id}`)}
+                    >
+                      <p className={`font-semibold text-sm mb-1 ${note.isCompleted ? "line-through text-[var(--nx-text-muted-updated)]" : "text-white"}`}>
+                        {note.title}
+                      </p>
+                      {note.body && (
+                        <p className="text-xs text-[var(--nx-text-muted-updated)] line-clamp-1 mb-2">{note.body}</p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                        <span className={`px-2 py-0.5 rounded border font-bold ${status.color}`}>
+                          {status.text}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded border font-bold ${getPriorityColor(note.priority)}`}>
+                          {t(note.priority as any)}
+                        </span>
+                        {note.reminderAt && (
+                          <span className="text-[var(--nx-text-muted-updated)] flex items-center gap-1">
+                            <Clock size={10} /> {new Date(note.reminderAt).toLocaleTimeString(isMyanmar ? "my-MM" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                        {note.recurrence && note.recurrence !== "none" && (
+                          <span className="text-[var(--nx-text-muted-updated)]">
+                            🔁 {t(note.recurrence as any)}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
 
-            {/* 🌟 Completed Notes (Toggle) */}
-            {completedNotes.length > 0 && (
-              <div>
-                <button 
-                  onClick={() => setShowCompleted(!showCompleted)} 
-                  className="flex items-center gap-2 text-sm font-semibold text-[var(--nx-text-muted-updated)] hover:text-[var(--nx-text-primary)] transition-colors mb-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${showCompleted ? 'rotate-90' : ''}`}><polyline points="9 18 15 12 9 6"/></svg>
-                  Completed ({completedNotes.length})
-                </button>
-                {showCompleted && (
-                  <div className="flex flex-col gap-2">
-                    {completedNotes.map(n => (
-                      <div key={n.id} className="p-3 bg-[var(--nx-bg-card)]/50 border border-[var(--nx-border-updated)] rounded-xl opacity-60">
-                        <div className="flex items-start gap-3">
-                          <input type="checkbox" checked={n.isCompleted} onChange={() => handleToggleDone(n.id, n.isCompleted)} className="mt-1 w-5 h-5 accent-[var(--nx-accent)] flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-[var(--nx-text-muted-updated)] line-through">{n.title}</h3>
-                            {n.body && <p className="text-xs text-[var(--nx-text-muted-updated)] mt-1 line-clamp-2 line-through">{n.body}</p>}
-                          </div>
-                          <button onClick={() => handleDelete(n.id)} className="text-[var(--nx-error)] p-1 hover:bg-[var(--nx-error)]/10 rounded flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                    {/* Delete */}
+                    <button
+                      onClick={() => handleDelete(note.id)}
+                      className="p-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error)]/10 rounded flex-shrink-0"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              );
+            })}
           </div>
         )}
+
+        {/* Floating Add Button */}
+        <button
+          onClick={() => router.push("/notes/add")}
+          className="fixed bottom-20 right-4 z-40 px-5 py-3 bg-[var(--nx-cyan)] text-black font-bold rounded-full shadow-2xl hover:opacity-90 transition flex items-center gap-1.5"
+        >
+          <Plus size={18} /> {isMyanmar ? "အသစ်" : "New"}
+        </button>
       </main>
       <BottomNav />
     </div>

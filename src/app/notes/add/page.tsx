@@ -1,0 +1,231 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { TopNav } from "@/components/layout/TopNav";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { useSettings } from "@/lib/settings-context";
+import { ArrowLeft, Save, Clock, Bell, Repeat, AlertTriangle } from "lucide-react";
+
+const INTERVALS = [1, 5, 10, 15, 30, 60];
+
+export default function AddTaskPage() {
+  const router = useRouter();
+  const { t, locale } = useSettings();
+  const isMyanmar = locale === "my";
+
+  const [form, setForm] = useState({
+    title: "",
+    body: "",
+    priority: "normal" as "low" | "normal" | "high" | "urgent",
+    reminderEnabled: true,
+    reminderAt: "",
+    reminderIntervalMinutes: 15,
+    recurrence: "none" as "none" | "daily" | "weekly" | "monthly" | "yearly",
+  });
+  const [customInterval, setCustomInterval] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.title,
+          body: form.body || null,
+          priority: form.priority,
+          reminderEnabled: form.reminderEnabled,
+          reminderAt: form.reminderAt ? new Date(form.reminderAt).toISOString() : null,
+          reminderIntervalMinutes: form.reminderIntervalMinutes,
+          recurrence: form.recurrence,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      router.push("/notes");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      <TopNav />
+      <main className="max-w-3xl mx-auto p-4 py-4">
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={() => router.back()} className="p-2 -ml-2 text-white">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold text-white">{t("newTask")}</h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase">{t("taskTitle")} *</label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder={isMyanmar ? "လုပ်ငန်း ခေါင်းစဉ်" : "Task title"}
+              className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+              required
+              maxLength={200}
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase">{t("taskDescription")}</label>
+            <textarea
+              value={form.body}
+              onChange={(e) => setForm({ ...form, body: e.target.value })}
+              placeholder={isMyanmar ? "အသေးစိတ်..." : "Description..."}
+              rows={3}
+              className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+            />
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-2 uppercase">{t("priority")}</label>
+            <div className="grid grid-cols-4 gap-2">
+              {(["low", "normal", "high", "urgent"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setForm({ ...form, priority: p })}
+                  className={`py-2 rounded-lg text-xs font-bold transition ${
+                    form.priority === p
+                      ? p === "urgent" ? "bg-red-500 text-white" :
+                        p === "high" ? "bg-orange-500 text-white" :
+                        p === "low" ? "bg-gray-500 text-white" :
+                        "bg-blue-500 text-white"
+                      : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"
+                  }`}
+                >
+                  {t(p as any)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Reminder Enabled */}
+          <div className="flex items-center justify-between p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg">
+            <div className="flex items-center gap-2">
+              <Bell size={18} className="text-[var(--nx-cyan)]" />
+              <span className="text-sm text-white font-medium">{t("reminderEnabled")}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, reminderEnabled: !form.reminderEnabled })}
+              className={`w-12 h-6 rounded-full transition ${form.reminderEnabled ? "bg-[var(--nx-cyan)]" : "bg-gray-600"}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full transition-transform ${form.reminderEnabled ? "translate-x-6" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+
+          {form.reminderEnabled && (
+            <>
+              {/* Reminder Time */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase">{t("reminderTime")}</label>
+                <input
+                  type="datetime-local"
+                  value={form.reminderAt}
+                  onChange={(e) => setForm({ ...form, reminderAt: e.target.value })}
+                  className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+                />
+              </div>
+
+              {/* Interval */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-2 uppercase">{t("reminderInterval")}</label>
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                  {INTERVALS.map((min) => (
+                    <button
+                      key={min}
+                      type="button"
+                      onClick={() => { setForm({ ...form, reminderIntervalMinutes: min }); setCustomInterval(false); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                        !customInterval && form.reminderIntervalMinutes === min
+                          ? "bg-[var(--nx-cyan)] text-black"
+                          : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"
+                      }`}
+                    >
+                      {min} {t("minutes")}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCustomInterval(true)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                      customInterval
+                        ? "bg-[var(--nx-cyan)] text-black"
+                        : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"
+                    }`}
+                  >
+                    {isMyanmar ? "အခြား" : "Custom"}
+                  </button>
+                </div>
+                {customInterval && (
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={form.reminderIntervalMinutes}
+                    onChange={(e) => setForm({ ...form, reminderIntervalMinutes: Math.min(1440, Math.max(1, parseInt(e.target.value) || 15)) })}
+                    className="mt-2 w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+                    placeholder="1-1440 minutes"
+                  />
+                )}
+              </div>
+
+              {/* Recurrence */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-2 uppercase flex items-center gap-1">
+                  <Repeat size={12} /> {t("recurrence")}
+                </label>
+                <select
+                  value={form.recurrence}
+                  onChange={(e) => setForm({ ...form, recurrence: e.target.value as any })}
+                  className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg p-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+                >
+                  <option value="none">{t("none")}</option>
+                  <option value="daily">{t("daily")}</option>
+                  <option value="weekly">{t("weekly")}</option>
+                  <option value="monthly">{t("monthly")}</option>
+                  <option value="yearly">{t("yearly")}</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-400" />
+              <p className="text-xs text-red-400">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-3 bg-[var(--nx-cyan)] text-black font-bold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <Save size={18} /> {saving ? "Saving..." : t("saveTask")}
+          </button>
+        </form>
+      </main>
+      <BottomNav />
+    </div>
+  );
+}
