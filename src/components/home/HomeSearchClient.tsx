@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { getLocalData } from "@/lib/local-db";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { getPrivateExcelData, savePrivateExcelData, UserExcelRow, clearPrivateExcelData } from "@/lib/local-db";
@@ -9,6 +10,7 @@ import { useSettings } from "@/lib/settings-context";
 export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
   const router = useRouter();
   const { t } = useSettings();
+  const [popularMachines, setPopularMachines] = useState<string[]>([]);
   const [searchMode, setSearchMode] = useState<"machineError" | "machineCode">("machineError");
   
   const [machineName, setMachineName] = useState("");
@@ -22,6 +24,15 @@ export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Machines ကို Local Storage ကနေ ယူမယ်
+    getLocalData().then((data) => {
+      if (data?.machines) {
+        const names = (data.machines as Record<string, unknown>[])
+          .map((m) => String(m.name))
+          .filter(Boolean);
+        setPopularMachines(names.slice(0, 6));
+      }
+    });
     getPrivateExcelData().then(data => {
       setHasExcel(!!data);
       if (data) setTotalMachines(data.length);
@@ -257,17 +268,19 @@ export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
         )}
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
-        <span className="text-sm font-medium text-[var(--nx-text-muted-updated)] flex items-center gap-1 whitespace-nowrap">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--nx-error)]"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-          {t("popular")}
-        </span>
-        {["Tekken 7", "SF6", "Initial D", "WCCF"].map((m) => (
-          <button key={m} onClick={() => { setMachineName(m); router.push(`/search?machine=${encodeURIComponent(m)}`); }} className="px-3 py-1.5 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-full text-sm text-[var(--nx-text-primary)] whitespace-nowrap hover:border-[var(--nx-accent)] transition-colors">
-            {m}
-          </button>
-        ))}
-      </div>
+      {popularMachines.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide mt-1">
+          <span className="text-sm font-medium text-[var(--nx-text-muted-updated)] flex items-center gap-1 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--nx-error)]"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            {t("popular")}
+          </span>
+          {popularMachines.map((m: string) => (
+            <button key={m} onClick={() => { setMachineName(m); router.push(`/search?machine=${encodeURIComponent(m)}`); }} className="px-3 py-1.5 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-full text-sm text-[var(--nx-text-primary)] whitespace-nowrap hover:border-[var(--nx-accent)] transition-colors">
+              {m}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
