@@ -1,147 +1,160 @@
 "use client";
-export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useEffect, useState } from "react";
+import { Check, X, Shield, User as UserIcon, Loader2 } from "lucide-react";
 
-type User = {
+interface UserData {
   id: string;
   email: string;
-  publicId: string;
   displayName: string | null;
   role: string;
+  isApproved: boolean;
   createdAt: string;
-  lastSeenAt: string | null;
-};
-
-const roleColors: Record<string, string> = {
-  user: "bg-[var(--nx-bg-surface-deep)] text-[var(--nx-text-secondary-updated)]",
-  staff: "bg-[var(--nx-accent)]/10 text-[var(--nx-accent)]",
-  senior_admin: "bg-[var(--nx-warning)]/10 text-[var(--nx-warning)]",
-  super_admin: "bg-[var(--nx-error)]/10 text-[var(--nx-error)]",
-};
+}
 
 export default function AdminUsersPage() {
-  const router = useRouter();
-  const { data: session } = useSession();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [updating, setUpdating] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
-  const fetchUsers = () => {
-    fetch("/api/admin/users")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.ok) setUsers(data.data);
-        else setMessage("❌ " + data.error);
-        setLoading(false);
-      });
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("/api/admin/users");
+      const json = await res.json();
+      if (json.ok) {
+        setUsers(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!confirm(`Change this user's role to "${newRole}"?`)) return;
-    setUpdating(userId);
+  const handleUpdate = async (id: string, updates: Partial<UserData>) => {
+    setActionId(id);
     try {
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: userId, role: newRole }),
+        body: JSON.stringify({ id, ...updates }),
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error);
-      setMessage("✅ Role updated!");
-      fetchUsers();
-    } catch (err: any) {
-      setMessage("❌ " + err.message);
+      if (res.ok) {
+        // UI ကို ချက်ချင်း Update လုပ်မယ်
+        setUsers((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
+        );
+      } else {
+        alert("Failed to update user");
+      }
+    } catch (err) {
+      alert("Error updating user");
     } finally {
-      setUpdating(null);
+      setActionId(null);
     }
   };
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "Never";
-    return new Date(dateStr).toLocaleDateString();
-  };
-
-  const isSuperAdmin = session?.user?.role === "super_admin";
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
-    <AdminLayout title="User Management">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-[var(--nx-text-primary)]">All Users ({users.length})</h2>
-            <p className="text-sm text-[var(--nx-text-muted-updated)]">
-              {isSuperAdmin ? "You can change user roles" : "Only Super Admin can change roles"}
-            </p>
-          </div>
-        </div>
-
-        {message && (
-          <div className="mb-4 p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-sm text-center text-[var(--nx-text-primary)]">
-            {message}
-          </div>
-        )}
-
-        {loading ? (
-          <p className="text-[var(--nx-text-primary)]">Loading...</p>
-        ) : (
-          <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[var(--nx-bg-surface-deep)]">
-                <tr>
-                  <th className="text-left px-4 py-3 text-[var(--nx-text-muted-updated)] font-semibold text-xs uppercase">User</th>
-                  <th className="text-left px-4 py-3 text-[var(--nx-text-muted-updated)] font-semibold text-xs uppercase">Role</th>
-                  <th className="text-left px-4 py-3 text-[var(--nx-text-muted-updated)] font-semibold text-xs uppercase hidden sm:table-cell">Joined</th>
-                  <th className="text-left px-4 py-3 text-[var(--nx-text-muted-updated)] font-semibold text-xs uppercase hidden sm:table-cell">Last Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-t border-[var(--nx-border-updated)]">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-[var(--nx-text-primary)]">{u.displayName || "Unnamed"}</p>
-                      <p className="text-xs text-[var(--nx-text-muted-updated)]">{u.email}</p>
-                      <p className="text-[10px] font-mono text-[var(--nx-accent)]">{u.publicId}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {isSuperAdmin && u.id !== session?.user?.id && u.role !== "super_admin" ? (
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          disabled={updating === u.id}
-                          className={`px-2 py-1 text-xs font-bold rounded-md ${roleColors[u.role]} border border-[var(--nx-border-updated)]`}
-                        >
-                          <option value="user">User</option>
-                          <option value="staff">Staff</option>
-                          <option value="senior_admin">Senior Admin</option>
-                        </select>
-                      ) : (
-                        <span className={`px-2 py-1 text-xs font-bold rounded-md ${roleColors[u.role]}`}>
-                          {u.role.replace("_", " ").toUpperCase()}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[var(--nx-text-muted-updated)] hidden sm:table-cell">
-                      {formatDate(u.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[var(--nx-text-muted-updated)] hidden sm:table-cell">
-                      {formatDate(u.lastSeenAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white mb-2">User Management</h1>
+        <p className="text-slate-400">Approve or reject user accounts.</p>
       </div>
-    </AdminLayout>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-300">
+            <thead className="bg-slate-950/50 text-xs uppercase text-slate-500 border-b border-slate-800">
+              <tr>
+                <th className="px-6 py-4 font-medium">User</th>
+                <th className="px-6 py-4 font-medium">Role</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
+                        <UserIcon className="w-5 h-5 text-slate-400" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-white">
+                          {user.displayName || "No Name"}
+                        </div>
+                        <div className="text-slate-500 text-xs">{user.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                      {user.role === "super_admin" || user.role === "senior_admin" ? (
+                        <Shield className="w-3.5 h-3.5 text-amber-500" />
+                      ) : null}
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {user.isApproved ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-400/20">
+                        <Check className="w-3.5 h-3.5" /> Approved
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full text-xs font-medium border border-amber-400/20">
+                        <Loader2 className="w-3.5 h-3.5" /> Pending
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {!user.isApproved ? (
+                        <button
+                          onClick={() => handleUpdate(user.id, { isApproved: true })}
+                          disabled={actionId === user.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                        >
+                          {actionId === user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          Approve
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleUpdate(user.id, { isApproved: false })}
+                          disabled={actionId === user.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 border border-slate-700"
+                        >
+                          {actionId === user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                          Revoke
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                    No users found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
