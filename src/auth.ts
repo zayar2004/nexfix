@@ -50,6 +50,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role;
         token.isApproved = (user as any).isApproved;
       }
+      
+      // Token ရှိပြီးသားဖြစ်နေရင် (Session မကုန်သေးရင်) Database ကနေ isApproved အသစ်ကို ပြန်ဆွဲမယ်
+      if (token.id && !user) {
+        try {
+          const [dbUser] = await db
+            .select({ isApproved: users.isApproved, role: users.role })
+            .from(users)
+            .where(eq(users.id, token.id as string))
+            .limit(1);
+          
+          if (dbUser) {
+            token.isApproved = dbUser.isApproved;
+            token.role = dbUser.role;
+          }
+        } catch (e) {
+          console.error("JWT refresh error:", e);
+        }
+      }
+      
       return token;
     },
     session: async ({ session, token }) => {
