@@ -128,17 +128,26 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-slate-950 px-2 py-1 rounded border border-slate-800 text-slate-400 max-w-[200px] truncate">
-                        {showPassword === user.id ? (user.passwordHash || "N/A") : "••••••••••••"}
-                      </code>
-                      <button
-                        onClick={() => setShowPassword(showPassword === user.id ? null : user.id)}
-                        className="text-slate-500 hover:text-white p-1"
-                      >
-                        {showPassword === user.id ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        const newPass = prompt(`သင့် User ${user.email} အတွက် Password အသစ် ရိုက်ထည့်ပါ (အနည်းဆုံး ၆ လုံး)`);
+                        if (newPass && newPass.length >= 6) {
+                          fetch("/api/admin/users/reset-password", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ userId: user.id, newPassword: newPass }),
+                          }).then(r => r.json()).then(d => {
+                            if (d.ok) alert("✅ Password ပြောင်းပြီးပါပြီ");
+                            else alert("❌ " + (d.error || "မအောင်မြင်ပါ"));
+                          });
+                        } else if (newPass) {
+                          alert("Password က အနည်းဆုံး ၆ လုံး ရှိရပါမယ်");
+                        }
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Reset Password
+                    </button>
                   </td>
                   <td className="px-4 py-4 relative">
                     <button
