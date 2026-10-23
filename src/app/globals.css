@@ -174,3 +174,9 @@ html[lang="en"] body {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
 }
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
