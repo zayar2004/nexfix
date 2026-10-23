@@ -11,6 +11,15 @@ const registerSchema = z.object({
   displayName: z.string().min(1, "Name is required").max(100),
 });
 
+function generatePublicId(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "USR";
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -25,7 +34,6 @@ export async function POST(req: Request) {
 
     const { email, password, displayName } = result.data;
 
-    // Email ရှိပြီးသားလား စစ်မယ်
     const [existing] = await db
       .select({ id: users.id })
       .from(users)
@@ -34,18 +42,30 @@ export async function POST(req: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { ok: false, error: "ဤ Email ဖြင့် Account ရှိပြီးသားဖြစ်ပါသည်" },
+        { ok: false, error: "This email is already registered" },
         { status: 400 }
       );
     }
 
-    // Password ကို Hash လုပ်မယ်
     const passwordHash = await hash(password, 10);
 
-    // User အသစ် ဖန်တီးမယ် (isApproved: false)
+    let publicId = generatePublicId();
+    let attempts = 0;
+    while (attempts < 5) {
+      const [dup] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.publicId, publicId))
+        .limit(1);
+      if (!dup) break;
+      publicId = generatePublicId();
+      attempts++;
+    }
+
     const [newUser] = await db
       .insert(users)
       .values({
+        publicId,
         email,
         passwordHash,
         displayName,
