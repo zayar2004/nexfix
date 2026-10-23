@@ -31,8 +31,10 @@ export default function NotificationSettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (!file.name.endsWith('.mp3') && !file.name.endsWith('.wav') && !file.name.endsWith('.ogg')) {
-      alert("MP3, WAV, OGG ဖိုင်တွေပဲ ထည့်ပါ");
+    const validExts = ['.mp3', '.wav', '.ogg', '.m4a', '.aac'];
+    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!validExts.includes(ext)) {
+      alert("MP3, WAV, OGG, M4A ဖိုင်တွေပဲ ထည့်ပါ");
       return;
     }
 
@@ -78,7 +80,7 @@ export default function NotificationSettingsPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="audio/mp3,audio/wav,audio/ogg"
+            accept="audio/*,.mp3,.wav,.ogg,.m4a"
             onChange={handleFileUpload}
             className="hidden"
           />

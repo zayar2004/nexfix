@@ -214,9 +214,6 @@ export default function NotesPage() {
             <button onClick={() => router.push("/settings/notifications")} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Settings size={18} />
             </button>
-            <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
-              <Bell size={18} />
-            </button>
           </div>
         </div>
 
