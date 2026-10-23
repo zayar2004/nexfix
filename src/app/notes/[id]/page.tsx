@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
+import { scheduleNotification, cancelNotification } from "@/lib/notifications";
 import { ArrowLeft, Edit, Trash2, CheckCircle, Clock, Pause, Play, SkipForward, Bell } from "lucide-react";
 
 type Note = {
@@ -110,6 +111,8 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
         }),
       });
       if (res.ok) {
+        // Done/Pause/Skip လုပ်ရင် Notification ကို ဖျက်မယ်
+        await cancelNotification(note.id);
         fetchNote();
       }
     } catch (err) {

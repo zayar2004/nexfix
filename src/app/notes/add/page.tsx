@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
+import { scheduleNotification, requestNotificationPermission } from "@/lib/notifications";
 import { ArrowLeft, Clock, Bell, Repeat, AlertTriangle, Loader2 } from "lucide-react";
 
 const INTERVALS = [1, 5, 10, 15, 30, 60];
@@ -88,6 +89,23 @@ function AddTaskForm() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
+      
+      // Notification ခွင့်ပြုချက် တောင်းမယ်
+      await requestNotificationPermission();
+      
+      // Reminder ရှိရင် Notification သတ်မှတ်မယ်
+      if (form.reminderEnabled && form.reminderAt) {
+        const noteId = data.data?.id || editId;
+        if (noteId) {
+          await scheduleNotification(
+            noteId,
+            form.title,
+            form.body || "NEXFIX Reminder",
+            new Date(form.reminderAt)
+          );
+        }
+      }
+
       router.push("/notes");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
