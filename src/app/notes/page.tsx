@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
-import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Pause, ChevronRight, Trash2, Bell } from "lucide-react";
+import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Pause, ChevronRight, Trash2, Bell, Settings } from "lucide-react";
 
 type Note = {
   id: string;
@@ -194,6 +194,12 @@ export default function NotesPage() {
           <div className="flex gap-2">
             <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Search size={18} />
+            </button>
+            <button
+              onClick={() => router.push("/settings/notifications")}
+              className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white"
+            >
+              <Settings size={18} />
             </button>
             <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Bell size={18} />
