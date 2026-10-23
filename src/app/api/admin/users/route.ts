@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, sessions } from "@/db/schema";
 import { auth } from "@/auth";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -71,6 +71,9 @@ export async function DELETE(req: Request) {
   }
 
   try {
+    // ၁။ User ရဲ့ Session တွေ အကုန် ဖျက်မယ်
+    await db.delete(sessions).where(eq(sessions.userId, id));
+    // ၂။ User ကို ဖျက်မယ်
     await db.delete(users).where(eq(users.id, id));
     return NextResponse.json({ ok: true });
   } catch (err) {
