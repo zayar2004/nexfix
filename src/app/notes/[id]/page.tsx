@@ -30,8 +30,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const fetchNote = async () => {
     try {
