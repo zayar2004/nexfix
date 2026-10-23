@@ -66,14 +66,17 @@ export async function middleware(request: NextRequest) {
     role === "staff" || role === "senior_admin" || role === "super_admin";
 
   // isApproved မဖြစ်ရင် (Admin မဟုတ်ရင်) /pending-approval ကို ပို့မယ်
+  // Admin ဖြစ်ရင် isApproved မစစ်ဘဲ ချက်ချင်း ခွင့်ပြုမယ်
   const isApproved = payload.isApproved as boolean | undefined;
   if (!isApproved && !isAdmin) {
+    // API Route တွေဆိုရင် 403 ပြန်မယ်
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { ok: false, error: "Pending approval" },
         { status: 403 }
       );
     }
+    // Page တွေဆိုရင် /pending-approval ကို ပို့မယ်
     return NextResponse.redirect(new URL("/pending-approval", request.url));
   }
 
