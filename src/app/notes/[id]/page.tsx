@@ -31,6 +31,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [snoozeModalOpen, setSnoozeModalOpen] = useState(false);
+  const [snoozeSaving, setSnoozeSaving] = useState(false);
 
   const fetchNote = async () => {
     try {
@@ -90,6 +92,35 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       console.error(err);
     }
   };
+  const handleSnooze = async (minutes: number) => {
+    if (!note) return;
+    setSnoozeSaving(true);
+    try {
+      const newTime = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reminderEnabled: true,
+          reminderAt: newTime,
+          reminderStatus: "pending",
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSnoozeModalOpen(false);
+        window.location.reload();
+      } else {
+        alert("Snooze failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error");
+    } finally {
+      setSnoozeSaving(false);
+    }
+  };
+
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -202,7 +233,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             <ArrowLeft size={24} />
           </button>
           <div className="flex gap-2">
-            <button onClick={() => router.push(`/notes/add?edit=${note.id}`)} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
+            <button onClick={() => setSnoozeModalOpen(true)} className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+                <Clock size={18} />
+              </button>
+              <button onClick={() => router.push(`/notes/add?edit=${note.id}`)} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Edit size={18} />
             </button>
             <button onClick={handleDelete} className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
