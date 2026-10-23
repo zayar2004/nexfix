@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Clock, Pause, Play, SkipForward, MoreVertical, Bell } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Clock, Pause, Play, SkipForward, Bell } from "lucide-react";
 
 type Note = {
   id: string;
@@ -19,28 +19,28 @@ type Note = {
   reminderStatus: string;
   nextReminderAt: string | null;
   isCompleted: boolean;
-  createdAt: string;
 };
 
-export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function NoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const { t, locale } = useSettings();
   const isMyanmar = locale === "my";
-  const { id } = use(params);
 
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [snoozeModalOpen, setSnoozeModalOpen] = useState(false);
   const [snoozeSaving, setSnoozeSaving] = useState(false);
 
   const fetchNote = async () => {
     try {
-      const res = await fetch("/api/notes");
+      const res = await fetch(`/api/notes/${id}`);
       const data = await res.json();
-      if (data.ok) {
-        const target = data.data.find((n: Note) => n.id === id);
-        setNote(target || null);
+      if (data.ok && data.data) {
+        setNote(data.data);
       }
     } catch (err) {
       console.error(err);
@@ -53,31 +53,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     fetchNote();
   }, [id]);
 
-  const handleAction = async (action: string) => {
-    if (!note) return;
-    try {
-      let body: any = { id: note.id };
-      if (action === "done") {
-        body = { ...body, isCompleted: true, reminderStatus: "done", completedAt: new Date().toISOString() };
-      } else if (action === "pause") {
-        body = { ...body, reminderStatus: "paused" };
-      } else if (action === "resume") {
-        body = { ...body, reminderStatus: "pending" };
-      } else if (action === "skip") {
-        body = { ...body, reminderStatus: "skipped" };
-      }
-      await fetch("/api/notes", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      fetchNote();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleDelete = async () => {
+  // ==== Actions ====
+  const handleDelete = () => {
     if (!note) return;
     setDeleteModalOpen(true);
   };
@@ -92,6 +69,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       console.error(err);
     }
   };
+
   const handleSnooze = async (minutes: number) => {
     if (!note) return;
     setSnoozeSaving(true);
@@ -103,24 +81,41 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         body: JSON.stringify({
           reminderEnabled: true,
           reminderAt: newTime,
-          reminderStatus: "pending",
         }),
       });
       const data = await res.json();
       if (data.ok) {
         setSnoozeModalOpen(false);
         window.location.reload();
-      } else {
-        alert("Snooze failed");
       }
     } catch (err) {
       console.error(err);
-      alert("Error");
     } finally {
       setSnoozeSaving(false);
     }
   };
 
+  const handleAction = async (action: string) => {
+    if (!note) return;
+    try {
+      const res = await fetch("/api/notes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: note.id,
+          ...(action === "done" && { isCompleted: true }),
+          ...(action === "pause" && { reminderStatus: "paused" }),
+          ...(action === "resume" && { reminderStatus: "pending" }),
+          ...(action === "skip" && { reminderAt: null, reminderEnabled: false }),
+        }),
+      });
+      if (res.ok) {
+        fetchNote();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -132,45 +127,11 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   if (loading) {
-  
-  
-  const DeleteModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
-          <Trash2 className="w-6 h-6 text-red-500" />
-        </div>
-        <h3 className="text-lg font-bold text-white mb-2">
-          {isMyanmar ? "ဖျက်ရန် သေချာပါသလား?" : "Delete Task?"}
-        </h3>
-        <p className="text-sm text-slate-400 mb-6">
-          {isMyanmar 
-            ? "ဤလုပ်ငန်းကို ဖျက်လိုက်ပါက ပြန်လည် ရယူနိုင်မည် မဟုတ်ပါ။" 
-            : "This action cannot be undone."}
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setDeleteModalOpen(false)}
-            className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition border border-white/5"
-          >
-            {isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}
-          </button>
-          <button
-            onClick={confirmDelete}
-            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition shadow-lg shadow-red-600/20"
-          >
-            {isMyanmar ? "ဖျက်မည်" : "Delete"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
+    return (
       <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
         <TopNav />
         <div className="flex items-center justify-center py-20">
-          <p className="text-white">Loading...</p>
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--nx-cyan)] border-t-transparent animate-spin" />
         </div>
         <BottomNav />
       </div>
@@ -194,37 +155,46 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      {/* === Delete Modal === */}
       {deleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
               <Trash2 className="w-6 h-6 text-red-500" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">
-              {isMyanmar ? "ဖျက်ရန် သေချာပါသလား?" : "Delete Task?"}
-            </h3>
-            <p className="text-sm text-slate-400 mb-6">
-              {isMyanmar 
-                ? "ဤလုပ်ငန်းကို ဖျက်လိုက်ပါက ပြန်လည် ရယူနိုင်မည် မဟုတ်ပါ။" 
-                : "This action cannot be undone."}
-            </p>
+            <h3 className="text-lg font-bold text-white mb-2">{isMyanmar ? "ဖျက်ရန် သေချာပါသလား?" : "Delete Task?"}</h3>
+            <p className="text-sm text-slate-400 mb-6">{isMyanmar ? "ဤလုပ်ငန်းကို ဖျက်လိုက်ပါက ပြန်လည် ရယူနိုင်မည် မဟုတ်ပါ။" : "This action cannot be undone."}</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition border border-white/5"
-              >
-                {isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition shadow-lg shadow-red-600/20"
-              >
-                {isMyanmar ? "ဖျက်မည်" : "Delete"}
-              </button>
+              <button onClick={() => setDeleteModalOpen(false)} className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/5">{isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}</button>
+              <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium shadow-lg shadow-red-600/20">{isMyanmar ? "ဖျက်မည်" : "Delete"}</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* === Snooze Modal === */}
+      {snoozeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/20">
+              <Clock className="w-6 h-6 text-amber-500" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">{isMyanmar ? "ခဏရွှေ့ထားမည်" : "Snooze Task"}</h3>
+            <p className="text-sm text-slate-400 mb-5">{isMyanmar ? "ဘယ်လောက်ကြာကြာ ရွှေ့ထားမလဲ?" : "How long do you want to snooze?"}</p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {[5, 10, 15, 30].map((min) => (
+                <button key={min} onClick={() => handleSnooze(min)} disabled={snoozeSaving} className="py-3 rounded-xl bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-white font-medium transition">
+                  {min} {isMyanmar ? "မိနစ်" : "min"}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setSnoozeModalOpen(false)} className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5">
+              {isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <TopNav />
       <main className="max-w-3xl mx-auto p-4 py-4">
         {/* Header */}
@@ -234,9 +204,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </button>
           <div className="flex gap-2">
             <button onClick={() => setSnoozeModalOpen(true)} className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
-                <Clock size={18} />
-              </button>
-              <button onClick={() => router.push(`/notes/add?edit=${note.id}`)} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
+              <Clock size={18} />
+            </button>
+            <button onClick={() => router.push(`/notes/add?edit=${note.id}`)} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Edit size={18} />
             </button>
             <button onClick={handleDelete} className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
@@ -255,79 +225,64 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             note.reminderStatus === "paused" ? "bg-gray-500/15 text-gray-400 border-gray-500/30" :
             "bg-blue-500/15 text-blue-400 border-blue-500/30"
           }`}>
-            {note.isCompleted ? t("done") : t(note.reminderStatus as any)}
+            {note.isCompleted ? t("completed" as any) : note.reminderStatus === "paused" ? t("paused" as any) : t("pending" as any)}
           </span>
         </div>
 
-        {/* Title */}
-        <h1 className={`text-2xl font-bold mb-3 ${note.isCompleted ? "line-through text-[var(--nx-text-muted-updated)]" : "text-white"}`}>
-          {note.title}
-        </h1>
-
-        {/* Body */}
-        {note.body && (
-          <p className="text-sm text-[var(--nx-text-secondary-updated)] leading-relaxed mb-4 whitespace-pre-line">
-            {note.body}
-          </p>
-        )}
+        {/* Title & Body */}
+        <h1 className="text-3xl font-bold text-white mb-2">{note.title}</h1>
+        {note.body && <p className="text-[var(--nx-text-muted-updated)] mb-6">{note.body}</p>}
 
         {/* Info Card */}
-        <div className="p-4 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl mb-4 flex flex-col gap-3">
+        <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col gap-3">
           {note.reminderAt && (
-            <div className="flex items-center gap-3">
-              <Clock size={18} className="text-[var(--nx-cyan)]" />
+            <div className="flex items-start gap-3">
+              <Clock size={18} className="text-[var(--nx-cyan)] mt-0.5" />
               <div>
-                <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase">{t("reminderTime")}</p>
-                <p className="text-sm text-white">
-                  {new Date(note.reminderAt).toLocaleString(isMyanmar ? "my-MM" : "en-US", {
-                    weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
-                  })}
-                </p>
+                <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase font-bold">{t("reminderTime" as any)}</p>
+                <p className="text-white text-sm">{new Date(note.reminderAt).toLocaleString(isMyanmar ? "my-MM" : "en-US")}</p>
               </div>
             </div>
           )}
           {note.reminderEnabled && (
-            <div className="flex items-center gap-3">
-              <Bell size={18} className="text-[var(--nx-cyan)]" />
+            <div className="flex items-start gap-3">
+              <Bell size={18} className="text-[var(--nx-cyan)] mt-0.5" />
               <div>
-                <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase">{t("reminderInterval")}</p>
-                <p className="text-sm text-white">{note.reminderIntervalMinutes} {t("minutes")}</p>
+                <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase font-bold">{t("reminderInterval" as any)}</p>
+                <p className="text-white text-sm">{note.reminderIntervalMinutes} {t("minutes" as any)}</p>
               </div>
             </div>
           )}
           {note.recurrence && note.recurrence !== "none" && (
-            <div className="flex items-center gap-3">
-              <SkipForward size={18} className="text-[var(--nx-cyan)]" />
+            <div className="flex items-start gap-3">
+              <SkipForward size={18} className="text-[var(--nx-cyan)] mt-0.5" />
               <div>
-                <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase">{t("recurrence")}</p>
-                <p className="text-sm text-white">{t(note.recurrence as any)}</p>
+                <p className="text-[10px] text-[var(--nx-text-muted-updated)] uppercase font-bold">{t("recurrence" as any)}</p>
+                <p className="text-white text-sm capitalize">{t(note.recurrence as any)}</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="flex flex-col gap-2">
           {!note.isCompleted && (
-            <button onClick={() => handleAction("done")} className="w-full py-3 bg-green-500 text-white font-bold rounded-lg flex items-center justify-center gap-2">
-              <CheckCircle size={18} /> {t("markDone")}
+            <button onClick={() => handleAction("done")} className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-xl transition">
+              <CheckCircle size={20} /> {t("markDone" as any)}
             </button>
           )}
-          {note.reminderStatus === "pending" && !note.isCompleted && (
-            <button onClick={() => handleAction("pause")} className="w-full py-3 bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] font-bold rounded-lg flex items-center justify-center gap-2">
-              <Pause size={18} /> {t("pause")}
+          {note.reminderStatus !== "paused" ? (
+            <button onClick={() => handleAction("pause")} className="w-full flex items-center justify-center gap-2 bg-[var(--nx-bg-card)] hover:bg-[var(--nx-border-updated)] border border-[var(--nx-border-updated)] text-white font-medium py-3 rounded-xl transition">
+              <Pause size={20} /> {t("pause" as any)}
+            </button>
+          ) : (
+            <button onClick={() => handleAction("resume")} className="w-full flex items-center justify-center gap-2 bg-[var(--nx-bg-card)] hover:bg-[var(--nx-border-updated)] border border-[var(--nx-border-updated)] text-white font-medium py-3 rounded-xl transition">
+              <Play size={20} /> {t("resume" as any)}
             </button>
           )}
-          {note.reminderStatus === "paused" && (
-            <button onClick={() => handleAction("resume")} className="w-full py-3 bg-[var(--nx-cyan)] text-black font-bold rounded-lg flex items-center justify-center gap-2">
-              <Play size={18} /> {t("resume")}
-            </button>
-          )}
-          {!note.isCompleted && note.reminderStatus !== "skipped" && (
-            <button onClick={() => handleAction("skip")} className="w-full py-3 bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] font-bold rounded-lg flex items-center justify-center gap-2">
-              <SkipForward size={18} /> {t("skip")}
-            </button>
-          )}
+          <button onClick={() => handleAction("skip")} className="w-full flex items-center justify-center gap-2 bg-[var(--nx-bg-card)] hover:bg-[var(--nx-border-updated)] border border-[var(--nx-border-updated)] text-white font-medium py-3 rounded-xl transition">
+            <SkipForward size={20} /> {t("skip" as any)}
+          </button>
         </div>
       </main>
       <BottomNav />
