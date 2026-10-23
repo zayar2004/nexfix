@@ -6,6 +6,8 @@ import { SettingsProvider } from "@/lib/settings-context";
 import { SessionProvider } from "next-auth/react";
 import { UserBackButton } from "@/components/layout/UserBackButton";
 import { cookies } from "next/headers";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { ApprovalGuard } from "@/components/ApprovalGuard";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -41,7 +43,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Read theme from cookie set by client
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get("nexfix-theme")?.value || "dark";
   const initialClass = themeCookie === "light" ? "nx-light" : "nx-dark";
@@ -66,12 +67,15 @@ export default async function RootLayout({
       </head>
       <body className={inter.className}>
         <SessionProvider refetchOnWindowFocus={false}>
-          <NetworkProvider>
-            <SettingsProvider>
-              <UserBackButton />
-              {children}
-            </SettingsProvider>
-          </NetworkProvider>
+          <ApprovalGuard>
+            <NetworkProvider>
+              <SettingsProvider>
+                <ServiceWorkerRegister />
+                <UserBackButton />
+                {children}
+              </SettingsProvider>
+            </NetworkProvider>
+          </ApprovalGuard>
         </SessionProvider>
       </body>
     </html>
