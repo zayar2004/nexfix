@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X, Shield, User as UserIcon, Loader2, ChevronDown } from "lucide-react";
+import { Check, X, Shield, User as UserIcon, Loader2, ChevronDown, Trash2, Eye, EyeOff } from "lucide-react";
 
 interface UserData {
   id: string;
@@ -10,6 +10,7 @@ interface UserData {
   role: string;
   isApproved: boolean;
   createdAt: string;
+  passwordHash?: string;
 }
 
 const ROLES = [
@@ -24,6 +25,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [roleDropdown, setRoleDropdown] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [showPassword, setShowPassword] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -62,6 +66,26 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users?id=${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+        setDeleteTarget(null);
+      } else {
+        alert("Failed to delete user");
+      }
+    } catch (err) {
+      alert("Error deleting user");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -71,10 +95,10 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-2">User Management</h1>
-        <p className="text-slate-400">Approve, reject, or change roles of users.</p>
+        <p className="text-slate-400">Approve, reject, change roles, or delete users.</p>
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -82,16 +106,17 @@ export default function AdminUsersPage() {
           <table className="w-full text-left text-sm text-slate-300">
             <thead className="bg-slate-950/50 text-xs uppercase text-slate-500 border-b border-slate-800">
               <tr>
-                <th className="px-6 py-4 font-medium">User</th>
-                <th className="px-6 py-4 font-medium">Role</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium text-right">Actions</th>
+                <th className="px-4 py-4 font-medium">User</th>
+                <th className="px-4 py-4 font-medium">Password (Hash)</th>
+                <th className="px-4 py-4 font-medium">Role</th>
+                <th className="px-4 py-4 font-medium">Status</th>
+                <th className="px-4 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
                         <UserIcon className="w-5 h-5 text-slate-400" />
@@ -102,8 +127,20 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 relative">
-                    {/* Role Dropdown */}
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs bg-slate-950 px-2 py-1 rounded border border-slate-800 text-slate-400 max-w-[200px] truncate">
+                        {showPassword === user.id ? (user.passwordHash || "N/A") : "••••••••••••"}
+                      </code>
+                      <button
+                        onClick={() => setShowPassword(showPassword === user.id ? null : user.id)}
+                        className="text-slate-500 hover:text-white p-1"
+                      >
+                        {showPassword === user.id ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 relative">
                     <button
                       onClick={() => setRoleDropdown(roleDropdown === user.id ? null : user.id)}
                       disabled={actionId === user.id}
@@ -132,7 +169,7 @@ export default function AdminUsersPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     {user.isApproved ? (
                       <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-400/20">
                         <Check className="w-3.5 h-3.5" /> Approved
@@ -143,7 +180,7 @@ export default function AdminUsersPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {!user.isApproved ? (
                         <button
@@ -164,19 +201,56 @@ export default function AdminUsersPage() {
                           Revoke
                         </button>
                       )}
+                      <button
+                        onClick={() => setDeleteTarget(user)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg text-xs font-medium transition border border-red-500/20"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">No users found.</td>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">No users found.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
+              <Trash2 className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Delete User?</h3>
+            <p className="text-sm text-slate-400 mb-6">
+              <strong>{deleteTarget.email}</strong> ကို အပြီးဖျက်ပစ်မည်။ ဤအီးမေးလ်နဲ့ ပြန် Register လုပ်လို့ရပါမည်။
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

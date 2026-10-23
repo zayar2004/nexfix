@@ -55,3 +55,26 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: false, error: "Failed to update" }, { status: 500 });
   }
 }
+
+// DELETE: User ကို အပြီးဖျက်မယ်
+export async function DELETE(req: Request) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "super_admin") {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  
+  if (!id) {
+    return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
+  }
+
+  try {
+    await db.delete(users).where(eq(users.id, id));
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ ok: false, error: "Failed to delete" }, { status: 500 });
+  }
+}
