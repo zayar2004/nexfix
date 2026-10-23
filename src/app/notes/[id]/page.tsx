@@ -37,7 +37,7 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
 
   const fetchNote = async () => {
     try {
-      const res = await fetch(`/api/notes/${id}`);
+      const res = await fetch(`/api/notes/${id}`, { cache: "no-store" });
       const data = await res.json();
       if (data.ok && data.data) {
         setNote(data.data);
@@ -86,7 +86,7 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
       const data = await res.json();
       if (data.ok) {
         setSnoozeModalOpen(false);
-        window.location.reload();
+        await fetchNote(); // Data ကို ချက်ချင်း ပြန်ယူမယ်
       }
     } catch (err) {
       console.error(err);
