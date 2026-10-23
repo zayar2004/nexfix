@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Upload, Music, Clock, Save, CheckCircle, Volume2, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Music, Clock, Save, CheckCircle, Volume2, Loader2, Play, Pause } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getSettings, saveSettings, NotificationSettings, requestNotificationPermission, saveCustomSound } from "@/lib/notifications";
 
@@ -14,7 +14,9 @@ export default function NotificationSettingsPage() {
   });
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setSettings(getSettings());
@@ -43,6 +45,14 @@ export default function NotificationSettingsPage() {
       const uri = await saveCustomSound(file);
       if (uri) {
         setSettings({ ...settings, customSoundUri: uri, soundName: file.name });
+        
+        // ဖိုင်ရွေးလိုက်တာနဲ့ ချက်ချင်း အသံထွက်အောင် လုပ်မယ်
+        const audio = new Audio(URL.createObjectURL(file));
+        audioRef.current = audio;
+        audio.play().then(() => {
+          setIsPlaying(true);
+          audio.onended = () => setIsPlaying(false);
+        }).catch(err => console.log("Play error:", err));
       } else {
         alert("ဖိုင် သိမ်းလို့ မရပါ");
       }
@@ -96,22 +106,54 @@ export default function NotificationSettingsPage() {
               <Upload className="w-4 h-4 text-purple-400" />
             )}
             <span className="text-sm">
-              {uploading ? "တင်နေသည်..." : settings.soundName ? `ရွေးထား: ${settings.soundName}` : "MP3 ဖိုင် ရွေးပါ"}
+              {uploading ? "တင်နေသည်..." : settings.soundName ? `ရွေးထား: ${settings.soundName}` : "MP3 ဖိုင် ရွေးပြီး နားထောင်ပါ"}
             </span>
           </button>
           
           {settings.soundName && (
-            <div className="mt-3 flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-purple-400" />
-                <span className="text-xs">{settings.soundName}</span>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Volume2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <span className="text-xs truncate">{settings.soundName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (!settings.customSoundUri) return;
+                      if (isPlaying && audioRef.current) {
+                        audioRef.current.pause();
+                        setIsPlaying(false);
+                      } else if (audioRef.current) {
+                        audioRef.current.play().then(() => setIsPlaying(true));
+                      } else {
+                        const audio = new Audio(settings.customSoundUri);
+                        audioRef.current = audio;
+                        audio.play().then(() => {
+                          setIsPlaying(true);
+                          audio.onended = () => setIsPlaying(false);
+                        });
+                      }
+                    }}
+                    className="p-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded-full text-purple-400"
+                  >
+                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current = null;
+                      }
+                      setIsPlaying(false);
+                      setSettings({ ...settings, customSoundUri: null, soundName: null });
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    ဖျက်မည်
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setSettings({ ...settings, customSoundUri: null, soundName: null })}
-                className="text-xs text-red-400 hover:text-red-300"
-              >
-                ဖျက်မည်
-              </button>
             </div>
           )}
         </div>
