@@ -32,7 +32,20 @@ function LoginForm() {
       if (res?.error) {
         setError("Invalid email or password");
       } else {
+        // Session ကို Refresh လုပ်ပြီး Approve ဖြစ်မဖြစ် စစ်မယ်
+      const sessionRes = await fetch("/api/auth/session", { cache: "no-store" });
+      const sessionData = await sessionRes.json();
+      
+      if (sessionData?.user) {
+        const isAdmin = ["staff", "senior_admin", "super_admin"].includes(sessionData.user.role);
+        if (sessionData.user.isApproved || isAdmin) {
+          router.push("/");
+        } else {
+          router.push("/pending-approval");
+        }
+      } else {
         router.push("/");
+      }
         router.refresh();
       }
     } catch {
