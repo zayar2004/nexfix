@@ -34,14 +34,19 @@ export default function PendingApprovalPage() {
 
   const checkApprovalStatus = async () => {
     try {
+      // Session ကို ချက်ချင်း Refresh လုပ်မယ်
+      await fetch("/api/auth/session", { cache: "no-store" });
+      
       const newSession = await update();
       if (newSession?.user && (newSession.user as any).isApproved === true) {
         setIsApproved(true);
         setTimeout(() => { window.location.href = "/"; }, 2000);
         return true;
       }
+      return false;
     } catch (err) {
       console.error(err);
+      return false;
     }
   };
 
@@ -66,8 +71,11 @@ export default function PendingApprovalPage() {
   const handleManualRefresh = async () => {
     setChecking(true);
     setCountdown(10);
-    await checkApprovalStatus();
-    setChecking(false);
+    const approved = await checkApprovalStatus();
+    if (!approved) {
+      // Approve မဖြစ်သေးရင် Page ကို ပြန် Refresh လုပ်ပြီး Session အသစ် ယူမယ်
+      window.location.reload();
+    }
   };
 
   if (isApproved) {
