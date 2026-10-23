@@ -56,3 +56,16 @@ tsconfig.tsbuildinfo
 *.bak_*
 *.bak[0-9]*
 backups/
+
+# Backup files (auto-generated)
+*.bak
+*.bak.*
+*.bak2
+*.bak3
+*.bak4
+*.bak5
+*.bak6
+*.bak7
+*.bak8
+*.bak9
+*.bak10

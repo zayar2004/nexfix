@@ -56,7 +56,7 @@ export default function LibraryPage() {
         const data = await res.json();
         if (data.ok && data.data?.pendingApproval) {
           // Admin Approve မလုပ်ရသေးရင် Data မပြဘူး
-          console.log("Pending approval");
+          window.location.href = "/pending-approval";
           setLoading(false);
           return;
         }
