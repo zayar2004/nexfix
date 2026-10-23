@@ -31,6 +31,7 @@ export default function NotesPage() {
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -51,8 +52,14 @@ export default function NotesPage() {
     fetchNotes();
   }, [fetchNotes]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(isMyanmar ? "ဤလုပ်ငန်းကို ဖျက်မလား?" : "Delete this task?")) return;
+  const handleDelete = (id: string) => {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     try {
       await fetch(`/api/notes?id=${id}`, { method: "DELETE" });
       fetchNotes();
@@ -136,8 +143,42 @@ export default function NotesPage() {
     return { text: isMyanmar ? "စောင့်ဆိုင်း" : "Pending", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" };
   };
 
+
+  const DeleteModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
+          <Trash2 className="w-6 h-6 text-red-500" />
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">
+          {isMyanmar ? "ဖျက်ရန် သေချာပါသလား?" : "Delete Task?"}
+        </h3>
+        <p className="text-sm text-slate-400 mb-6">
+          {isMyanmar 
+            ? "ဤလုပ်ငန်းကို ဖျက်လိုက်ပါက ပြန်လည် ရယူနိုင်မည် မဟုတ်ပါ။" 
+            : "This action cannot be undone."}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setDeleteTargetId(null)}
+            className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition border border-white/5"
+          >
+            {isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}
+          </button>
+          <button
+            onClick={confirmDelete}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition shadow-lg shadow-red-600/20"
+          >
+            {isMyanmar ? "ဖျက်မည်" : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      {deleteTargetId && <DeleteModal />}
       <TopNav />
       <main className="max-w-3xl mx-auto p-4 py-4">
         {/* Header */}
