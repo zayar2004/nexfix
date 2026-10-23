@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Upload, Music, Clock, Save, CheckCircle, Volume2 } from "lucide-react";
+import { ArrowLeft, Upload, Music, Clock, Save, CheckCircle, Volume2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { getSettings, saveSettings, NotificationSettings, requestNotificationPermission } from "@/lib/notifications";
+import { getSettings, saveSettings, NotificationSettings, requestNotificationPermission, saveCustomSound } from "@/lib/notifications";
 
 export default function NotificationSettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<NotificationSettings>({
-    customSound: null,
+    customSoundUri: null,
     repeatIntervalMinutes: 0,
     soundName: null,
   });
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function NotificationSettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -34,16 +35,21 @@ export default function NotificationSettingsPage() {
       alert("MP3, WAV, OGG ဖိုင်တွေပဲ ထည့်ပါ");
       return;
     }
-    
-    // Capacitor Native မှာ File အသစ်ကို သိမ်းဖို့ လိုတယ်
-    // လောလောဆယ် LocalStorage မှာ File Name ကို သိမ်းမယ်
-    const soundName = file.name;
-    setSettings({ ...settings, customSound: soundName, soundName });
-    
-    // Web အတွက် Audio Play စမ်းဖို့
-    const url = URL.createObjectURL(file);
-    const audio = new Audio(url);
-    audio.play().catch(e => console.log("Preview failed", e));
+
+    setUploading(true);
+    try {
+      const uri = await saveCustomSound(file);
+      if (uri) {
+        setSettings({ ...settings, customSoundUri: uri, soundName: file.name });
+      } else {
+        alert("ဖိုင် သိမ်းလို့ မရပါ");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading file");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -79,10 +85,17 @@ export default function NotificationSettingsPage() {
           
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl hover:border-purple-400/50 transition flex items-center justify-center gap-2"
+            disabled={uploading}
+            className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl hover:border-purple-400/50 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <Upload className="w-4 h-4 text-purple-400" />
-            <span className="text-sm">{settings.soundName ? `ရွေးထား: ${settings.soundName}` : "MP3 ဖိုင် ရွေးပါ"}</span>
+            {uploading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+            ) : (
+              <Upload className="w-4 h-4 text-purple-400" />
+            )}
+            <span className="text-sm">
+              {uploading ? "တင်နေသည်..." : settings.soundName ? `ရွေးထား: ${settings.soundName}` : "MP3 ဖိုင် ရွေးပါ"}
+            </span>
           </button>
           
           {settings.soundName && (
@@ -92,7 +105,7 @@ export default function NotificationSettingsPage() {
                 <span className="text-xs">{settings.soundName}</span>
               </div>
               <button
-                onClick={() => setSettings({ ...settings, customSound: null, soundName: null })}
+                onClick={() => setSettings({ ...settings, customSoundUri: null, soundName: null })}
                 className="text-xs text-red-400 hover:text-red-300"
               >
                 ဖျက်မည်
@@ -143,7 +156,7 @@ export default function NotificationSettingsPage() {
         </button>
 
         <div className="text-xs text-slate-500 text-center">
-          <p>⚠️ အသံအသစ်ကို APK အသစ်မှာသာ အပြည့်အဝ အလုပ်လုပ်ပါမယ်။</p>
+          <p>⚠️ အသံအသစ်နဲ့ Repeat ကို APK အသစ်မှာသာ အပြည့်အဝ အလုပ်လုပ်ပါမယ်။</p>
         </div>
       </main>
     </div>

@@ -19,14 +19,26 @@ function AddTaskForm() {
   const { t, locale } = useSettings();
   const isMyanmar = locale === "my";
   
-  const [form, setForm] = useState({
-    title: "",
-    body: "",
-    priority: "normal" as "low" | "normal" | "high" | "urgent",
-    reminderEnabled: true,
-    reminderAt: "",
-    reminderIntervalMinutes: 15,
-    recurrence: "none" as "none" | "daily" | "weekly" | "monthly" | "yearly",
+  const [form, setForm] = useState(() => {
+    let defaultInterval = 15;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nexfix-reminder-settings');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          defaultInterval = parsed.defaultIntervalMinutes || 15;
+        } catch {}
+      }
+    }
+    return {
+      title: "",
+      body: "",
+      priority: "normal" as "low" | "normal" | "high" | "urgent",
+      reminderEnabled: true,
+      reminderAt: "",
+      reminderIntervalMinutes: defaultInterval,
+      recurrence: "none" as "none" | "daily" | "weekly" | "monthly" | "yearly",
+    };
   });
   const [customInterval, setCustomInterval] = useState(false);
   const [saving, setSaving] = useState(false);

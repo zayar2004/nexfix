@@ -6,7 +6,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
 import { scheduleNotification, cancelNotification } from "@/lib/notifications";
-import { ArrowLeft, Edit, Trash2, CheckCircle, Clock, Pause, Play, SkipForward, Bell } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, CheckCircle, Clock, Pause, Play, SkipForward, Bell, History } from "lucide-react";
 
 type Note = {
   id: string;
@@ -208,6 +208,9 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
           <div className="flex gap-2">
             <button onClick={() => setSnoozeModalOpen(true)} className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
               <Clock size={18} />
+            </button>
+            <button onClick={() => router.push(`/notes/${note.id}/history`)} className="p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg text-purple-400">
+              <History size={18} />
             </button>
             <button onClick={() => router.push(`/notes/add?edit=${note.id}`)} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Edit size={18} />

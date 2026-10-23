@@ -1,28 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
-import { Plus, Search, Calendar, Clock, AlertTriangle, CheckCircle, Pause, ChevronRight, Trash2, Bell, Settings } from "lucide-react";
+import { Plus, Search, Clock, AlertTriangle, CheckCircle, ChevronRight, Trash2, Bell, Settings, MoreVertical, Copy, Pause, Play, SkipForward, Loader2, Calendar } from "lucide-react";
 
 type Note = {
   id: string;
   title: string;
   body: string | null;
   reminderAt: string | null;
-  recurrence: string | null;
   priority: string;
   reminderEnabled: boolean;
-  reminderIntervalMinutes: string;
   reminderStatus: string;
-  nextReminderAt: string | null;
   isCompleted: boolean;
-  createdAt: string;
+  nextReminderAt: string | null;
 };
-
-type Filter = "all" | "today" | "upcoming" | "overdue" | "completed";
 
 export default function NotesPage() {
   const router = useRouter();
@@ -31,16 +26,39 @@ export default function NotesPage() {
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "overdue" | "completed">("all");
+  const [counts, setCounts] = useState({ today: 0, upcoming: 0, overdue: 0, completed: 0 });
+  
+  // Actions Menu State
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Note | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchNotes = useCallback(async () => {
-    setLoading(true);
     try {
-      const res = await fetch("/api/notes");
+      const res = await fetch("/api/notes", { cache: "no-store" });
       const data = await res.json();
-      if (data.ok) setNotes(data.data);
+      if (data.ok) {
+        setNotes(data.data);
+        // Counts တွက်မယ်
+        const now = new Date();
+        const today = { start: new Date(now.getFullYear(), now.getMonth(), now.getDate()), end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59) };
+        let c = { today: 0, upcoming: 0, overdue: 0, completed: 0 };
+        data.data.forEach((n: Note) => {
+          if (n.isCompleted) c.completed++;
+          else if (!n.reminderAt) c.upcoming++;
+          else {
+            const d = new Date(n.reminderAt);
+            if (d < now) c.overdue++;
+            else if (d >= today.start && d <= today.end) c.today++;
+            else c.upcoming++;
+          }
+        });
+        setCounts(c);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -48,137 +66,130 @@ export default function NotesPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
+  useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
-  const handleDelete = (id: string) => {
-    setDeleteTargetId(id);
+  const handleAction = async (id: string, action: string) => {
+    setMenuOpen(null);
+    setActionLoading(id);
+    try {
+      if (action === "delete") {
+        const target = notes.find(n => n.id === id);
+        if (target) setDeleteTarget(target);
+        setDeleteModalOpen(true);
+        setActionLoading(null);
+        return;
+      }
+      
+      if (action === "duplicate") {
+        const note = notes.find(n => n.id === id);
+        if (note) {
+          await fetch("/api/notes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: `${note.title} (Copy)`,
+              body: note.body,
+              priority: note.priority,
+              reminderEnabled: note.reminderEnabled,
+              reminderAt: note.reminderAt,
+              reminderIntervalMinutes: 15,
+              recurrence: "none",
+            }),
+          });
+        }
+      } else {
+        // done, pause, resume, skip
+        await fetch("/api/notes", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            ...(action === "done" && { isCompleted: true }),
+            ...(action === "pause" && { reminderStatus: "paused" }),
+            ...(action === "resume" && { reminderStatus: "pending" }),
+            ...(action === "skip" && { reminderAt: null, reminderEnabled: false }),
+          }),
+        });
+      }
+      await fetchNotes();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const confirmDelete = async () => {
-    if (!deleteTargetId) return;
-    const id = deleteTargetId;
-    setDeleteTargetId(null);
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await fetch(`/api/notes?id=${id}`, { method: "DELETE" });
-      fetchNotes();
+      await fetch(`/api/notes?id=${deleteTarget.id}`, { method: "DELETE" });
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      await fetchNotes();
     } catch (err) {
       console.error(err);
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const handleDone = async (id: string) => {
-    try {
-      await fetch("/api/notes", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id,
-          isCompleted: true,
-          reminderStatus: "done",
-          completedAt: new Date().toISOString(),
-        }),
-      });
-      fetchNotes();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Filter Logic
-  const filteredNotes = useMemo(() => {
-    let result = notes;
-    const now = new Date();
-
+  const filteredNotes = notes.filter((n) => {
+    if (searchQuery && !n.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filter === "completed") return n.isCompleted;
+    if (n.isCompleted) return false;
+    if (filter === "all") return true;
     if (filter === "today") {
-      result = result.filter((n) => {
-        if (!n.reminderAt) return false;
-        const d = new Date(n.reminderAt);
-        return d.toDateString() === now.toDateString() && !n.isCompleted;
-      });
-    } else if (filter === "upcoming") {
-      result = result.filter((n) => n.reminderAt && new Date(n.reminderAt) > now && !n.isCompleted);
-    } else if (filter === "overdue") {
-      result = result.filter((n) => n.reminderAt && new Date(n.reminderAt) < now && !n.isCompleted);
-    } else if (filter === "completed") {
-      result = result.filter((n) => n.isCompleted);
+      if (!n.reminderAt) return false;
+      const d = new Date(n.reminderAt); const now = new Date();
+      return d.toDateString() === now.toDateString() && d >= now;
     }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((n) =>
-        n.title.toLowerCase().includes(q) ||
-        (n.body && n.body.toLowerCase().includes(q))
-      );
+    if (filter === "upcoming") {
+      if (!n.reminderAt) return true;
+      return new Date(n.reminderAt) > new Date();
     }
-
-    return result;
-  }, [notes, filter, searchQuery]);
-
-  // Counts
-  const counts = useMemo(() => {
-    const now = new Date();
-    return {
-      today: notes.filter((n) => n.reminderAt && new Date(n.reminderAt).toDateString() === now.toDateString() && !n.isCompleted).length,
-      upcoming: notes.filter((n) => n.reminderAt && new Date(n.reminderAt) > now && !n.isCompleted).length,
-      overdue: notes.filter((n) => n.reminderAt && new Date(n.reminderAt) < now && !n.isCompleted).length,
-      completed: notes.filter((n) => n.isCompleted).length,
-    };
-  }, [notes]);
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent": return "bg-red-500/15 text-red-400 border-red-500/30";
-      case "high": return "bg-orange-500/15 text-orange-400 border-orange-500/30";
-      case "low": return "bg-gray-500/15 text-gray-400 border-gray-500/30";
-      default: return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+    if (filter === "overdue") {
+      if (!n.reminderAt) return false;
+      return new Date(n.reminderAt) < new Date();
     }
-  };
+    return true;
+  });
 
-  const getStatusBadge = (note: Note) => {
-    if (note.isCompleted) return { text: isMyanmar ? "ပြီးစီး" : "Done", color: "bg-green-500/15 text-green-400 border-green-500/30" };
-    if (note.reminderStatus === "paused") return { text: isMyanmar ? "ရပ်ထား" : "Paused", color: "bg-gray-500/15 text-gray-400 border-gray-500/30" };
-    if (note.reminderAt && new Date(note.reminderAt) < new Date()) return { text: isMyanmar ? "ကျော်လွန်" : "Overdue", color: "bg-red-500/15 text-red-400 border-red-500/30" };
-    return { text: isMyanmar ? "စောင့်ဆိုင်း" : "Pending", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" };
-  };
-
-
-  const DeleteModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
-          <Trash2 className="w-6 h-6 text-red-500" />
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+        <TopNav />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[var(--nx-cyan)] animate-spin" />
         </div>
-        <h3 className="text-lg font-bold text-white mb-2">
-          {isMyanmar ? "ဖျက်ရန် သေချာပါသလား?" : "Delete Task?"}
-        </h3>
-        <p className="text-sm text-slate-400 mb-6">
-          {isMyanmar 
-            ? "ဤလုပ်ငန်းကို ဖျက်လိုက်ပါက ပြန်လည် ရယူနိုင်မည် မဟုတ်ပါ။" 
-            : "This action cannot be undone."}
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setDeleteTargetId(null)}
-            className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition border border-white/5"
-          >
-            {isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}
-          </button>
-          <button
-            onClick={confirmDelete}
-            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition shadow-lg shadow-red-600/20"
-          >
-            {isMyanmar ? "ဖျက်မည်" : "Delete"}
-          </button>
-        </div>
+        <BottomNav />
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
-      {deleteTargetId && <DeleteModal />}
+    <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
+      {/* Delete Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
+              <Trash2 className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">{isMyanmar ? "ဖျက်ရန် သေချာပါသလား?" : "Delete Task?"}</h3>
+            <p className="text-sm text-slate-400 mb-6">{deleteTarget?.title}</p>
+            <div className="flex gap-3">
+              <button onClick={() => { setDeleteModalOpen(false); setDeleteTarget(null); }} disabled={deleting} className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/5">
+                {isMyanmar ? "မလုပ်တော့ပါ" : "Cancel"}
+              </button>
+              <button onClick={confirmDelete} disabled={deleting} className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-50">
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (isMyanmar ? "ဖျက်မည်" : "Delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <TopNav />
       <main className="max-w-3xl mx-auto p-4 py-4">
         {/* Header */}
@@ -187,18 +198,20 @@ export default function NotesPage() {
             <h1 className="text-2xl font-bold text-white">{t("myTasks")}</h1>
             <p className="text-xs text-[var(--nx-text-muted-updated)]">
               {new Date().toLocaleDateString(isMyanmar ? "my-MM" : "en-US", { weekday: "short", month: "short", day: "numeric" })}
-              {" • "}
-              {notes.filter((n) => !n.isCompleted).length} {isMyanmar ? "လုပ်ငန်းများ" : "active"}
+              {" • "}{notes.filter((n) => !n.isCompleted).length} {isMyanmar ? "လုပ်ငန်းများ" : "active"}
             </p>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => router.push("/notes/calendar")} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
+              <Calendar size={18} />
+            </button>
             <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Search size={18} />
             </button>
-            <button
-              onClick={() => router.push("/settings/notifications")}
-              className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white"
-            >
+            <button onClick={() => router.push("/settings/reminders")} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
+              <Bell size={18} />
+            </button>
+            <button onClick={() => router.push("/settings/notifications")} className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
               <Settings size={18} />
             </button>
             <button className="p-2 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-lg text-white">
@@ -228,24 +241,10 @@ export default function NotesPage() {
         </div>
 
         {/* Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-          {[
-            { id: "all", label: t("all") },
-            { id: "today", label: t("today") },
-            { id: "upcoming", label: t("upcoming") },
-            { id: "overdue", label: t("overdue") },
-            { id: "completed", label: t("completed") },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as Filter)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap transition ${
-                filter === f.id
-                  ? "bg-[var(--nx-cyan)] text-black"
-                  : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"
-              }`}
-            >
-              {f.label}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+          {(["all", "today", "upcoming", "overdue", "completed"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${filter === f ? "bg-[var(--nx-cyan)] text-black" : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"}`}>
+              {t(f)}
             </button>
           ))}
         </div>
@@ -255,95 +254,83 @@ export default function NotesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)]" size={16} />
           <input
             type="text"
-            placeholder={t("searchTasks")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg py-2.5 pl-9 pr-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
+            placeholder={isMyanmar ? "ရှာဖွေရန်..." : "Search..."}
+            className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-[var(--nx-cyan)] outline-none"
           />
         </div>
 
         {/* Task List */}
-        {loading ? (
-          <p className="text-center text-[var(--nx-text-muted-updated)] py-10">Loading...</p>
-        ) : filteredNotes.length === 0 ? (
-          <div className="p-10 text-center bg-[var(--nx-bg-card)] border border-dashed border-[var(--nx-border-updated)] rounded-xl">
-            <CheckCircle size={40} className="mx-auto text-[var(--nx-text-muted-updated)] opacity-30 mb-3" />
-            <p className="text-sm text-[var(--nx-text-muted-updated)]">{t("noTasks")}</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {filteredNotes.map((note) => {
-              const status = getStatusBadge(note);
-              return (
-                <div
-                  key={note.id}
-                  className="p-3 bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl hover:border-[var(--nx-cyan)] transition"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Done Checkbox */}
-                    <button
-                      onClick={() => !note.isCompleted && handleDone(note.id)}
-                      disabled={note.isCompleted}
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        note.isCompleted
-                          ? "bg-green-500 border-green-500"
-                          : "border-[var(--nx-text-muted-updated)] hover:border-[var(--nx-cyan)]"
-                      }`}
-                    >
-                      {note.isCompleted && <CheckCircle size={14} className="text-white" />}
-                    </button>
-
-                    {/* Content */}
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => router.push(`/notes/${note.id}`)}
-                    >
-                      <p className={`font-semibold text-sm mb-1 ${note.isCompleted ? "line-through text-[var(--nx-text-muted-updated)]" : "text-white"}`}>
-                        {note.title}
-                      </p>
-                      {note.body && (
-                        <p className="text-xs text-[var(--nx-text-muted-updated)] line-clamp-1 mb-2">{note.body}</p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2 text-[10px]">
-                        <span className={`px-2 py-0.5 rounded border font-bold ${status.color}`}>
-                          {status.text}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded border font-bold ${getPriorityColor(note.priority)}`}>
-                          {t(note.priority as any)}
-                        </span>
-                        {note.reminderAt && (
-                          <span className="text-[var(--nx-text-muted-updated)] flex items-center gap-1">
-                            <Clock size={10} /> {new Date(note.reminderAt).toLocaleTimeString(isMyanmar ? "my-MM" : "en-US", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        )}
-                        {note.recurrence && note.recurrence !== "none" && (
-                          <span className="text-[var(--nx-text-muted-updated)]">
-                            🔁 {t(note.recurrence as any)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Delete */}
-                    <button
-                      onClick={() => handleDelete(note.id)}
-                      className="p-1.5 text-[var(--nx-error)] hover:bg-[var(--nx-error)]/10 rounded flex-shrink-0"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+        <div className="space-y-2">
+          {filteredNotes.map((note) => (
+            <div key={note.id} className="relative bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 flex items-center gap-3">
+              <button onClick={() => handleAction(note.id, "done")} className="p-1 flex-shrink-0">
+                <CheckCircle size={20} className={note.isCompleted ? "text-green-400" : "text-[var(--nx-text-muted-updated)]"} />
+              </button>
+              
+              <div className="flex-1 min-w-0" onClick={() => router.push(`/notes/${note.id}`)}>
+                <p className={`text-sm font-medium truncate ${note.isCompleted ? "text-[var(--nx-text-muted-updated)] line-through" : "text-white"}`}>
+                  {note.title}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {note.reminderAt && (
+                    <span className="text-[10px] text-[var(--nx-text-muted-updated)] flex items-center gap-1">
+                      <Clock size={10} /> {new Date(note.reminderAt).toLocaleString(isMyanmar ? "my-MM" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${note.priority === "urgent" ? "bg-red-500/20 text-red-400" : note.priority === "high" ? "bg-orange-500/20 text-orange-400" : "bg-slate-500/20 text-slate-400"}`}>
+                    {t(note.priority as any)}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+
+              <button onClick={() => setMenuOpen(menuOpen === note.id ? null : note.id)} className="p-1.5 text-[var(--nx-text-muted-updated)] hover:bg-white/5 rounded flex-shrink-0">
+                {actionLoading === note.id ? <Loader2 size={16} className="animate-spin" /> : <MoreVertical size={16} />}
+              </button>
+
+              {/* Actions Dropdown */}
+              {menuOpen === note.id && (
+                <div className="absolute right-2 top-12 z-40 w-44 bg-slate-950 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                  <button onClick={() => { router.push(`/notes/${note.id}`); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-white/10">
+                    <ChevronRight size={14} /> {isMyanmar ? "ကြည့်မည်" : "View"}
+                  </button>
+                  <button onClick={() => handleAction(note.id, "duplicate")} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-white/10">
+                    <Copy size={14} /> {isMyanmar ? "ပွားမည်" : "Duplicate"}
+                  </button>
+                  {!note.isCompleted && note.reminderStatus !== "paused" && (
+                    <button onClick={() => handleAction(note.id, "pause")} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-white/10">
+                      <Pause size={14} /> {isMyanmar ? "ခဏရပ်မည်" : "Pause"}
+                    </button>
+                  )}
+                  {note.reminderStatus === "paused" && (
+                    <button onClick={() => handleAction(note.id, "resume")} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-white/10">
+                      <Play size={14} /> {isMyanmar ? "ပြန်လုပ်မည်" : "Resume"}
+                    </button>
+                  )}
+                  <button onClick={() => handleAction(note.id, "skip")} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-white/10">
+                    <SkipForward size={14} /> {isMyanmar ? "ကျော်မည်" : "Skip"}
+                  </button>
+                  <button onClick={() => handleAction(note.id, "delete")} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 border-t border-white/5">
+                    <Trash2 size={14} /> {isMyanmar ? "ဖျက်မည်" : "Delete"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {filteredNotes.length === 0 && (
+            <div className="text-center py-12 text-[var(--nx-text-muted-updated)]">
+              <p className="text-sm">{isMyanmar ? "လုပ်ငန်း မရှိပါ" : "No tasks yet"}</p>
+            </div>
+          )}
+        </div>
 
         {/* Floating Add Button */}
         <button
           onClick={() => router.push("/notes/add")}
-          className="fixed bottom-20 right-4 z-40 px-5 py-3 bg-[var(--nx-cyan)] text-black font-bold rounded-full shadow-2xl hover:opacity-90 transition flex items-center gap-1.5"
+          className="fixed bottom-20 right-5 z-30 w-14 h-14 rounded-full bg-[var(--nx-cyan)] text-black shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition"
         >
-          <Plus size={18} /> {isMyanmar ? "အသစ်" : "New"}
+          <Plus size={28} />
         </button>
       </main>
       <BottomNav />
