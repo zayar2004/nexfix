@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
-import { ArrowLeft, Save, Clock, Bell, Repeat, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Clock, Bell, Repeat, AlertTriangle, Loader2 } from "lucide-react";
 
 const INTERVALS = [1, 5, 10, 15, 30, 60];
 
-export default function AddTaskPage() {
+function AddTaskForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEditMode = !!editId;
+
   const { t, locale } = useSettings();
   const isMyanmar = locale === "my";
-
+  
   const [form, setForm] = useState({
     title: "",
     body: "",
@@ -26,6 +30,39 @@ export default function AddTaskPage() {
   const [customInterval, setCustomInterval] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(isEditMode);
+
+  // Edit Mode ဖြစ်ရင် Data တွေ ဆွဲထုတ်မယ်
+  useEffect(() => {
+    if (!editId) return;
+
+    const fetchNote = async () => {
+      try {
+        const res = await fetch(`/api/notes/${editId}`);
+        const data = await res.json();
+        if (data.ok && data.data) {
+          const n = data.data;
+          setForm({
+            title: n.title || "",
+            body: n.body || "",
+            priority: n.priority || "normal",
+            reminderEnabled: n.reminderEnabled ?? true,
+            // datetime-local format ပြောင်းဖို့ လိုတယ် (YYYY-MM-DDTHH:mm)
+            reminderAt: n.reminderAt ? new Date(n.reminderAt).toISOString().slice(0, 16) : "",
+            reminderIntervalMinutes: n.reminderIntervalMinutes || 15,
+            recurrence: n.recurrence || "none",
+          });
+        } else {
+          setError("Note not found");
+        }
+      } catch (err) {
+        setError("Failed to load note");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNote();
+  }, [editId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +70,11 @@ export default function AddTaskPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/notes", {
-        method: "POST",
+      const url = isEditMode ? `/api/notes/${editId}` : "/api/notes";
+      const method = isEditMode ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: form.title,
@@ -56,6 +96,14 @@ export default function AddTaskPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--nx-bg-base-deep)] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--nx-cyan)]" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       <TopNav />
@@ -64,7 +112,9 @@ export default function AddTaskPage() {
           <button onClick={() => router.back()} className="p-2 -ml-2 text-white">
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-xl font-bold text-white">{t("newTask")}</h1>
+          <h1 className="text-xl font-bold text-white">
+            {isEditMode ? (isMyanmar ? "လုပ်ငန်း ပြင်ဆင်ရန်" : "Edit Task") : t("newTask")}
+          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -105,10 +155,10 @@ export default function AddTaskPage() {
                   onClick={() => setForm({ ...form, priority: p })}
                   className={`py-2 rounded-lg text-xs font-bold transition ${
                     form.priority === p
-                      ? p === "urgent" ? "bg-red-500 text-white" :
-                        p === "high" ? "bg-orange-500 text-white" :
-                        p === "low" ? "bg-gray-500 text-white" :
-                        "bg-blue-500 text-white"
+                      ? p === "urgent" ? "bg-red-500 text-white"
+                        : p === "high" ? "bg-orange-500 text-white"
+                        : p === "low" ? "bg-gray-500 text-white"
+                        : "bg-blue-500 text-white"
                       : "bg-[var(--nx-bg-card)] text-[var(--nx-text-muted-updated)] border border-[var(--nx-border-updated)]"
                   }`}
                 >
@@ -219,13 +269,26 @@ export default function AddTaskPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 bg-[var(--nx-cyan)] text-black font-bold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-[var(--nx-cyan)] text-black font-bold rounded-lg mt-2 flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <Save size={18} /> {saving ? "Saving..." : t("saveTask")}
+            {saving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              isMyanmar ? (isEditMode ? "သိမ်းဆည်းမည်" : "ထည့်သွင်းမည်") : (isEditMode ? "Save Changes" : "Add Task")
+            )}
           </button>
         </form>
       </main>
       <BottomNav />
     </div>
+  );
+}
+
+// Next.js App Router မှာ useSearchParams ကို Suspense နဲ့ ခြုံရမယ်
+export default function AddTaskPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--nx-bg-base-deep)]" />}>
+      <AddTaskForm />
+    </Suspense>
   );
 }
