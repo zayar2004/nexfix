@@ -43,7 +43,7 @@ const sections = [
     title: "System",
     items: [
       { label: "Content Version", href: "/admin/versions", icon: "clock", disabled: true },
-      { label: "Users", href: "/admin/users", icon: "users", disabled: true },
+      { label: "Users", href: "/admin/users", icon: "users" },
       { label: "Audit Log", href: "/admin/audit", icon: "list" },
       { label: "Settings", href: "/admin/settings", icon: "settings", disabled: true },
     ]
