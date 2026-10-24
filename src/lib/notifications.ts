@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 // Code ထဲက Default အသံ (public/sounds/default-notification.mp3)
-export const DEFAULT_SOUND = 'default-notification';
+export const DEFAULT_SOUND = 'default_notification';
 
 // Quiet Hours ဖြစ်မဖြစ် စစ်ဆေးမယ်
 function isInQuietHours(date: Date): boolean {
