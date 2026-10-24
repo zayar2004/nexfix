@@ -21,7 +21,9 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    if (!file) return NextResponse.json({ ok: false, error: "No file" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ ok: false, error: "No file" }, { status: 400 });
+    }
 
     const buffer = await file.arrayBuffer();
     const ext = file.name.split(".").pop() || "jpg";
@@ -32,13 +34,16 @@ export async function POST(req: Request) {
       Key: key,
       Body: Buffer.from(buffer),
       ContentType: file.type,
-      ACL: "public-read",
     }));
 
     const url = `${process.env.NEXT_PUBLIC_S3_URL}/${key}`;
     return NextResponse.json({ ok: true, url });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Upload error:", err);
-    return NextResponse.json({ ok: false, error: "Upload failed" }, { status: 500 });
+    return NextResponse.json({ 
+      ok: false, 
+      error: err.message || "Upload failed",
+      details: String(err)
+    }, { status: 500 });
   }
 }
