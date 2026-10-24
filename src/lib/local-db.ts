@@ -8,6 +8,7 @@ export type SyncData = {
   articleContents: Record<string, unknown>[];
   media?: Record<string, unknown>[];
   mediaVideos?: Record<string, unknown>[];
+  notes?: Record<string, unknown>[];
   lastSyncedAt: number | null;
   lastUpdated?: number;
   homepage?: Record<string, unknown>;
@@ -288,4 +289,17 @@ export async function searchPrivateExcelData(query: string): Promise<UserExcelRo
       String(value).toLowerCase().includes(lowerQuery)
     );
   });
+}
+
+
+// Notes ကို Local Storage ကနေ ရှာမယ်
+export async function getLocalNotes(): Promise<Record<string, unknown>[]> {
+  const data = await getCachedLocalData();
+  return data?.notes || [];
+}
+
+// Note တစ်ခုကို Local Storage ကနေ ယူမယ်
+export async function getLocalNote(id: string): Promise<Record<string, unknown> | null> {
+  const notes = await getLocalNotes();
+  return notes.find((n) => String(n.id) === id) || null;
 }

@@ -58,21 +58,6 @@ export default function HomePage() {
   // ၃ စက္ကန့်နောက် Hero Loading ကို အတင်းပိတ်မယ် (Data မရရင်)
   
 
-  // Page ဝင်တာနဲ့ Auto Sync လုပ်မယ် (Reload မလုပ်ဘူး)
-  useEffect(() => {
-    const autoSync = async () => {
-      if (!navigator.onLine) return;
-      try {
-        const res = await fetch("/api/sync");
-        const data = await res.json();
-        if (data.ok) {
-          await saveLocalData(data.data);
-        }
-      } catch (e) {}
-    };
-    autoSync();
-  }, []);
-
   useEffect(() => {
     const loadData = async () => {
       if (navigator.onLine) {
