@@ -40,21 +40,40 @@ export default function NotesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchNotes = useCallback(async () => {
+    // Safety timeout — ၂ စက္ကန့်အတွင်း Loading ပိတ်မယ်
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+
     try {
       // ၁။ Local Storage ကနေ အရင်ဖတ်မယ်
-      const localNotes = await getLocalNotes();
-      const offlineNotes = getOfflineNotes();
+      let localNotes: any[] = [];
+      let offlineNotes: any[] = [];
+      
+      try {
+        localNotes = (await getLocalNotes()) || [];
+      } catch (e) {
+        console.log("getLocalNotes failed:", e);
+      }
+      
+      try {
+        offlineNotes = getOfflineNotes() || [];
+      } catch (e) {
+        console.log("getOfflineNotes failed:", e);
+      }
       
       const allLocal = [...offlineNotes, ...localNotes];
       
       // Local Data ရှိရင် ချက်ချင်းပြမယ်၊ Loading ပိတ်မယ်
       if (allLocal.length > 0) {
         setNotes(allLocal as any);
+        clearTimeout(safetyTimeout);
         setLoading(false);
       }
 
       // ၂။ Offline ဖြစ်ရင် ဒီမှာတင် ရပ်မယ်
       if (!navigator.onLine) {
+        clearTimeout(safetyTimeout);
         setLoading(false);
         return;
       }
@@ -70,8 +89,9 @@ export default function NotesPage() {
         console.log("Server sync failed, using local");
       }
     } catch (err) {
-      console.error(err);
+      console.error("fetchNotes error:", err);
     } finally {
+      clearTimeout(safetyTimeout);
       // ဘာပဲဖြစ်ဖြစ် Loading ပိတ်မယ်
       setLoading(false);
     }
