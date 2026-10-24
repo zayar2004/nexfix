@@ -1,10 +1,8 @@
 import { Capacitor } from '@capacitor/core';
-import { LocalNotifications } from '@capacitor/local-notifications';
+import { LocalNotifications, ActionPerformed } from '@capacitor/local-notifications';
 
-// Code ထဲက Default အသံ (public/sounds/default-notification.mp3)
 export const DEFAULT_SOUND = 'default_notification';
 
-// Quiet Hours ဖြစ်မဖြစ် စစ်ဆေးမယ်
 function isInQuietHours(date: Date): boolean {
   if (typeof window === 'undefined') return false;
   const saved = localStorage.getItem('nexfix-reminder-settings');
@@ -12,24 +10,16 @@ function isInQuietHours(date: Date): boolean {
   try {
     const settings = JSON.parse(saved);
     if (!settings.quietHoursEnabled) return false;
-    
     const [startH, startM] = (settings.quietHoursStart || "22:00").split(':').map(Number);
     const [endH, endM] = (settings.quietHoursEnd || "06:00").split(':').map(Number);
-    
     const currentMinutes = date.getHours() * 60 + date.getMinutes();
     const startMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
-    
-    if (startMinutes < endMinutes) {
-      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-    }
+    if (startMinutes < endMinutes) return currentMinutes >= startMinutes && currentMinutes < endMinutes;
     return currentMinutes >= startMinutes || currentMinutes < endMinutes;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
-// Sound/Vibration Settings
 function getReminderToggles(): { soundEnabled: boolean; vibrationEnabled: boolean } {
   if (typeof window === 'undefined') return { soundEnabled: true, vibrationEnabled: true };
   const saved = localStorage.getItem('nexfix-reminder-settings');
@@ -40,9 +30,58 @@ function getReminderToggles(): { soundEnabled: boolean; vibrationEnabled: boolea
       soundEnabled: parsed.soundEnabled ?? true,
       vibrationEnabled: parsed.vibrationEnabled ?? true,
     };
-  } catch {
-    return { soundEnabled: true, vibrationEnabled: true };
-  }
+  } catch { return { soundEnabled: true, vibrationEnabled: true }; }
+}
+
+// Notification Action (Done/Skip) လုပ်တဲ့အခါ Database Update လုပ်ဖို့
+export function setupNotificationActions() {
+  if (!Capacitor.isNativePlatform()) return;
+  
+  LocalNotifications.addListener('localNotificationActionPerformed', async (notification: ActionPerformed) => {
+    const actionId = notification.actionId;
+    const noteId = notification.notification.extra?.noteId;
+    
+    if (!noteId) return;
+    
+    try {
+      if (actionId === 'DONE') {
+        // Task ကို Done လုပ်မယ်
+        await fetch("/api/notes", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: noteId, isCompleted: true }),
+        });
+        // တခြား Notification တွေ ဖျက်မယ်
+        const pending = await LocalNotifications.getPending();
+        const toCancel = pending.notifications.filter(n => n.extra?.noteId === noteId);
+        if (toCancel.length > 0) {
+          await LocalNotifications.cancel({ notifications: toCancel });
+        }
+      } else if (actionId === 'SKIP') {
+        // Task ကို Skip လုပ်မယ်
+        await fetch("/api/notes", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: noteId, reminderAt: null, reminderEnabled: false }),
+        });
+        const pending = await LocalNotifications.getPending();
+        const toCancel = pending.notifications.filter(n => n.extra?.noteId === noteId);
+        if (toCancel.length > 0) {
+          await LocalNotifications.cancel({ notifications: toCancel });
+        }
+      } else if (actionId === 'SNOOZE') {
+        // 5 မိနစ် ရွှေ့မယ်
+        const newTime = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+        await fetch("/api/notes", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: noteId, reminderAt: newTime }),
+        });
+      }
+    } catch (err) {
+      console.error("Action handler error:", err);
+    }
+  });
 }
 
 // Notification Permission တောင်းမယ်
@@ -57,12 +96,30 @@ export async function requestNotificationPermission() {
       }
     } catch (e) {}
 
-    // Channel ကို Code ထဲက Default အသံနဲ့ ဖန်တီးမယ်
+    // Action Buttons (Done/Skip/Snooze) Register လုပ်မယ်
+    try {
+      await LocalNotifications.registerActionTypes({
+        types: [
+          {
+            id: 'NEXFIX_ACTIONS',
+            actions: [
+              { id: 'DONE', title: '✅ Done', foreground: false },
+              { id: 'SKIP', title: '⏭ Skip', foreground: false, destructive: true },
+              { id: 'SNOOZE', title: '⏰ 5min', foreground: false },
+            ],
+          },
+        ],
+      });
+    } catch (e) {
+      console.log("Action types skipped", e);
+    }
+
+    // Channel ဖန်တီးမယ်
     try {
       const toggles = getReminderToggles();
       await LocalNotifications.createChannel({
-        id: 'nexfix-reminders-v4',
-        name: 'NEXFIX Reminders',
+        id: 'nexfix-alerts-v7',
+        name: 'NEXFIX Alerts',
         description: 'Task reminders from NEXFIX',
         importance: 5,
         visibility: 1,
@@ -74,6 +131,9 @@ export async function requestNotificationPermission() {
       console.log("Channel creation skipped", e);
     }
     
+    // Action Setup
+    setupNotificationActions();
+    
     return perm.display === 'granted';
   } else {
     if (!("Notification" in window)) return false;
@@ -82,7 +142,6 @@ export async function requestNotificationPermission() {
   }
 }
 
-// Notification ကို အချိန်သတ်မှတ်မယ်
 export async function scheduleNotification(
   id: string, 
   title: string, 
@@ -92,14 +151,13 @@ export async function scheduleNotification(
 ) {
   if (date.getTime() <= Date.now()) return;
   
-  // Quiet Hours ဖြစ်နေရင် Notification မပို့ဘူး
   if (isInQuietHours(date)) {
     console.log("Notification blocked by Quiet Hours");
     return;
   }
   
   const toggles = getReminderToggles();
-  const channelId = 'nexfix-reminders-v4';
+  const channelId = 'nexfix-alerts-v7';
 
   if (Capacitor.isNativePlatform()) {
     try {
@@ -123,6 +181,7 @@ export async function scheduleNotification(
           schedule: { at: notifyTime, allowWhileIdle: true },
           channelId: channelId,
           sound: toggles.soundEnabled ? DEFAULT_SOUND : undefined,
+          actionTypeId: 'NEXFIX_ACTIONS',
           extra: { noteId: id, repeatIndex: i }
         });
       }
@@ -148,7 +207,6 @@ export async function scheduleNotification(
   }
 }
 
-// Notification ဖျက်မယ်
 export async function cancelNotification(noteId: string) {
   if (Capacitor.isNativePlatform()) {
     try {

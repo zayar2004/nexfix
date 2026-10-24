@@ -7,6 +7,7 @@ import { SessionProvider } from "next-auth/react";
 import { UserBackButton } from "@/components/layout/UserBackButton";
 import { cookies } from "next/headers";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { NotificationSetup } from "@/components/NotificationSetup";
 import { ApprovalGuard } from "@/components/ApprovalGuard";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -71,6 +72,7 @@ export default async function RootLayout({
             <NetworkProvider>
               <SettingsProvider>
                 <ServiceWorkerRegister />
+                <NotificationSetup />
                 <UserBackButton />
                 {children}
               </SettingsProvider>
