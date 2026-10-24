@@ -6,6 +6,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
 import { getLocalNotes } from "@/lib/local-db";
+import { getOfflineNotes } from "@/lib/offline-queue";
 import { Plus, Search, Clock, AlertTriangle, CheckCircle, ChevronRight, Trash2, Bell, Settings, MoreVertical, Copy, Pause, Play, SkipForward, Loader2, Calendar } from "lucide-react";
 
 type Note = {
@@ -42,8 +43,12 @@ export default function NotesPage() {
     try {
       // ၁။ Local Storage ကနေ အရင်ဖတ်မယ်
       const localNotes = await getLocalNotes();
-      if (localNotes.length > 0) {
-        setNotes(localNotes as any);
+      const offlineNotes = getOfflineNotes();
+      
+      // Local + Offline Notes တွေ ပေါင်းမယ်
+      const allLocal = [...offlineNotes, ...localNotes];
+      if (allLocal.length > 0) {
+        setNotes(allLocal as any);
         setLoading(false);
       }
 

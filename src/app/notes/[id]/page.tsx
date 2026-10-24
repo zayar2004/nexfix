@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
+import { getLocalData } from "@/lib/local-db";
+import { cacheImages } from "@/lib/image-cache";
+import { getOfflineNotes } from "@/lib/offline-queue";
 import { scheduleNotification, cancelNotification } from "@/lib/notifications";
 import { ArrowLeft, Edit, Trash2, CheckCircle, Clock, Pause, Play, SkipForward, Bell, History } from "lucide-react";
 
@@ -43,6 +46,10 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
       const data = await res.json();
       if (data.ok && data.data) {
         setNote(data.data);
+        // ပုံတွေ Cache လုပ်မယ်
+        if (data.data.imageUrls && Array.isArray(data.data.imageUrls)) {
+          cacheImages(data.data.imageUrls);
+        }
       }
     } catch (err) {
       console.error(err);

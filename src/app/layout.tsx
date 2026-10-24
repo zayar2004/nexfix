@@ -8,6 +8,8 @@ import { UserBackButton } from "@/components/layout/UserBackButton";
 import { cookies } from "next/headers";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { NotificationSetup } from "@/components/NotificationSetup";
+import { OfflineSyncManager } from "@/components/OfflineSyncManager";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { ApprovalGuard } from "@/components/ApprovalGuard";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -73,6 +75,8 @@ export default async function RootLayout({
               <SettingsProvider>
                 <ServiceWorkerRegister />
                 <NotificationSetup />
+                <OfflineSyncManager />
+                <OfflineIndicator />
                 <UserBackButton />
                 {children}
               </SettingsProvider>

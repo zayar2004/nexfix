@@ -303,3 +303,28 @@ export async function getLocalNote(id: string): Promise<Record<string, unknown> 
   const notes = await getLocalNotes();
   return notes.find((n) => String(n.id) === id) || null;
 }
+
+
+// Admin Update အသစ် ရှိမရှိ စစ်မယ်
+export async function checkForUpdates(): Promise<boolean> {
+  try {
+    const localData = await getLocalData();
+    if (!localData) return true; // Local Data မရှိရင် Update လိုတယ်
+    
+    // နောက်ဆုံး Sync လုပ်ထားတဲ့ Timestamp ကို ယူမယ်
+    const lastSyncedAt = localData.lastSyncedAt || 0;
+    
+    // Server ကို ခေါ်ပြီး Version စစ်မယ်
+    const res = await fetch("/api/sync/version", { cache: "no-store" });
+    const data = await res.json();
+    
+    if (!data.ok) return false;
+    
+    // Server ရဲ့ lastUpdated က Local ထက် ပိုအသစ်ရင် Update လိုတယ်
+    return data.lastUpdated > lastSyncedAt;
+  } catch (err) {
+    console.error("Check updates failed:", err);
+    return false;
+  }
+}
+

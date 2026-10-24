@@ -7,7 +7,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { HeroSection } from "@/components/home/HeroSection";
 import { HomeSearchClient } from "@/components/home/HomeSearchClient";
-import { getLocalData, saveLocalData } from "@/lib/local-db";
+import { getLocalData, saveLocalData, checkForUpdates } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
 
 type RecentItem = { id: string; machineName: string; code: string; title: string; };

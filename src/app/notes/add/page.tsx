@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
+import { addToQueue, saveOfflineNote } from "@/lib/offline-queue";
 import { scheduleNotification, requestNotificationPermission } from "@/lib/notifications";
 import { ArrowLeft, Clock, Bell, Repeat, AlertTriangle, Loader2, X, ImagePlus} from "lucide-react";
 
@@ -113,6 +114,34 @@ const handleSubmit = async (e: React.FormEvent) => {
     setError("");
 
     try {
+      // Offline ဖြစ်ရင် Local Storage မှာ သိမ်းမယ်
+      if (!navigator.onLine) {
+        const offlineNote = {
+          id: editId || `offline-${Date.now()}`,
+          title: form.title,
+          body: form.body || null,
+          priority: form.priority,
+          reminderEnabled: form.reminderEnabled,
+          reminderAt: form.reminderAt ? new Date(form.reminderAt).toISOString() : null,
+          reminderIntervalMinutes: Number(form.reminderIntervalMinutes),
+          recurrence: form.recurrence,
+          imageUrls: form.imageUrls || [],
+          isCompleted: false,
+          reminderStatus: "pending",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: "offline",
+          isOffline: true,
+        };
+        
+        saveOfflineNote(offlineNote);
+        addToQueue({ type: isEditMode ? "update" : "create", resource: "note", payload: offlineNote });
+        
+        alert(isMyanmar ? "Offline ဖြစ်နေသည်။ Online ပြန်ဖြစ်တဲ့အခါ အလိုအလျောက် Sync လုပ်ပါမည်။" : "You are offline. Will sync when online.");
+        router.push("/notes");
+        return;
+      }
+      
       const url = isEditMode ? `/api/notes/${editId}` : "/api/notes";
       const method = isEditMode ? "PATCH" : "POST";
 
