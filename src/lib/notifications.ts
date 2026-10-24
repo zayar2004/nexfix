@@ -6,17 +6,21 @@ export interface NotificationSettings {
   customSoundUri: string | null;
   repeatIntervalMinutes: number;
   soundName: string | null;
+  channelId: string | null;
+  useDefaultSound: boolean;
 }
+
+export const DEFAULT_SOUND = '/sounds/default-notification.mp3';
 
 export function getSettings(): NotificationSettings {
   if (typeof window === 'undefined') {
-    return { customSoundUri: null, repeatIntervalMinutes: 0, soundName: null };
+    return { customSoundUri: null, repeatIntervalMinutes: 0, soundName: null, channelId: null, useDefaultSound: true };
   }
   const saved = localStorage.getItem('nexfix-notif-settings');
   if (saved) {
-    try { return JSON.parse(saved); } catch { /* ignore */ }
+    try { return { ...JSON.parse(saved), useDefaultSound: JSON.parse(saved).useDefaultSound ?? true }; } catch { /* ignore */ }
   }
-  return { customSoundUri: null, repeatIntervalMinutes: 0, soundName: null };
+  return { customSoundUri: null, repeatIntervalMinutes: 0, soundName: null, channelId: null, useDefaultSound: true };
 }
 
 export function saveSettings(settings: NotificationSettings) {
@@ -24,25 +28,21 @@ export function saveSettings(settings: NotificationSettings) {
   localStorage.setItem('nexfix-notif-settings', JSON.stringify(settings));
 }
 
-// MP3 ဖိုင်ကို Native မှာ သိမ်းမယ်
-export async function saveCustomSound(file: File): Promise<string | null> {
+export async function saveCustomSound(file: File): Promise<{ uri: string; channelId: string } | null> {
   if (!Capacitor.isNativePlatform()) {
-    // Web အတွက် - Data URL အနေနဲ့ သိမ်းမယ်
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = () => resolve({ uri: reader.result as string, channelId: `nexfix-${Date.now()}` });
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     });
   }
 
   try {
-    // Native (Android) အတွက် - File ကို Base64 ပြောင်းပြီး App ထဲမှာ သိမ်းမယ်
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // data:audio/mp3;base64,xxxx ကနေ base64 ကို ယူမယ်
         resolve(result.split(',')[1]);
       };
       reader.onerror = reject;
@@ -57,13 +57,13 @@ export async function saveCustomSound(file: File): Promise<string | null> {
       recursive: true,
     });
 
-    // URI ကို ပြန်ယူမယ်
     const uriResult = await Filesystem.getUri({
       path: fileName,
       directory: Directory.Data,
     });
 
-    return uriResult.uri;
+    const channelId = `nexfix-reminders-${Date.now()}`;
+    return { uri: uriResult.uri, channelId };
   } catch (e) {
     console.error("Save sound error:", e);
     return null;
@@ -81,16 +81,17 @@ export async function requestNotificationPermission() {
       }
     } catch (e) {}
 
-    // Channel ကို Custom Sound နဲ့ ဖန်တီးမယ်
     try {
       const settings = getSettings();
+      const channelId = settings.channelId || 'nexfix-reminders-default';
+      
       await LocalNotifications.createChannel({
-        id: 'nexfix-reminders',
-        name: 'NEXFIX Reminders',
+        id: channelId,
+        name: `NEXFIX Reminders`,
         description: 'Task reminders from NEXFIX',
         importance: 5,
         visibility: 1,
-        sound: settings.customSoundUri || undefined,
+        sound: settings.useDefaultSound ? DEFAULT_SOUND : (settings.customSoundUri || DEFAULT_SOUND),
         vibration: true,
         lights: true,
       });
@@ -111,19 +112,19 @@ export async function scheduleNotification(id: string, title: string, body: stri
   
   const settings = getSettings();
   const repeatMin = settings.repeatIntervalMinutes;
+  const channelId = settings.channelId || 'nexfix-reminders-default';
+  const sound = settings.useDefaultSound ? DEFAULT_SOUND : (settings.customSoundUri || DEFAULT_SOUND);
 
   if (Capacitor.isNativePlatform()) {
     try {
-      // အဟောင်း ဖျက်မယ်
       const pending = await LocalNotifications.getPending();
       const existing = pending.notifications.filter(n => n.extra?.noteId === id);
       if (existing.length > 0) {
         await LocalNotifications.cancel({ notifications: existing });
       }
 
-      // Repeat လုပ်မယ်ဆိုရင် (၅) ခု သတ်မှတ်မယ်
       const notificationsToSchedule = [];
-      const repeatCount = repeatMin > 0 ? 5 : 1; // ၅ ခါ ထပ်ပို့မယ်
+      const repeatCount = repeatMin > 0 ? 5 : 1;
       
       for (let i = 0; i < repeatCount; i++) {
         const notifyTime = new Date(date.getTime() + (i * repeatMin * 60 * 1000));
@@ -137,8 +138,8 @@ export async function scheduleNotification(id: string, title: string, body: stri
             at: notifyTime, 
             allowWhileIdle: true,
           },
-          sound: settings.customSoundUri || undefined,
-          channelId: 'nexfix-reminders',
+          channelId: channelId,
+          sound: sound,
           extra: { 
             noteId: id,
             repeatIndex: i,
@@ -148,7 +149,6 @@ export async function scheduleNotification(id: string, title: string, body: stri
 
       if (notificationsToSchedule.length > 0) {
         await LocalNotifications.schedule({ notifications: notificationsToSchedule });
-        console.log(`${notificationsToSchedule.length} notifications scheduled`);
       }
     } catch (e) {
       console.error("Native Notif Error", e);

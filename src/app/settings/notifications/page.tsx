@@ -11,6 +11,8 @@ export default function NotificationSettingsPage() {
     customSoundUri: null,
     repeatIntervalMinutes: 0,
     soundName: null,
+    channelId: null,
+    useDefaultSound: true,
   });
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -42,9 +44,14 @@ export default function NotificationSettingsPage() {
 
     setUploading(true);
     try {
-      const uri = await saveCustomSound(file);
-      if (uri) {
-        setSettings({ ...settings, customSoundUri: uri, soundName: file.name });
+      const result = await saveCustomSound(file);
+      if (result) {
+        setSettings({ 
+          ...settings, 
+          customSoundUri: result.uri, 
+          soundName: file.name,
+          channelId: result.channelId 
+        });
         
         // ဖိုင်ရွေးလိုက်တာနဲ့ ချက်ချင်း အသံထွက်အောင် လုပ်မယ်
         const audio = new Audio(URL.createObjectURL(file));
