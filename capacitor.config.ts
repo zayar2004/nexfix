@@ -4,19 +4,14 @@ const config: CapacitorConfig = {
   appId: 'com.nexfix.app',
   appName: 'NEXFIX',
   webDir: 'out',
-  server: {
-    url: 'https://nexfix-umber.vercel.app',
-    cleartext: true,
-    allowNavigation: ['nexfix-umber.vercel.app'],
-  },
-  android: {
-    allowMixedContent: true,
-    captureInput: true,
-    webContentsDebuggingEnabled: true,
-  },
+  // server.url ကို ဖျက်လိုက်ပါ (Local Mode ဖြစ်သွားမယ်)
   plugins: {
     CapacitorHttp: {
       enabled: true,
+    },
+    LocalNotifications: {
+      smallIcon: "ic_stat_icon_config_sample",
+      iconColor: "#20E3FF",
     },
   },
 };
