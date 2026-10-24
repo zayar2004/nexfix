@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Save, CheckCircle, Moon, Volume2, Vibrate, Clock } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Moon, Volume2, Vibrate } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface ReminderSettings {
-  defaultIntervalMinutes: number;
-  defaultSnoozeMinutes: number;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
@@ -15,8 +13,6 @@ interface ReminderSettings {
 }
 
 const DEFAULT_SETTINGS: ReminderSettings = {
-  defaultIntervalMinutes: 15,
-  defaultSnoozeMinutes: 5,
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
   quietHoursEnd: "06:00",
@@ -30,9 +26,11 @@ export default function ReminderSettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('nexfix-reminder-settings');
-    if (saved) {
-      try { setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) }); } catch {}
+    const savedData = localStorage.getItem('nexfix-reminder-settings');
+    if (savedData) {
+      try {
+        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedData) });
+      } catch {}
     }
   }, []);
 
@@ -53,48 +51,6 @@ export default function ReminderSettingsPage() {
 
       <main className="max-w-2xl mx-auto p-4 space-y-4">
         
-        {/* Default Interval */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <Clock className="w-5 h-5 text-blue-400" />
-            <h2 className="font-bold">Default Reminder Interval</h2>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[5, 10, 15, 30].map((m) => (
-              <button
-                key={m}
-                onClick={() => setSettings({ ...settings, defaultIntervalMinutes: m })}
-                className={`py-2 rounded-lg text-xs font-bold ${
-                  settings.defaultIntervalMinutes === m ? "bg-blue-600 text-white" : "bg-white/5 text-slate-400 border border-white/10"
-                }`}
-              >
-                {m} min
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Default Snooze */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <Clock className="w-5 h-5 text-amber-400" />
-            <h2 className="font-bold">Default Snooze</h2>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[5, 10, 15, 30].map((m) => (
-              <button
-                key={m}
-                onClick={() => setSettings({ ...settings, defaultSnoozeMinutes: m })}
-                className={`py-2 rounded-lg text-xs font-bold ${
-                  settings.defaultSnoozeMinutes === m ? "bg-amber-600 text-white" : "bg-white/5 text-slate-400 border border-white/10"
-                }`}
-              >
-                {m} min
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Quiet Hours */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
