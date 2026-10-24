@@ -174,9 +174,20 @@ export async function scheduleNotification(
         const notifyTime = new Date(date.getTime() + (i * intervalMinutes * 60 * 1000));
         if (notifyTime.getTime() <= Date.now()) continue;
         
+        // Title မှာ Task နာမည်ကို ပြမယ်
+        const notifTitle = i === 0 
+          ? `📌 ${title}` 
+          : `⏰ ${title} (${i + 1})`;
+        
+        // Body မှာ Description နဲ့ အချိန်ကို ပြမယ်
+        const timeStr = notifyTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const notifBody = body 
+          ? `${body}\n🕐 ${timeStr}` 
+          : `🕐 ${timeStr} • NEXFIX Reminder`;
+        
         notificationsToSchedule.push({
-          title: i === 0 ? "NEXFIX Reminder" : `NEXFIX Reminder (${i + 1})`,
-          body: title + (body ? `\n${body}` : ""),
+          title: notifTitle,
+          body: notifBody,
           id: Math.floor(Math.random() * 100000) + i,
           schedule: { at: notifyTime, allowWhileIdle: true },
           channelId: channelId,
