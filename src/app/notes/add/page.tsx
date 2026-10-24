@@ -120,14 +120,15 @@ const handleSubmit = async (e: React.FormEvent) => {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: form.title,
-          body: form.body || null,
-          priority: form.priority,
-          reminderEnabled: form.reminderEnabled,
-          reminderAt: form.reminderAt ? new Date(form.reminderAt).toISOString() : null,
-          reminderIntervalMinutes: form.reminderIntervalMinutes,
-          recurrence: form.recurrence,
-        }),
+            title: form.title,
+            body: form.body || null,
+            priority: form.priority,
+            reminderEnabled: form.reminderEnabled,
+            reminderAt: form.reminderAt ? new Date(form.reminderAt).toISOString() : null,
+            reminderIntervalMinutes: Number(form.reminderIntervalMinutes),
+            recurrence: form.recurrence,
+            imageUrls: form.imageUrls || [],
+          }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
