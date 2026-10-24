@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
 import { scheduleNotification, requestNotificationPermission } from "@/lib/notifications";
-import { ArrowLeft, Clock, Bell, Repeat, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, Bell, Repeat, AlertTriangle, Loader2, X, ImagePlus} from "lucide-react";
 
 const INTERVALS = [1, 5, 10, 15, 30, 60];
 
@@ -38,11 +38,14 @@ function AddTaskForm() {
       reminderAt: "",
       reminderIntervalMinutes: defaultInterval,
       recurrence: "none" as "none" | "daily" | "weekly" | "monthly" | "yearly",
+      imageUrls: [] as string[],
     };
   });
   const [customInterval, setCustomInterval] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(isEditMode);
 
   // Edit Mode ဖြစ်ရင် Data တွေ ဆွဲထုတ်မယ်
@@ -64,6 +67,7 @@ function AddTaskForm() {
             reminderAt: n.reminderAt ? new Date(n.reminderAt).toISOString().slice(0, 16) : "",
             reminderIntervalMinutes: n.reminderIntervalMinutes || 15,
             recurrence: n.recurrence || "none",
+            imageUrls: n.imageUrls || [],
           });
         } else {
           setError("Note not found");
@@ -77,7 +81,33 @@ function AddTaskForm() {
     fetchNote();
   }, [editId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const newUrls: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData();
+      formData.append("file", files[i]);
+      try {
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.ok && data.url) newUrls.push(data.url);
+      } catch (err) {
+        console.error("Upload failed:", err);
+      }
+    }
+    setForm((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ...newUrls] }));
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setForm((prev) => ({ ...prev, imageUrls: prev.imageUrls.filter((_, i) => i !== index) }));
+  };
+
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError("");
@@ -149,6 +179,46 @@ function AddTaskForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Images */}
+          <div>
+            <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-2 uppercase">{isMyanmar ? "ပုံများ" : "Images"}</label>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            
+            <div className="grid grid-cols-3 gap-2">
+              {form.imageUrls.map((url, idx) => (
+                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--nx-border-updated)]">
+                  <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
+                  >
+                    <X size={14} className="text-white" />
+                  </button>
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="aspect-square rounded-lg border-2 border-dashed border-[var(--nx-border-updated)] hover:border-[var(--nx-cyan)] transition flex flex-col items-center justify-center disabled:opacity-50"
+              >
+                {uploading ? <Loader2 size={24} className="text-[var(--nx-cyan)] animate-spin" /> : <ImagePlus size={24} className="text-[var(--nx-text-muted-updated)]" />}
+                <span className="text-[10px] text-[var(--nx-text-muted-updated)] mt-1">{uploading ? "..." : "+"}</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-[var(--nx-text-muted-updated)] mt-1">{isMyanmar ? "ပုံများကို အကန့်အသတ်မရှိ ထည့်နိုင်သည်" : "Add unlimited images"}</p>
+          </div>
+
           {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-[var(--nx-text-muted-updated)] mb-1 uppercase">{t("taskTitle")} *</label>

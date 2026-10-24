@@ -14,6 +14,7 @@ const createSchema = z.object({
   reminderEnabled: z.boolean().optional().default(true),
   reminderIntervalMinutes: z.number().int().min(1).max(1440).optional().default(15),
   timezone: z.string().optional().default("Asia/Yangon"),
+  imageUrls: z.array(z.string()).optional().default([]),
 });
 
 const patchSchema = z.object({
@@ -29,6 +30,7 @@ const patchSchema = z.object({
   isCompleted: z.boolean().optional(),
   nextReminderAt: z.string().datetime().optional().nullable(),
   completedAt: z.string().datetime().optional().nullable(),
+  imageUrls: z.array(z.string()).optional(),
 });
 
 export async function GET() {
@@ -78,6 +80,7 @@ export async function POST(req: Request) {
         reminderAt: data.reminderAt ? new Date(data.reminderAt) : null,
         recurrence: data.recurrence || "none",
         priority: data.priority || "normal",
+        imageUrls: data.imageUrls || [],
         reminderEnabled: data.reminderEnabled ?? true,
         reminderIntervalMinutes: String(data.reminderIntervalMinutes || 15),
         reminderStatus: "pending",

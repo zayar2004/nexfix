@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, varchar, boolean, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, pgEnum, varchar, boolean, index, unique , jsonb} from "drizzle-orm/pg-core";
 
 // 1. Roles Enum
 export const roleEnum = pgEnum("role", ["user", "staff", "senior_admin", "super_admin"]);
@@ -189,6 +189,7 @@ export const notes = pgTable("notes", {
   nextReminderAt: timestamp("next_reminder_at"),
   timezone: varchar("timezone", { length: 50 }).default("Asia/Yangon").notNull(),
   completedAt: timestamp("completed_at"),
+  imageUrls: jsonb("image_urls").default([]).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

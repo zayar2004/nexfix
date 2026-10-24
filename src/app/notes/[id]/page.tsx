@@ -17,6 +17,7 @@ type Note = {
   priority: string;
   reminderEnabled: boolean;
   reminderIntervalMinutes: string;
+  imageUrls?: string[];
   reminderStatus: string;
   nextReminderAt: string | null;
   isCompleted: boolean;
@@ -237,7 +238,17 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Title & Body */}
         <h1 className="text-3xl font-bold text-white mb-2">{note.title}</h1>
-        {note.body && <p className="text-[var(--nx-text-muted-updated)] mb-6">{note.body}</p>}
+        {note.body && <p className="text-[var(--nx-text-muted-updated)] mb-4">{note.body}</p>}
+        
+        {note.imageUrls && note.imageUrls.length > 0 && (
+          <div className="mb-6 grid grid-cols-2 gap-2">
+            {note.imageUrls.map((url, idx) => (
+              <div key={idx} className="aspect-square rounded-xl overflow-hidden border border-[var(--nx-border-updated)]">
+                <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Info Card */}
         <div className="bg-[var(--nx-bg-card)] border border-[var(--nx-border-updated)] rounded-xl p-4 mb-6 flex flex-col gap-3">
