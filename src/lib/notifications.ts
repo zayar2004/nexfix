@@ -12,6 +12,50 @@ export interface NotificationSettings {
 
 export const DEFAULT_SOUND = '/sounds/default-notification.mp3';
 
+
+// Quiet Hours ဖြစ်မဖြစ် စစ်ဆေးမယ်
+function isInQuietHours(date: Date): boolean {
+  if (typeof window === 'undefined') return false;
+  const saved = localStorage.getItem('nexfix-reminder-settings');
+  if (!saved) return false;
+  try {
+    const settings = JSON.parse(saved);
+    if (!settings.quietHoursEnabled) return false;
+    
+    const [startH, startM] = (settings.quietHoursStart || "22:00").split(':').map(Number);
+    const [endH, endM] = (settings.quietHoursEnd || "06:00").split(':').map(Number);
+    
+    const currentMinutes = date.getHours() * 60 + date.getMinutes();
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    
+    // တစ်ရက်တည်း (ဥပမာ - 10:00 - 18:00)
+    if (startMinutes < endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    }
+    // ညဖြတ် (ဥပမာ - 22:00 - 06:00)
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  } catch {
+    return false;
+  }
+}
+
+// Sound/Vibration Settings ကို ယူမယ်
+function getReminderToggles(): { soundEnabled: boolean; vibrationEnabled: boolean } {
+  if (typeof window === 'undefined') return { soundEnabled: true, vibrationEnabled: true };
+  const saved = localStorage.getItem('nexfix-reminder-settings');
+  if (!saved) return { soundEnabled: true, vibrationEnabled: true };
+  try {
+    const parsed = JSON.parse(saved);
+    return {
+      soundEnabled: parsed.soundEnabled ?? true,
+      vibrationEnabled: parsed.vibrationEnabled ?? true,
+    };
+  } catch {
+    return { soundEnabled: true, vibrationEnabled: true };
+  }
+}
+
 export function getSettings(): NotificationSettings {
   if (typeof window === 'undefined') {
     return { customSoundUri: null, repeatIntervalMinutes: 0, soundName: null, channelId: null, useDefaultSound: true };
@@ -110,7 +154,14 @@ export async function requestNotificationPermission() {
 export async function scheduleNotification(id: string, title: string, body: string, date: Date) {
   if (date.getTime() <= Date.now()) return;
   
+  // Quiet Hours ဖြစ်နေရင် Notification မပို့ဘူး
+  if (isInQuietHours(date)) {
+    console.log("Notification blocked by Quiet Hours");
+    return;
+  }
+  
   const settings = getSettings();
+  const toggles = getReminderToggles();
   const repeatMin = settings.repeatIntervalMinutes;
   const channelId = settings.channelId || 'nexfix-reminders-default';
   const sound = settings.useDefaultSound ? DEFAULT_SOUND : (settings.customSoundUri || DEFAULT_SOUND);
