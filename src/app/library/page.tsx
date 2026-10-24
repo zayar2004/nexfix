@@ -64,6 +64,8 @@ export default function LibraryPage() {
           await saveLocalData(data.data);
           // Sync ပြီးရင် Data ကို ချက်ချင်း ပြန်ဖတ်မယ်
           const localData = await getLocalData();
+          // Loading ကို ချက်ချင်းပိတ်မယ်
+          setLoading(false);
           if (localData) {
             // Articles တွေ ပြန် set လုပ်မယ်
             if (localData.articles && localData.articleContents) {
@@ -101,7 +103,11 @@ export default function LibraryPage() {
   }, []);
 
   useEffect(() => {
+    // Loading ကို ၃ စက္ကန့်အတွင်း အတင်းပိတ်မယ် (Data မရရင်)
+    const loadingTimeout = setTimeout(() => setLoading(false), 3000);
+
     getLocalData().then((data) => {
+      clearTimeout(loadingTimeout);
       if (data) {
         if (data.articles && data.articleContents) {
           const contents = data.articleContents as Record<string, unknown>[];
@@ -131,6 +137,9 @@ export default function LibraryPage() {
           setMachines(machs);
         }
       }
+      setLoading(false);
+    }).catch((err) => {
+      console.error("Local data load failed:", err);
       setLoading(false);
     });
 

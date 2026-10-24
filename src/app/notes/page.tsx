@@ -45,42 +45,34 @@ export default function NotesPage() {
       const localNotes = await getLocalNotes();
       const offlineNotes = getOfflineNotes();
       
-      // Local + Offline Notes တွေ ပေါင်းမယ်
       const allLocal = [...offlineNotes, ...localNotes];
+      
+      // Local Data ရှိရင် ချက်ချင်းပြမယ်၊ Loading ပိတ်မယ်
       if (allLocal.length > 0) {
         setNotes(allLocal as any);
         setLoading(false);
       }
 
-      // ၂။ နောက်ကွယ်မှာ Server ကနေ Sync လုပ်မယ်
+      // ၂။ Offline ဖြစ်ရင် ဒီမှာတင် ရပ်မယ်
       if (!navigator.onLine) {
         setLoading(false);
         return;
       }
 
-      const res = await fetch("/api/notes", { cache: "no-store" });
-      const data = await res.json();
-      if (data.ok) {
-        setNotes(data.data);
-        // Counts တွက်မယ်
-        const now = new Date();
-        const today = { start: new Date(now.getFullYear(), now.getMonth(), now.getDate()), end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59) };
-        let c = { today: 0, upcoming: 0, overdue: 0, completed: 0 };
-        data.data.forEach((n: Note) => {
-          if (n.isCompleted) c.completed++;
-          else if (!n.reminderAt) c.upcoming++;
-          else {
-            const d = new Date(n.reminderAt);
-            if (d < now) c.overdue++;
-            else if (d >= today.start && d <= today.end) c.today++;
-            else c.upcoming++;
-          }
-        });
-        setCounts(c);
+      // ၃။ Online ဖြစ်ရင် Server ကနေ Sync လုပ်မယ်
+      try {
+        const res = await fetch("/api/notes", { cache: "no-store" });
+        const data = await res.json();
+        if (data.ok) {
+          setNotes(data.data);
+        }
+      } catch (err) {
+        console.log("Server sync failed, using local");
       }
     } catch (err) {
       console.error(err);
     } finally {
+      // ဘာပဲဖြစ်ဖြစ် Loading ပိတ်မယ်
       setLoading(false);
     }
   }, []);

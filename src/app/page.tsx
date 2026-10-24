@@ -54,6 +54,7 @@ export default function HomePage() {
   const [recentArticles, setRecentArticles] = useState<ArticleItem[]>([]);
   const [homeSettings, setHomeSettings] = useState<any>(null);
   const [stats, setStats] = useState<{ totalErrors: number; totalMachines: number; totalArticles: number }>({ totalErrors: 0, totalMachines: 0, totalArticles: 0 });
+  const [loading, setLoading] = useState(true);
 
   // ၃ စက္ကန့်နောက် Hero Loading ကို အတင်းပိတ်မယ် (Data မရရင်)
   
@@ -128,8 +129,17 @@ export default function HomePage() {
       if (savedSearches) {
         try { setRecentSearches(JSON.parse(savedSearches)); } catch {}
       }
+
+      // Loading ကို ဘာပဲဖြစ်ဖြစ် ပိတ်မယ်
     };
-    loadData();
+
+    loadData().catch((err) => {
+      console.error("Home loadData failed:", err);
+    });
+
+    // ၃ စက္ကန့်အတွင်း အတင်းပိတ်မယ် (Safety)
+    const timeout = setTimeout(() => setLoading(false), 3000);
+    return () => clearTimeout(timeout);
   }, [t]);
 
   const announcementPosition = homeSettings?.announcementPosition || "top";
