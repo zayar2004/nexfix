@@ -17,6 +17,7 @@ export default function NotificationSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playingType, setPlayingType] = useState<"default" | "custom" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -50,16 +51,9 @@ export default function NotificationSettingsPage() {
           ...settings, 
           customSoundUri: result.uri, 
           soundName: file.name,
-          channelId: result.channelId 
+          channelId: result.channelId,
+          useDefaultSound: false,
         });
-        
-        // ဖိုင်ရွေးလိုက်တာနဲ့ ချက်ချင်း အသံထွက်အောင် လုပ်မယ်
-        const audio = new Audio(URL.createObjectURL(file));
-        audioRef.current = audio;
-        audio.play().then(() => {
-          setIsPlaying(true);
-          audio.onended = () => setIsPlaying(false);
-        }).catch(err => console.log("Play error:", err));
       } else {
         alert("ဖိုင် သိမ်းလို့ မရပါ");
       }
@@ -71,6 +65,42 @@ export default function NotificationSettingsPage() {
     }
   };
 
+  const playSound = (type: "default" | "custom") => {
+    // လက်ရှိ ဖွင့်နေတဲ့ အသံကို ရပ်မယ်
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    
+    if (isPlaying && playingType === type) {
+      setIsPlaying(false);
+      setPlayingType(null);
+      return;
+    }
+
+    let audioUrl = "";
+    if (type === "default") {
+      audioUrl = "/sounds/default-notification.mp3";
+    } else if (type === "custom" && settings.customSoundUri) {
+      audioUrl = settings.customSoundUri;
+    } else {
+      return;
+    }
+
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.play().then(() => {
+      setIsPlaying(true);
+      setPlayingType(type);
+      audio.onended = () => {
+        setIsPlaying(false);
+        setPlayingType(null);
+      };
+    }).catch(err => {
+      alert("အသံ ဖွင့်လို့မရပါ: " + err.message);
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-20">
       <header className="flex items-center gap-3 p-4 border-b border-white/10">
@@ -80,10 +110,48 @@ export default function NotificationSettingsPage() {
         <h1 className="text-xl font-bold">Notification Settings</h1>
       </header>
 
-      <main className="max-w-2xl mx-auto p-4 space-y-6">
+      <main className="max-w-2xl mx-auto p-4 space-y-4">
         
-        {/* Custom Sound */}
+        {/* Default Sound */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+              <Volume2 className="w-5 h-5 text-green-400" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-bold">Default Sound</h2>
+              <p className="text-xs text-slate-400">App ထဲမှာ ပါပြီးသား အသံ</p>
+            </div>
+            <button
+              onClick={() => playSound("default")}
+              className="p-2.5 bg-green-500/20 hover:bg-green-500/30 rounded-full text-green-400 transition"
+            >
+              {isPlaying && playingType === "default" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">
+            {settings.useDefaultSound ? "✅ လက်ရှိ Default အသံကို သုံးနေသည်" : "❌ Default အသံကို မသုံးပါ"}
+          </p>
+        </div>
+
+        {/* Use Default Toggle */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-sm">Use Default Sound</h2>
+              <p className="text-xs text-slate-400 mt-0.5">ပိတ်ထားရင် ကိုယ်ပိုင်အသံ ထည့်နိုင်မည်</p>
+            </div>
+            <button
+              onClick={() => setSettings({ ...settings, useDefaultSound: !settings.useDefaultSound })}
+              className={`w-12 h-6 rounded-full transition ${settings.useDefaultSound ? "bg-green-600" : "bg-gray-600"}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full transition-transform ${settings.useDefaultSound ? "translate-x-6" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Sound */}
+        <div className={`bg-white/5 border border-white/10 rounded-2xl p-5 ${settings.useDefaultSound ? 'opacity-50' : ''}`}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
               <Music className="w-5 h-5 text-purple-400" />
@@ -103,9 +171,9 @@ export default function NotificationSettingsPage() {
           />
           
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl hover:border-purple-400/50 transition flex items-center justify-center gap-2 disabled:opacity-50"
+            onClick={() => settings.useDefaultSound ? alert("Default အသံကို ပိတ်မှ Custom အသံ ထည့်လို့ရပါမည်") : fileInputRef.current?.click()}
+            disabled={uploading || settings.useDefaultSound}
+            className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl hover:border-purple-400/50 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {uploading ? (
               <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
@@ -113,53 +181,37 @@ export default function NotificationSettingsPage() {
               <Upload className="w-4 h-4 text-purple-400" />
             )}
             <span className="text-sm">
-              {uploading ? "တင်နေသည်..." : settings.soundName ? `ရွေးထား: ${settings.soundName}` : "MP3 ဖိုင် ရွေးပြီး နားထောင်ပါ"}
+              {uploading ? "တင်နေသည်..." : settings.soundName ? `ရွေးထား: ${settings.soundName}` : "MP3 ဖိုင် ရွေးပါ"}
             </span>
           </button>
           
           {settings.soundName && (
-            <div className="mt-3 space-y-2">
-              <div className="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Volume2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span className="text-xs truncate">{settings.soundName}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (!settings.customSoundUri) return;
-                      if (isPlaying && audioRef.current) {
-                        audioRef.current.pause();
-                        setIsPlaying(false);
-                      } else if (audioRef.current) {
-                        audioRef.current.play().then(() => setIsPlaying(true));
-                      } else {
-                        const audio = new Audio(settings.customSoundUri);
-                        audioRef.current = audio;
-                        audio.play().then(() => {
-                          setIsPlaying(true);
-                          audio.onended = () => setIsPlaying(false);
-                        });
-                      }
-                    }}
-                    className="p-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded-full text-purple-400"
-                  >
-                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (audioRef.current) {
-                        audioRef.current.pause();
-                        audioRef.current = null;
-                      }
-                      setIsPlaying(false);
-                      setSettings({ ...settings, customSoundUri: null, soundName: null });
-                    }}
-                    className="text-xs text-red-400 hover:text-red-300"
-                  >
-                    ဖျက်မည်
-                  </button>
-                </div>
+            <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Volume2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span className="text-xs truncate">{settings.soundName}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => playSound("custom")}
+                  className="p-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded-full text-purple-400"
+                >
+                  {isPlaying && playingType === "custom" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={() => {
+                    if (audioRef.current) {
+                      audioRef.current.pause();
+                      audioRef.current = null;
+                    }
+                    setIsPlaying(false);
+                    setPlayingType(null);
+                    setSettings({ ...settings, customSoundUri: null, soundName: null });
+                  }}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  ဖျက်မည်
+                </button>
               </div>
             </div>
           )}
@@ -205,10 +257,6 @@ export default function NotificationSettingsPage() {
           {saved ? <CheckCircle className="w-5 h-5" /> : <Save className="w-5 h-5" />}
           {saved ? "သိမ်းပြီးပါပြီ" : "သိမ်းဆည်းမည်"}
         </button>
-
-        <div className="text-xs text-slate-500 text-center">
-          <p>⚠️ အသံအသစ်နဲ့ Repeat ကို APK အသစ်မှာသာ အပြည့်အဝ အလုပ်လုပ်ပါမယ်။</p>
-        </div>
       </main>
     </div>
   );
