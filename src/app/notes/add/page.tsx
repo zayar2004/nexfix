@@ -113,7 +113,8 @@ function AddTaskForm() {
             noteId,
             form.title,
             form.body || "NEXFIX Reminder",
-            new Date(form.reminderAt)
+            new Date(form.reminderAt),
+            form.reminderIntervalMinutes
           );
         }
       }

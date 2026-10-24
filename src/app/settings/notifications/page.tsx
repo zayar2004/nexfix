@@ -217,38 +217,6 @@ export default function NotificationSettingsPage() {
           )}
         </div>
 
-        {/* Repeat Interval */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <h2 className="font-bold">Repeat Notification</h2>
-              <p className="text-xs text-slate-400">မနှိပ်ရင် ဘယ်နှမိနစ်တစ်ခါ ထပ်ပို့မလဲ</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2">
-            {[0, 5, 10, 15, 30, 60].map((min) => (
-              <button
-                key={min}
-                onClick={() => setSettings({ ...settings, repeatIntervalMinutes: min })}
-                className={`py-2.5 rounded-lg text-xs font-bold transition ${
-                  settings.repeatIntervalMinutes === min
-                    ? "bg-blue-600 text-white"
-                    : "bg-white/5 text-slate-400 border border-white/10"
-                }`}
-              >
-                {min === 0 ? "Off" : `${min} min`}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-slate-500 mt-3">
-            Notification လာတဲ့အခါ User က မနှိပ်ဘူးဆိုရင် ဒီအချိန်အတိုင်း ထပ်ခါထပ်ခါ ပို့ပါမယ်။
-          </p>
-        </div>
-
         {/* Save */}
         <button
           onClick={handleSave}

@@ -151,7 +151,13 @@ export async function requestNotificationPermission() {
   }
 }
 
-export async function scheduleNotification(id: string, title: string, body: string, date: Date) {
+export async function scheduleNotification(
+  id: string, 
+  title: string, 
+  body: string, 
+  date: Date, 
+  intervalMinutes: number = 0
+) {
   if (date.getTime() <= Date.now()) return;
   
   // Quiet Hours ဖြစ်နေရင် Notification မပို့ဘူး
@@ -162,7 +168,7 @@ export async function scheduleNotification(id: string, title: string, body: stri
   
   const settings = getSettings();
   const toggles = getReminderToggles();
-  const repeatMin = settings.repeatIntervalMinutes;
+  const repeatMin = intervalMinutes; // Task ရဲ့ Interval ကို သုံးမယ်
   const channelId = settings.channelId || 'nexfix-reminders-default';
   const sound = settings.useDefaultSound ? DEFAULT_SOUND : (settings.customSoundUri || DEFAULT_SOUND);
 
