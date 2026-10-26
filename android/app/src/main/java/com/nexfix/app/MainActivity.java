@@ -23,9 +23,6 @@ public class MainActivity extends BridgeActivity {
                 // ၂။ Database Storage (IndexedDB) ဖွင့်မယ်
                 settings.setDatabaseEnabled(true);
 
-                // ၃။ App Cache ဖွင့်မယ်
-                settings.setAppCacheEnabled(true);
-
                 // ၄။ JavaScript ဖွင့်မယ်
                 settings.setJavaScriptEnabled(true);
 
