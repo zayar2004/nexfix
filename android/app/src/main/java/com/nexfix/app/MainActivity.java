@@ -3,6 +3,8 @@ package com.nexfix.app;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.ServiceWorkerController;
+import android.webkit.ServiceWorkerWebSettings;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Bridge;
 
@@ -23,26 +25,34 @@ public class MainActivity extends BridgeActivity {
                 // ၂။ Database Storage (IndexedDB) ဖွင့်မယ်
                 settings.setDatabaseEnabled(true);
 
-                // ၄။ JavaScript ဖွင့်မယ်
+                // ၃။ JavaScript ဖွင့်မယ်
                 settings.setJavaScriptEnabled(true);
 
-                // ၅။ Mixed Content ခွင့်ပြုမယ်
+                // ၄။ Mixed Content ခွင့်ပြုမယ်
                 settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-                // ၆။ Cache Mode သတ်မှတ်မယ်
-                // Cache ရှိရင် Cache ကနေ ယူ၊ မရှိမှ Network ကနေ ယူ
+                // ၅။ Cache Mode သတ်မှတ်မယ်
                 settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
 
-                // ၇။ File Access ခွင့်ပြုမယ်
+                // ၆။ File Access ခွင့်ပြုမယ်
                 settings.setAllowFileAccess(true);
                 settings.setAllowContentAccess(true);
 
-                // ၈။ Zoom ဖွင့်မယ်
-                settings.setSupportZoom(true);
-                settings.setBuiltInZoomControls(true);
-                settings.setDisplayZoomControls(false);
+                // ၇။ Service Worker ကို ဖွင့်မယ် (Android 7.0+)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    try {
+                        ServiceWorkerController swController = ServiceWorkerController.getInstance();
+                        ServiceWorkerWebSettings swSettings = swController.getServiceWorkerWebSettings();
+                        swSettings.setAllowContentAccess(true);
+                        swSettings.setAllowFileAccess(true);
+                        swSettings.setBlockNetworkLoads(false);
+                        swSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    } catch (Exception e) {
+                        android.util.Log.e("MainActivity", "Service Worker setup failed", e);
+                    }
+                }
 
-                // ၉။ Cache ကို မဖျက်ဘူး
+                // ၈။ Cache ကို မဖျက်ဘူး
                 webView.clearCache(false);
             }
         }

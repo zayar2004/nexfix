@@ -6,7 +6,13 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     url: 'https://nexfix-umber.vercel.app',
-    cleartext: false,
+    cleartext: true,
+    allowNavigation: ['nexfix-umber.vercel.app', '*.vercel.app'],
+  },
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: true,
   },
   plugins: {
     LocalNotifications: {
