@@ -17,30 +17,36 @@ public class MainActivity extends BridgeActivity {
             if (webView != null) {
                 WebSettings settings = webView.getSettings();
 
-                // DOM Storage (LocalStorage) ဖွင့်မယ်
+                // ၁။ DOM Storage (LocalStorage) ဖွင့်မယ်
                 settings.setDomStorageEnabled(true);
 
-                // Database Storage (IndexedDB) ဖွင့်မယ်
+                // ၂။ Database Storage (IndexedDB) ဖွင့်မယ်
                 settings.setDatabaseEnabled(true);
 
-                // JavaScript ဖွင့်မယ်
+                // ၃။ App Cache ဖွင့်မယ်
+                settings.setAppCacheEnabled(true);
+
+                // ၄။ JavaScript ဖွင့်မယ်
                 settings.setJavaScriptEnabled(true);
 
-                // Mixed Content ခွင့်ပြုမယ်
+                // ၅။ Mixed Content ခွင့်ပြုမယ်
                 settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-                // Cache Mode သတ်မှတ်မယ်
+                // ၆။ Cache Mode သတ်မှတ်မယ်
                 // Cache ရှိရင် Cache ကနေ ယူ၊ မရှိမှ Network ကနေ ယူ
                 settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
 
-                // File Access ခွင့်ပြုမယ်
+                // ၇။ File Access ခွင့်ပြုမယ်
                 settings.setAllowFileAccess(true);
                 settings.setAllowContentAccess(true);
 
-                // Zoom ဖွင့်မယ်
+                // ၈။ Zoom ဖွင့်မယ်
                 settings.setSupportZoom(true);
                 settings.setBuiltInZoomControls(true);
                 settings.setDisplayZoomControls(false);
+
+                // ၉။ Cache ကို မဖျက်ဘူး
+                webView.clearCache(false);
             }
         }
     }
