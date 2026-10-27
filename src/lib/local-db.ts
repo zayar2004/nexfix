@@ -13,14 +13,17 @@ export type SyncData = {
   lastUpdated?: number;
   homepage?: Record<string, unknown>;
   stats?: { totalErrors: number; totalMachines: number; totalArticles: number };
+  checksum?: string;
 };
 
 const DB_NAME = "nexfix-local-v2";
 const STORE_NAME = "sync-data";
+const BACKUP_STORE = "sync-backup";
+const DB_VERSION = 2;
 
 function getDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
     request.onupgradeneeded = () => {
@@ -28,10 +31,57 @@ function getDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
       }
+      // Backup Store ဖန်တီး
+      if (!db.objectStoreNames.contains(BACKUP_STORE)) {
+        db.createObjectStore(BACKUP_STORE);
+      }
     };
   });
 }
 
+// ============================================
+// STORAGE QUOTA CHECK
+// ============================================
+export async function checkStorageQuota(): Promise<{
+  available: number;
+  used: number;
+  percent: number;
+}> {
+  try {
+    if (!navigator.storage || !navigator.storage.estimate) {
+      return { available: 0, used: 0, percent: 0 };
+    }
+    const estimate = await navigator.storage.estimate();
+    const used = estimate.usage || 0;
+    const available = estimate.quota || 0;
+    const percent = available > 0 ? (used / available) * 100 : 0;
+    return { available, used, percent };
+  } catch {
+    return { available: 0, used: 0, percent: 0 };
+  }
+}
+
+// ============================================
+// CHECKSUM (Client-Side Simple Hash)
+// ============================================
+function computeChecksum(data: unknown): string {
+  try {
+    const str = JSON.stringify(data);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16);
+  } catch {
+    return "";
+  }
+}
+
+// ============================================
+// SAVE / GET LOCAL DATA
+// ============================================
 export async function saveLocalData(data: SyncData): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -54,6 +104,94 @@ export async function getLocalData(): Promise<SyncData | null> {
   });
 }
 
+// ============================================
+// SAFE SAVE (Backup → Save → Verify)
+// ============================================
+export async function safeSaveLocalData(newData: SyncData): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  try {
+    // 1. Storage Quota စစ်
+    const quota = await checkStorageQuota();
+    if (quota.available > 0 && quota.percent > 90) {
+      return { ok: false, error: "Storage မလုံလောက်ပါ (90% ကျော်နေပါတယ်)" };
+    }
+
+    // 2. Old Data ကို Backup ယူ
+    const oldData = await getLocalData();
+    if (oldData) {
+      await saveBackup(oldData);
+    }
+
+    // 3. New Data ကို Checksum ထည့်ပြီး Save
+    const dataWithChecksum = {
+      ...newData,
+      checksum: computeChecksum({
+        machines: newData.machines,
+        errorCodes: newData.errorCodes,
+        articles: newData.articles,
+      }),
+    };
+
+    await saveLocalData(dataWithChecksum);
+
+    // 4. Verify
+    const verified = await getLocalData();
+    if (!verified) {
+      // 5. Fail ရင် Backup ကနေ ပြန်
+      if (oldData) {
+        await saveLocalData(oldData);
+      }
+      return { ok: false, error: "Save verification failed" };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    console.error("Safe save error:", err);
+    return { ok: false, error: String(err) };
+  }
+}
+
+// ============================================
+// BACKUP STORE
+// ============================================
+async function saveBackup(data: SyncData): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(BACKUP_STORE, "readwrite");
+    const store = tx.objectStore(BACKUP_STORE);
+    const request = store.put(data, "backup-data");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getBackupData(): Promise<SyncData | null> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(BACKUP_STORE, "readonly");
+    const store = tx.objectStore(BACKUP_STORE);
+    const request = store.get("backup-data");
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function restoreFromBackup(): Promise<boolean> {
+  try {
+    const backup = await getBackupData();
+    if (!backup) return false;
+    await saveLocalData(backup);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================
+// CACHED DATA
+// ============================================
 let cachedData: SyncData | null = null;
 
 export async function getCachedLocalData(): Promise<SyncData | null> {
@@ -63,6 +201,9 @@ export async function getCachedLocalData(): Promise<SyncData | null> {
   return cachedData;
 }
 
+// ============================================
+// LOCAL SEARCH
+// ============================================
 export type LocalSearchResult = {
   id: string;
   code: string;
@@ -79,24 +220,21 @@ export async function searchLocalData(
 ): Promise<LocalSearchResult[]> {
   const data = await getCachedLocalData();
   if (!data) return [];
+  if (!data.machines || !data.errorCodes) return [];
 
-  // 🌟 ရှာတဲ့စာသားကို သန့်ရှင်းအောင် လုပ်မယ်
   const cleanQuery = query.trim().toLowerCase();
   const cleanCode = errorCode.trim().toLowerCase();
-  
-  // 🌟 စာသားကို စကားလုံးတွေအဖြစ် ခွဲမယ် (Multiple Keywords အတွက်)
   const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 0);
   const codeWords = cleanCode.split(/\s+/).filter(w => w.length > 0);
 
-  // 🌟 Machine ID တွေကို ရှာမယ်
   let matchedMachineIds: string[] = [];
-  
+
   if (queryWords.length > 0) {
     const exactMatch = data.machines.filter((m) => {
       const mName = String(m.name).toLowerCase();
       return queryWords.every(word => mName.includes(word));
     });
-    
+
     if (exactMatch.length > 0) {
       matchedMachineIds = exactMatch.map(m => String(m.id));
     } else {
@@ -111,34 +249,28 @@ export async function searchLocalData(
     matchedMachineIds = data.machines.map(m => String(m.id));
   }
 
-  // 🌟 Error Code တွေကို ရှာမယ်
-  let matchedErrors = data.errorCodes.filter((e) => {
+  const matchedErrors = data.errorCodes.filter((e) => {
     if (queryWords.length > 0 && matchedMachineIds.length > 0) {
       if (!matchedMachineIds.includes(String(e.machineId))) return false;
     }
-    
     if (codeWords.length > 0) {
       const eCode = String(e.code).toLowerCase();
       return codeWords.every(word => eCode.includes(word));
     }
-    
     if (queryWords.length > 0) {
       const eTitle = String(e.title).toLowerCase();
       return queryWords.some(word => eTitle.includes(word));
     }
-    
     return true;
   });
 
-  // 🌟 Ranking လုပ်မယ်
   const rankedResults = matchedErrors.map((e) => {
     const eCode = String(e.code).toLowerCase();
     const eTitle = String(e.title).toLowerCase();
     const machine = data.machines.find((m) => m.id === e.machineId);
     const mName = String(machine?.name || "").toLowerCase();
-    
+
     let score = 0;
-    
     if (cleanCode && eCode === cleanCode) score += 100;
     if (cleanQuery && eCode === cleanQuery) score += 100;
     if (cleanCode && eCode.startsWith(cleanCode)) score += 50;
@@ -150,7 +282,7 @@ export async function searchLocalData(
     if (queryWords.length > 0 && queryWords.every(w => eTitle.includes(w))) score += 20;
     if (queryWords.length > 0 && queryWords.every(w => mName.includes(w))) score += 20;
     score -= eCode.length * 0.1;
-    
+
     return { error: e, score };
   });
 
@@ -172,10 +304,11 @@ export async function searchLocalData(
       solution: content ? String(content.solution) : null,
     };
   });
-
 }
 
-// 🌟 Image Caching ကို ပြင်မယ်
+// ============================================
+// IMAGE CACHE
+// ============================================
 export async function cacheImage(url: string): Promise<void> {
   if (!url) return;
   try {
@@ -192,16 +325,15 @@ export async function cacheImage(url: string): Promise<void> {
 
 export async function getCachedImageUrl(url: string): Promise<string> {
   if (!url) return "";
-  // 🌟 URL က http နဲ့ စရင် တိုက်ရိုက် ပြန်ပေးမယ်
-  if (url.startsWith("http")) {
-    return url;
-  }
-  // 🌟 မဟုတ်ရင် S3 URL နဲ့ ချိတ်မယ်
+  if (url.startsWith("http")) return url;
   const s3Url = process.env.NEXT_PUBLIC_S3_URL || "";
   if (s3Url) return `${s3Url}/${url}`;
   return url;
 }
 
+// ============================================
+// CLEAR LOCAL DATA
+// ============================================
 export async function clearLocalData(): Promise<void> {
   const db = await getDB();
   cachedData = null;
@@ -240,18 +372,57 @@ export type UserExcelRow = {
   errorFix: string;
 };
 
-export async function savePrivateExcelData(rows: UserExcelRow[]): Promise<void> {
+export async function savePrivateExcelData(rows: UserExcelRow[], userId: string): Promise<void> {
   const db = await getPrivateDB();
+  const key = `excel-data-${userId}`;
   return new Promise((resolve, reject) => {
     const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
     const store = tx.objectStore(PRIVATE_STORE_NAME);
-    const request = store.put(rows, "excel-data");
+    const request = store.put(rows, key);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 }
 
-export async function getPrivateExcelData(): Promise<UserExcelRow[] | null> {
+export async function getPrivateExcelData(userId: string): Promise<UserExcelRow[] | null> {
+  const db = await getPrivateDB();
+  const key = `excel-data-${userId}`;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readonly");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function clearPrivateExcelData(userId: string): Promise<void> {
+  const db = await getPrivateDB();
+  const key = `excel-data-${userId}`;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(PRIVATE_STORE_NAME);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function searchPrivateExcelData(query: string, userId: string): Promise<UserExcelRow[]> {
+  if (!query.trim()) return [];
+  const data = await getPrivateExcelData(userId);
+  if (!data) return [];
+
+  const lowerQuery = query.toLowerCase();
+  return data.filter((row) => {
+    return Object.values(row).some((value) =>
+      String(value).toLowerCase().includes(lowerQuery)
+    );
+  });
+}
+
+// Legacy Functions (Migration အတွက်သာ)
+export async function getLegacyExcelData(): Promise<UserExcelRow[] | null> {
   const db = await getPrivateDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(PRIVATE_STORE_NAME, "readonly");
@@ -262,7 +433,7 @@ export async function getPrivateExcelData(): Promise<UserExcelRow[] | null> {
   });
 }
 
-export async function clearPrivateExcelData(): Promise<void> {
+export async function clearLegacyExcelData(): Promise<void> {
   const db = await getPrivateDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(PRIVATE_STORE_NAME, "readwrite");
@@ -273,58 +444,33 @@ export async function clearPrivateExcelData(): Promise<void> {
   });
 }
 
-// ----------------------------------------
-// SEARCH PRIVATE EXCEL DATA
-// ----------------------------------------
-export async function searchPrivateExcelData(query: string): Promise<UserExcelRow[]> {
-  if (!query.trim()) return [];
-  const data = await getPrivateExcelData();
-  if (!data) return [];
-
-  const lowerQuery = query.toLowerCase();
-  
-  // Filter rows where any field matches the query
-  return data.filter((row) => {
-    return Object.values(row).some((value) => 
-      String(value).toLowerCase().includes(lowerQuery)
-    );
-  });
-}
-
-
-// Notes ကို Local Storage ကနေ ရှာမယ်
+// ============================================
+// NOTES
+// ============================================
 export async function getLocalNotes(): Promise<Record<string, unknown>[]> {
   const data = await getCachedLocalData();
   return data?.notes || [];
 }
 
-// Note တစ်ခုကို Local Storage ကနေ ယူမယ်
 export async function getLocalNote(id: string): Promise<Record<string, unknown> | null> {
   const notes = await getLocalNotes();
   return notes.find((n) => String(n.id) === id) || null;
 }
 
-
-// Admin Update အသစ် ရှိမရှိ စစ်မယ်
+// ============================================
+// CHECK FOR UPDATES
+// ============================================
 export async function checkForUpdates(): Promise<boolean> {
   try {
     const localData = await getLocalData();
-    if (!localData) return true; // Local Data မရှိရင် Update လိုတယ်
-    
-    // နောက်ဆုံး Sync လုပ်ထားတဲ့ Timestamp ကို ယူမယ်
+    if (!localData) return true;
     const lastSyncedAt = localData.lastSyncedAt || 0;
-    
-    // Server ကို ခေါ်ပြီး Version စစ်မယ်
     const res = await fetch("/api/sync/version", { cache: "no-store" });
     const data = await res.json();
-    
     if (!data.ok) return false;
-    
-    // Server ရဲ့ lastUpdated က Local ထက် ပိုအသစ်ရင် Update လိုတယ်
     return data.lastUpdated > lastSyncedAt;
   } catch (err) {
     console.error("Check updates failed:", err);
     return false;
   }
 }
-

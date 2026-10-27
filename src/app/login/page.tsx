@@ -47,7 +47,7 @@ export default function LoginPage() {
         if (sessionData?.user) {
           const isAdmin = ["staff", "senior_admin", "super_admin"].includes(sessionData.user.role);
           if (sessionData.user.isApproved || isAdmin) {
-            router.push("/");
+            router.push("/setup");
           } else {
             router.push("/pending-approval");
           }

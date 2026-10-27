@@ -21,7 +21,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getPrivateExcelData().then(data => {
+    getPrivateExcelData(session?.user?.id || "").then(data => {
       if (data) setExcelCount(data.length);
     });
 

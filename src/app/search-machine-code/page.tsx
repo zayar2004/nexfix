@@ -6,9 +6,11 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import * as XLSX from "xlsx";
 import { getPrivateExcelData, savePrivateExcelData, UserExcelRow } from "@/lib/local-db";
+import { useSession } from "next-auth/react";
 
 export default function SearchMachineCodePage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [query, setQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<UserExcelRow[]>([]);
@@ -18,7 +20,7 @@ export default function SearchMachineCodePage() {
 
   // App စဝင်တာနဲ့ Excel ရှိ/မရှိ စစ်မယ်
   useEffect(() => {
-    getPrivateExcelData().then(data => setHasExcel(!!data));
+    getPrivateExcelData(session?.user?.id || "").then(data => setHasExcel(!!data));
   }, []);
 
   // ရှာတဲ့စာသား ပြောင်းတိုင်း ရှာမယ်
@@ -28,7 +30,7 @@ export default function SearchMachineCodePage() {
         setResults([]);
         return;
       }
-      const userData = await getPrivateExcelData();
+      const userData = await getPrivateExcelData(session?.user?.id || "");
       if (userData) {
         const lowerQ = query.toLowerCase();
         const matched = userData.filter(row => 
@@ -81,7 +83,7 @@ export default function SearchMachineCodePage() {
       if (parsedRows.length === 0) throw new Error("No valid data found. Ensure 'Machine Code' column exists.");
       
       // အသစ်သိမ်းတာနဲ့ အဟောင်းကို Auto အစားထိုးသွားမယ်
-      await savePrivateExcelData(parsedRows);
+      await savePrivateExcelData(parsedRows, session?.user?.id || "");
       setHasExcel(true);
       alert(`✅ Loaded and replaced with ${parsedRows.length} rows from ${file.name}`);
     } catch (err: any) {

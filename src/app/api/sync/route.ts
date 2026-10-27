@@ -54,7 +54,6 @@ export async function GET() {
     ]);
 
     const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
-    
     // All Media တွေကို URL ပါ ထည့်မယ်
     const mediaWithUrls = allMedia.map(m => ({
       ...m,
@@ -80,6 +79,15 @@ export async function GET() {
       totalArticles: allArticles.length,
     };
 
+    // Server Timestamp ကို တွက်ချက်
+    const timestamps: number[] = [];
+    allMachines.forEach(m => { if (m.updatedAt) timestamps.push(new Date(m.updatedAt).getTime()); });
+    allErrorCodes.forEach(e => { if (e.updatedAt) timestamps.push(new Date(e.updatedAt).getTime()); });
+    allContents.forEach(c => { if (c.updatedAt) timestamps.push(new Date(c.updatedAt).getTime()); });
+    allArticles.forEach(a => { if (a.updatedAt) timestamps.push(new Date(a.updatedAt).getTime()); });
+
+    const lastSyncedAt = timestamps.length > 0 ? Math.max(...timestamps) : Date.now();
+
     return NextResponse.json({
       ok: true,
       data: {
@@ -93,7 +101,7 @@ export async function GET() {
         articleMedia: articleMedia,
         homepage,
         stats,
-        lastSyncedAt: Date.now(),
+        lastSyncedAt,
       },
     });
   } catch (error) {

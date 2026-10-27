@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { clearLocalData, clearPrivateExcelData } from "@/lib/local-db";
+import { useSession } from "next-auth/react";
 import { useSettings } from "@/lib/settings-context";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { locale, theme, fontSize, setLocale, setTheme, setFontSize, t } = useSettings();
   const [toast, setToast] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export default function SettingsPage() {
 
   const handleClearExcelData = async () => {
     if (!confirm(t("clearExcelConfirm"))) return;
-    await clearPrivateExcelData();
+    await clearPrivateExcelData(session?.user?.id || "");
     showToast(t("dataCleared"));
   };
 

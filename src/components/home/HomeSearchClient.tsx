@@ -5,11 +5,13 @@ import { getLocalData } from "@/lib/local-db";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { getPrivateExcelData, savePrivateExcelData, UserExcelRow, clearPrivateExcelData } from "@/lib/local-db";
+import { useSession } from "next-auth/react";
 import { useSettings } from "@/lib/settings-context";
 
 export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
   const router = useRouter();
   const { t } = useSettings();
+  const { data: session } = useSession();
   const [popularMachines, setPopularMachines] = useState<string[]>([]);
   const [searchMode, setSearchMode] = useState<"machineError" | "machineCode">("machineError");
   
@@ -33,7 +35,7 @@ export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
         setPopularMachines(names.slice(0, 6));
       }
     });
-    getPrivateExcelData().then(data => {
+    getPrivateExcelData(session?.user?.id || "").then(data => {
       setHasExcel(!!data);
       if (data) setTotalMachines(data.length);
     });
@@ -118,7 +120,7 @@ export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
       const uniqueRows = Array.from(new Map(parsedRows.map(item => [item.machineName, item])).values());
       if (uniqueRows.length === 0) throw new Error(`No "${TARGET_COLUMN}" column found in any sheet.`);
       
-      await savePrivateExcelData(uniqueRows);
+      await savePrivateExcelData(uniqueRows, session?.user?.id || "");
       
       setHasExcel(true);
       setTotalMachines(uniqueRows.length);
@@ -134,7 +136,7 @@ export function HomeSearchClient({ locale }: { locale: "my" | "en" }) {
 
   const handleRemoveFile = async () => {
     if (!confirm(t("clearExcelConfirm"))) return;
-    await clearPrivateExcelData();
+    await clearPrivateExcelData(session?.user?.id || "");
     setHasExcel(false);
     setTotalMachines(0);
     setFileName("");

@@ -6,80 +6,129 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useSettings } from "@/lib/settings-context";
 import { searchLocalData, getLocalData, LocalSearchResult } from "@/lib/local-db";
-import { Search, Loader2, ChevronRight } from "lucide-react";
+import { Search, Loader2, ChevronRight, WifiOff, AlertTriangle } from "lucide-react";
 
 export default function SearchPage() {
   const router = useRouter();
-  const { t, locale } = useSettings();
+  const { locale } = useSettings();
   const isMyanmar = locale === "my";
-  
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LocalSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLocalData, setHasLocalData] = useState(false);
+  const [dataCheckDone, setDataCheckDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Local Data ရှိမရှိ စစ်မယ်
   useEffect(() => {
-    getLocalData().then((data) => {
-      setHasLocalData(!!data);
-    });
-  }, []);
+    getLocalData()
+      .then((data) => {
+        setHasLocalData(!!data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error("getLocalData failed:", err);
+        setError(isMyanmar ? "Local Data ဖတ်လို့မရပါ" : "Cannot read local data");
+        setHasLocalData(false);
+      })
+      .finally(() => {
+        setDataCheckDone(true);
+      });
+  }, [isMyanmar]);
 
-  // Query ပြောင်းတိုင်း ရှာမယ်
+  // Query ပြောင်းတိုင်း — Local Only ရှာမယ်
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
+      setSearchError(null);
       return;
     }
 
     const timer = setTimeout(async () => {
       setLoading(true);
+      setSearchError(null);
+      setResults([]);
+
       try {
-        // Local Data ကနေ အရင်ရှာမယ်
-        const localResults = await searchLocalData(query);
-        
-        if (localResults.length > 0) {
-          setResults(localResults);
+        // Local Data မရှိရင် — Server ကို မ​ခေါ်ဘူး
+        if (!hasLocalData) {
+          setSearchError(
+            isMyanmar
+              ? "Offline Data မရှိသေးပါ။ Home Page ကို Internet ရှိရှိ ဖွင့်ပြီး Sync လုပ်ပါ။"
+              : "No offline data yet. Open Home Page with internet to sync."
+          );
           setLoading(false);
           return;
         }
-        
-        // Local မှာ မတွေ့ရင် Server ကနေ ရှာမယ် (Online ဖြစ်ရင်)
-        if (navigator.onLine && hasLocalData === false) {
-          const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-          const data = await res.json();
-          if (data.ok && data.data) {
-            setResults(data.data);
-          }
+
+        // Local Data ကနေ ရှာ — API ကို မ​ခေါ်ဘူး
+        let localResults: LocalSearchResult[] = [];
+        try {
+          localResults = await searchLocalData(query);
+        } catch (err) {
+          console.error("searchLocalData failed:", err);
+          setSearchError(isMyanmar ? "Search Error" : "Search Error");
+          setLoading(false);
+          return;
+        }
+
+        if (localResults.length > 0) {
+          setResults(localResults);
+        } else {
+          setSearchError(
+            isMyanmar
+              ? "ရှာဖွေမှု မတွေ့ပါ (Local Data ထဲမှာ)"
+              : "No results found (in local data)"
+          );
         }
       } catch (err) {
-        console.error(err);
+        console.error("Search error:", err);
+        setSearchError(isMyanmar ? "Error ဖြစ်သွားပါတယ်" : "Error occurred");
       } finally {
         setLoading(false);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query, hasLocalData]);
+  }, [query, hasLocalData, isMyanmar]);
 
   return (
     <div className="min-h-screen bg-[var(--nx-bg-base-deep)] nx-pb-bottom-nav">
       <TopNav />
       <main className="max-w-3xl mx-auto p-4 py-4">
-        <h1 className="text-2xl font-bold text-white mb-4">{isMyanmar ? "ရှာဖွေရန်" : "Search"}</h1>
+        <h1 className="text-2xl font-bold text-white mb-4">
+          {isMyanmar ? "ရှာဖွေရန်" : "Search"}
+        </h1>
 
         {/* Search Input */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)]" size={20} />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--nx-text-muted-updated)]"
+            size={20}
+          />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={isMyanmar ? "Machine သို့ Error Code ရှာပါ..." : "Search machine or error code..."}
+            placeholder={
+              isMyanmar
+                ? "Machine သို့ Error Code ရှာပါ (Offline)"
+                : "Search machine or error code (Offline)"
+            }
             className="w-full bg-[var(--nx-bg-card)] text-white border border-[var(--nx-border-updated)] rounded-xl pl-11 pr-4 py-3 text-sm focus:border-[var(--nx-cyan)] outline-none"
             autoFocus
           />
         </div>
+
+        {/* Search Error (Local Only) */}
+        {searchError && !loading && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-400 leading-relaxed">{searchError}</p>
+          </div>
+        )}
 
         {/* Results */}
         {loading ? (
@@ -96,8 +145,12 @@ export default function SearchPage() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--nx-cyan)]/20 text-[var(--nx-cyan)] font-mono">{r.code}</span>
-                    <span className="text-xs text-[var(--nx-text-muted-updated)]">{r.machineName}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--nx-cyan)]/20 text-[var(--nx-cyan)] font-mono">
+                      {r.code}
+                    </span>
+                    <span className="text-xs text-[var(--nx-text-muted-updated)]">
+                      {r.machineName}
+                    </span>
                   </div>
                   <p className="text-sm text-white truncate">{r.title}</p>
                 </div>
@@ -105,16 +158,23 @@ export default function SearchPage() {
               </button>
             ))}
           </div>
-        ) : query.trim() ? (
-          <div className="text-center py-20">
-            <p className="text-sm text-[var(--nx-text-muted-updated)]">{isMyanmar ? "ရှာဖွေမှု မတွေ့ပါ" : "No results found"}</p>
-          </div>
-        ) : (
+        ) : !query.trim() ? (
           <div className="text-center py-20">
             <Search className="w-12 h-12 text-[var(--nx-text-muted-updated)] mx-auto mb-3" />
-            <p className="text-sm text-[var(--nx-text-muted-updated)]">{isMyanmar ? "ရှာဖွေရန် စာသား ထည့်ပါ" : "Type to search"}</p>
+            <p className="text-sm text-[var(--nx-text-muted-updated)]">
+              {isMyanmar ? "ရှာဖွေရန် စာသား ထည့်ပါ" : "Type to search"}
+            </p>
           </div>
-        )}
+        ) : !hasLocalData && dataCheckDone ? (
+          <div className="text-center py-20">
+            <WifiOff className="w-12 h-12 text-amber-400/50 mx-auto mb-3" />
+            <p className="text-sm text-[var(--nx-text-muted-updated)]">
+              {isMyanmar
+                ? "Offline Data မရှိသေးပါ။ Internet ရှိရှိ Home Page ကို ဖွင့်ပါ။"
+                : "No offline data yet. Open Home Page with internet."}
+            </p>
+          </div>
+        ) : null}
       </main>
       <BottomNav />
     </div>
