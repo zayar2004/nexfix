@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, gt, or } from "drizzle-orm";
 import { db } from "@/db";
 import { machines, errorCodes, errorContent, knowledgeArticles, articleContent, media, mediaVideos, homepageConfig } from "@/db/schema";
 
@@ -9,7 +9,7 @@ export const revalidate = 0;
 import { auth } from "@/auth";
 import { users } from "@/db/schema";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     // User ကို စစ်မယ်
     const session = await auth();
@@ -33,6 +33,22 @@ export async function GET() {
       return NextResponse.json({ ok: true, data: { pendingApproval: true } });
     }
 
+    // ?since= Param ကို ဖတ်
+    const { searchParams } = new URL(req.url);
+    const sinceParam = searchParams.get("since");
+    const sinceDate = sinceParam ? new Date(parseInt(sinceParam)) : null;
+
+    // Query တွေကို ပြင်
+    const machinesQuery = db.select().from(machines).where(eq(machines.status, "published"));
+    const errorCodesQuery = db.select().from(errorCodes).where(eq(errorCodes.status, "published"));
+    const errorContentQuery = db.select().from(errorContent);
+    const articlesQuery = db.select().from(knowledgeArticles).where(eq(knowledgeArticles.status, "published"));
+    const articleContentQuery = db.select().from(articleContent);
+    const mediaQuery = db.select().from(media).where(eq(media.status, "approved"));
+    const videosQuery = db.select().from(mediaVideos);
+    const homepageQuery = db.select().from(homepageConfig).where(eq(homepageConfig.isPublished, "published"));
+
+    // Incremental Sync — since ရှိရင် Filter
     const [
       allMachines,
       allErrorCodes,
@@ -43,15 +59,43 @@ export async function GET() {
       allVideos,
       allHomepage
     ] = await Promise.all([
-      db.select().from(machines).where(eq(machines.status, "published")),
-      db.select().from(errorCodes).where(eq(errorCodes.status, "published")),
-      db.select().from(errorContent),
-      db.select().from(knowledgeArticles).where(eq(knowledgeArticles.status, "published")),
-      db.select().from(articleContent),
-      db.select().from(media).where(eq(media.status, "approved")),
-      db.select().from(mediaVideos),
-      db.select().from(homepageConfig).where(eq(homepageConfig.isPublished, "published"))
+      sinceDate
+        ? db.select().from(machines).where(
+            or(
+              gt(machines.updatedAt, sinceDate),
+              gt(machines.archivedAt, sinceDate)
+            )
+          )
+        : machinesQuery,
+      sinceDate
+        ? db.select().from(errorCodes).where(
+            or(
+              gt(errorCodes.updatedAt, sinceDate),
+              gt(errorCodes.archivedAt, sinceDate)
+            )
+          )
+        : errorCodesQuery,
+      sinceDate
+        ? db.select().from(errorContent).where(gt(errorContent.updatedAt, sinceDate))
+        : errorContentQuery,
+      sinceDate
+        ? db.select().from(knowledgeArticles).where(gt(knowledgeArticles.updatedAt, sinceDate))
+        : articlesQuery,
+      articleContentQuery,
+      mediaQuery,
+      videosQuery,
+      homepageQuery
     ]);
+
+    // ဖျက်လိုက်တဲ့ Data (archivedAt ပါရင်) ကို သီးသန့် ခွဲ
+    const deletedMachines = allMachines.filter(m => m.archivedAt).map(m => m.id);
+    const deletedErrorCodes = allErrorCodes.filter(e => e.archivedAt).map(e => e.id);
+    const deletedArticles = allArticles.filter(a => (a as any).archivedAt).map(a => a.id);
+
+    // Active Data ပဲ ပြန် (archivedAt မပါ)
+    const activeMachines = allMachines.filter(m => !m.archivedAt);
+    const activeErrorCodes = allErrorCodes.filter(e => !e.archivedAt);
+    const activeArticles = allArticles.filter(a => !(a as any).archivedAt);
 
     const S3_URL = process.env.NEXT_PUBLIC_S3_URL || "";
     // All Media တွေကို URL ပါ ထည့်မယ်
@@ -74,27 +118,27 @@ export async function GET() {
 
     // Stats for Quick Stats
     const stats = {
-      totalErrors: allErrorCodes.length,
-      totalMachines: allMachines.length,
-      totalArticles: allArticles.length,
+      totalErrors: activeErrorCodes.length,
+      totalMachines: activeMachines.length,
+      totalArticles: activeArticles.length,
     };
 
     // Server Timestamp ကို တွက်ချက်
     const timestamps: number[] = [];
-    allMachines.forEach(m => { if (m.updatedAt) timestamps.push(new Date(m.updatedAt).getTime()); });
-    allErrorCodes.forEach(e => { if (e.updatedAt) timestamps.push(new Date(e.updatedAt).getTime()); });
+    activeMachines.forEach(m => { if (m.updatedAt) timestamps.push(new Date(m.updatedAt).getTime()); });
+    activeErrorCodes.forEach(e => { if (e.updatedAt) timestamps.push(new Date(e.updatedAt).getTime()); });
     allContents.forEach(c => { if (c.updatedAt) timestamps.push(new Date(c.updatedAt).getTime()); });
-    allArticles.forEach(a => { if (a.updatedAt) timestamps.push(new Date(a.updatedAt).getTime()); });
+    activeArticles.forEach(a => { if (a.updatedAt) timestamps.push(new Date(a.updatedAt).getTime()); });
 
     const lastSyncedAt = timestamps.length > 0 ? Math.max(...timestamps) : Date.now();
 
     return NextResponse.json({
       ok: true,
       data: {
-        machines: allMachines,
-        errorCodes: allErrorCodes,
+        machines: activeMachines,
+        errorCodes: activeErrorCodes,
         errorContents: allContents,
-        articles: allArticles,
+        articles: activeArticles,
         articleContents: allArticleContents,
         media: mediaWithUrls,
         mediaVideos: allVideos,
@@ -102,6 +146,12 @@ export async function GET() {
         homepage,
         stats,
         lastSyncedAt,
+        // Tombstone Data
+        deleted: {
+          machines: deletedMachines,
+          errorCodes: deletedErrorCodes,
+          articles: deletedArticles,
+        },
       },
     });
   } catch (error) {

@@ -7,7 +7,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { HeroSection } from "@/components/home/HeroSection";
 import { HomeSearchClient } from "@/components/home/HomeSearchClient";
-import { getLocalData, saveLocalData, checkForUpdates } from "@/lib/local-db";
+import { getLocalData, mergeLocalData, checkForUpdates } from "@/lib/local-db";
 import { useSettings } from "@/lib/settings-context";
 
 type RecentItem = { id: string; machineName: string; code: string; title: string; };
@@ -65,7 +65,7 @@ export default function HomePage() {
         try {
           const res = await fetch("/api/sync");
           const data = await res.json();
-          if (data.ok) await saveLocalData(data.data);
+          if (data.ok) await mergeLocalData(data.data);
         } catch (err) {
           console.log("Offline mode");
         }
@@ -140,7 +140,29 @@ export default function HomePage() {
     // ၃ စက္ကန့်အတွင်း အတင်းပိတ်မယ် (Safety)
     const timeout = setTimeout(() => setLoading(false), 3000);
     return () => clearTimeout(timeout);
-  }, [t]);
+  
+    // Background Sync — Network ပြန်ရတာနဲ့
+    const handleOnline = () => {
+      console.log("Network restored — syncing...");
+      loadData();
+    };
+    window.addEventListener("online", handleOnline);
+
+    // App Foreground — ပြန်ဖွင့်တာနဲ့
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        console.log("App foreground — checking updates...");
+        loadData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+
+}, [t]);
 
   const announcementPosition = homeSettings?.announcementPosition || "top";
 

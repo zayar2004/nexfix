@@ -474,3 +474,69 @@ export async function checkForUpdates(): Promise<boolean> {
     return false;
   }
 }
+
+// ============================================
+// INCREMENTAL MERGE (Tombstone Handling)
+// ============================================
+export async function mergeLocalData(
+  newData: SyncData & { deleted?: { machines?: string[]; errorCodes?: string[]; articles?: string[] } }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const existing = await getLocalData();
+
+    // Old Data မရှိရင် — တိုက်ရိုက် Save
+    if (!existing) {
+      return await safeSaveLocalData(newData);
+    }
+
+    // Backup ယူ
+    await saveBackup(existing);
+
+    // 1. Active Data တွေကို Merge (ID နဲ့ တူတာ အစားထိုး)
+    const mergeById = (oldArr: any[], newArr: any[]) => {
+      const map = new Map();
+      oldArr.forEach(item => map.set(item.id, item));
+      newArr.forEach(item => map.set(item.id, item));
+      return Array.from(map.values());
+    };
+
+    // 2. Deleted IDs ကို ဖျက်
+    const deletedMachines = new Set(newData.deleted?.machines || []);
+    const deletedErrorCodes = new Set(newData.deleted?.errorCodes || []);
+    const deletedArticles = new Set(newData.deleted?.articles || []);
+
+    const mergedMachines = mergeById(existing.machines, newData.machines)
+      .filter(m => !deletedMachines.has(m.id));
+
+    const mergedErrorCodes = mergeById(existing.errorCodes, newData.errorCodes)
+      .filter(e => !deletedErrorCodes.has(e.id));
+
+    const mergedArticles = mergeById(existing.articles, newData.articles)
+      .filter(a => !deletedArticles.has(a.id));
+
+    const mergedErrorContents = mergeById(existing.errorContents, newData.errorContents);
+    const mergedArticleContents = mergeById(existing.articleContents, newData.articleContents);
+
+    const mergedData: SyncData = {
+      machines: mergedMachines,
+      errorCodes: mergedErrorCodes,
+      errorContents: mergedErrorContents,
+      articles: mergedArticles,
+      articleContents: mergedArticleContents,
+      media: newData.media || existing.media,
+      mediaVideos: newData.mediaVideos || existing.mediaVideos,
+      notes: newData.notes || existing.notes,
+      homepage: newData.homepage || existing.homepage,
+      stats: newData.stats || existing.stats,
+      lastSyncedAt: newData.lastSyncedAt || Date.now(),
+      lastUpdated: newData.lastUpdated,
+      checksum: newData.checksum,
+    };
+
+    // Safe Save
+    return await safeSaveLocalData(mergedData);
+  } catch (err) {
+    console.error("Merge error:", err);
+    return { ok: false, error: String(err) };
+  }
+}

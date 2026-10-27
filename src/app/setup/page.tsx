@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useSettings } from "@/lib/settings-context";
-import { saveLocalData, getLocalData } from "@/lib/local-db";
+import { mergeLocalData, getLocalData } from "@/lib/local-db";
 import { Download, CheckCircle2, Loader2, AlertTriangle, WifiOff, RefreshCw } from "lucide-react";
 
 type DownloadStatus = "checking" | "downloading" | "complete" | "error" | "offline";
@@ -105,7 +105,7 @@ export default function SetupPage() {
       });
 
       setProgress(75);
-      await saveLocalData(data.data);
+      await mergeLocalData(data.data);
       setProgress(100);
       setDownloadStatus("complete");
 
