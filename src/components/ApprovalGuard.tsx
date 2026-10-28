@@ -12,10 +12,15 @@ export function ApprovalGuard({ children }: { children: React.ReactNode }) {
     if (publicPaths.some((p) => pathname.startsWith(p))) return;
 
     const checkApproval = async () => {
+      // Skip check if offline
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        return;
+      }
+
       try {
         const res = await fetch("/api/sync", { cache: "no-store" });
         
-        // 401 ပြန်ရင် Session မရှိတော့ဘူး (ဖျက်ခံလိုက်ရတယ်)
+        // 401 returned means session is invalid
         if (res.status === 401) {
           await signOut({ callbackUrl: "/login" });
           return;
@@ -26,14 +31,26 @@ export function ApprovalGuard({ children }: { children: React.ReactNode }) {
           await signOut({ callbackUrl: "/login" });
         }
       } catch (err) {
-        // Network error — ဒါကို လျစ်လျူရှုမယ်
+        // Network error — silently ignore, keep offline state
       }
     };
 
-    // Page ဝင်တိုင်း ၅ စက္ကန့်တစ်ခါ စစ်မယ်
+    // Run once on mount (if online)
     checkApproval();
-    const interval = setInterval(checkApproval, 5000);
-    return () => clearInterval(interval);
+
+    // Setup interval — only runs checkApproval if online
+    const interval = setInterval(checkApproval, 10000); // 10s instead of 5s
+
+    // Re-check when network comes back
+    const handleOnline = () => {
+      checkApproval();
+    };
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", handleOnline);
+    };
   }, [pathname]);
 
   return <>{children}</>;

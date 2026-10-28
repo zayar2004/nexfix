@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Static & public paths
   if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
@@ -27,9 +28,20 @@ export function middleware(request: NextRequest) {
     request.cookies.get("__Secure-authjs.session-token")?.value;
 
   if (!sessionToken) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+    // For API routes, return 401 instead of redirect
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    // For pages, redirect to login only if online
+    // If offline, allow access to cached/offline pages
+    const isOfflineHeader = request.headers.get("x-offline") === "true";
+    
+    if (!isOfflineHeader) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();
@@ -37,6 +49,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|icon-192.png|icon-512.png|manifest.json|admin-manifest.json|sw.js).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|icon-192.png|icon-512.png|manifest.json|admin-manifest.json|sw.js).*)",
   ],
 };
